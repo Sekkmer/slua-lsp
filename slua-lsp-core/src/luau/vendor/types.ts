@@ -61,7 +61,8 @@ export type Expression =
   | UnaryExpression
   | CallExpression
   | MemberExpression
-  | IndexExpression;
+  | IndexExpression
+  | TypeCastExpression;
 
 export interface Identifier extends ASTNode {
   type: 'Identifier';
@@ -111,6 +112,12 @@ export interface IndexExpression extends ASTNode {
   index: Expression;
 }
 
+export interface TypeCastExpression extends ASTNode {
+  type: 'TypeCastExpression';
+  expression: Expression;
+  typeAnnotation: string;
+}
+
 // Statements
 export type Statement = 
   | LocalStatement
@@ -119,6 +126,9 @@ export type Statement =
   | IfStatement
   | WhileStatement
   | ForStatement
+  | GenericForStatement
+  | DoStatement
+  | RepeatStatement
   | ReturnStatement
   | BreakStatement
   | ExpressionStatement
@@ -148,6 +158,7 @@ export interface FunctionDeclaration extends ASTNode {
   // Represent this as an expression (Identifier or MemberExpression).
   identifier: Expression | undefined;
   isLocal: boolean;
+  typeParameters?: string[];
   parameters: Identifier[];
   body: Statement[];
   returnTypeAnnotation?: string;
@@ -155,6 +166,7 @@ export interface FunctionDeclaration extends ASTNode {
 
 export interface LuaFunction extends ASTNode {
   type: 'Function';
+  typeParameters?: string[];
   parameters: Identifier[];
   body: Statement[];
   returnTypeAnnotation?: string;
@@ -180,6 +192,24 @@ export interface ForStatement extends ASTNode {
   end: Expression;
   step: Expression | undefined;
   body: Statement[];
+}
+
+export interface GenericForStatement extends ASTNode {
+  type: 'GenericForStatement';
+  variables: Identifier[];
+  iterators: Expression[];
+  body: Statement[];
+}
+
+export interface DoStatement extends ASTNode {
+  type: 'DoStatement';
+  body: Statement[];
+}
+
+export interface RepeatStatement extends ASTNode {
+  type: 'RepeatStatement';
+  body: Statement[];
+  test: Expression;
 }
 
 export interface ReturnStatement extends ASTNode {

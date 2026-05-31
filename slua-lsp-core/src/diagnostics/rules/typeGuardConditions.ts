@@ -25,6 +25,8 @@ type FunctionDeclarationNode = AstNode & {
 
 type IfStatementNode = AstNode & { type: 'IfStatement'; test: unknown; consequent: unknown[]; alternate?: unknown[] | unknown };
 
+type GenericForStatementNode = AstNode & { type: 'GenericForStatement'; variables: unknown[]; iterators: unknown[]; body: unknown[] };
+
 type CallExpressionNode = AstNode & { type: 'CallExpression'; callee: unknown; arguments: unknown[] };
 
 type BinaryExpressionNode = AstNode & { type: 'BinaryExpression'; operator: string; left: unknown; right: unknown };
@@ -105,6 +107,10 @@ function isFunctionDeclaration(v: unknown): v is FunctionDeclarationNode {
 
 function isIfStatement(v: unknown): v is IfStatementNode {
 	return isAstNode(v) && v.type === 'IfStatement' && Array.isArray((v as Record<string, unknown>)['consequent']);
+}
+
+function isGenericForStatement(v: unknown): v is GenericForStatementNode {
+	return isAstNode(v) && v.type === 'GenericForStatement' && Array.isArray((v as Record<string, unknown>)['variables']) && Array.isArray((v as Record<string, unknown>)['iterators']) && Array.isArray((v as Record<string, unknown>)['body']);
 }
 
 function isCallExpression(v: unknown): v is CallExpressionNode {
@@ -468,6 +474,16 @@ function inferFunctionReturns(body: unknown[], env: Env, registry: SluaRegistry)
 				}
 				continue;
 			}
+			if (isGenericForStatement(stmt)) {
+				for (const iterator of stmt.iterators) inferExpression(iterator, env, registry);
+				env.pushScope();
+				for (const variable of stmt.variables) {
+					if (isIdentifier(variable)) env.set(variable.name, slua.unknown());
+				}
+				visitStatements(stmt.body);
+				env.popScope();
+				continue;
+			}
 			if (isReturnStatement(stmt)) {
 				const first = stmt.arguments[0];
 				merge(inferExpression(first, env, registry).values[0] ?? slua.unknown());
@@ -569,6 +585,17 @@ export function ruleTypeGuardConditions(ast: unknown, registry: SluaRegistry): C
 			const alt = stmt.alternate;
 			if (Array.isArray(alt)) visitBlock(alt, env.clone());
 			else if (isAstNode(alt) && alt.type === 'IfStatement') applyStatement(alt, env.clone());
+			return;
+		}
+
+		if (isGenericForStatement(stmt)) {
+			for (const iterator of stmt.iterators) inferExpression(iterator, env, registry);
+			env.pushScope();
+			for (const variable of stmt.variables) {
+				if (isIdentifier(variable)) env.set(variable.name, slua.unknown());
+			}
+			for (const s of stmt.body) if (isAstNode(s)) applyStatement(s, env);
+			env.popScope();
 			return;
 		}
 

@@ -236,6 +236,19 @@ describe('findDefinitionAtPosition', () => {
 		expect(def?.identifier.location?.start.line).toBe(1);
 	});
 
+	test('finds definition for generic for-loop variables', () => {
+		const code = ['local t = {}', 'for k, v in pairs(t) do', '\tprint(k, v)', 'end'].join('\n') + '\n';
+		const parsed = parseSlua(code);
+		expect(parsed.ast).toBeTruthy();
+		const registry = buildSluaRegistryFromLslDefinitions(null);
+		const usageLine = code.split(/\r?\n/)[2]!;
+		const def = findDefinitionAtPosition(parsed.ast, { line: 2, character: usageLine.indexOf('k,') }, registry);
+		expect(def).not.toBeNull();
+		expect(def?.name).toBe('k');
+		expect(def?.kind).toBe('local');
+		expect(def?.identifier.location?.start.line).toBe(2);
+	});
+
 	test('finds definition inside template string interpolation (local)', () => {
 		const code = ['local message = "hi"', 'll.Say(0, `You selected {message}`)'].join('\n') + '\n';
 		const parsed = parseSlua(code);
@@ -262,5 +275,24 @@ describe('findDefinitionAtPosition', () => {
 		expect(def?.name).toBe('message');
 		expect(def?.kind).toBe('parameter');
 		expect(def?.identifier.location?.start.line).toBe(1);
+	});
+
+	test('respects do-block shadowing before resolving definitions', () => {
+		const code = ['local value = 1', 'do', '\tlocal value = 2', '\tlocal result = value', 'end', 'local outside = value'].join('\n') + '\n';
+		const parsed = parseSlua(code);
+		expect(parsed.ast).toBeTruthy();
+
+		const registry = buildSluaRegistryFromLslDefinitions(null);
+		const lines = code.split(/\r?\n/);
+
+		const innerLine = 3;
+		const innerDefinition = findDefinitionAtPosition(parsed.ast, { line: innerLine, character: lines[innerLine]!.lastIndexOf('value') }, registry);
+		expect(innerDefinition).not.toBeNull();
+		expect(innerDefinition?.identifier.location?.start.line).toBe(3);
+
+		const outerLine = 5;
+		const outerDefinition = findDefinitionAtPosition(parsed.ast, { line: outerLine, character: lines[outerLine]!.lastIndexOf('value') }, registry);
+		expect(outerDefinition).not.toBeNull();
+		expect(outerDefinition?.identifier.location?.start.line).toBe(1);
 	});
 });

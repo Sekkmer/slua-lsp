@@ -54,6 +54,12 @@ type NilNode = AstNode & { type: 'Nil' };
 
 type IfStatementNode = AstNode & { type: 'IfStatement'; test: unknown; consequent: unknown[]; alternate?: unknown[] | unknown };
 
+type GenericForStatementNode = AstNode & { type: 'GenericForStatement'; variables: unknown[]; iterators: unknown[]; body: unknown[] };
+
+type IfExpressionNode = AstNode & { type: 'IfExpression'; test: unknown; consequent: unknown; alternate: unknown };
+
+type TypeCastExpressionNode = AstNode & { type: 'TypeCastExpression'; expression: unknown; typeAnnotation?: string };
+
 export type InferredLocal = {
     name: string;
     identifier: IdentifierNode;
@@ -160,6 +166,24 @@ function isNilNode(value: unknown): value is NilNode {
 
 function isIfStatement(value: unknown): value is IfStatementNode {
 	return isAstNode(value) && value.type === 'IfStatement' && Array.isArray((value as Record<string, unknown>).consequent);
+}
+
+function isGenericForStatement(value: unknown): value is GenericForStatementNode {
+	return isAstNode(value) && value.type === 'GenericForStatement' && Array.isArray((value as Record<string, unknown>).variables) && Array.isArray((value as Record<string, unknown>).iterators) && Array.isArray((value as Record<string, unknown>).body);
+}
+
+function isIfExpression(value: unknown): value is IfExpressionNode {
+	return isAstNode(value) && value.type === 'IfExpression' && 'consequent' in value && 'alternate' in value;
+}
+
+function isTypeCastExpression(value: unknown): value is TypeCastExpressionNode {
+	return isAstNode(value) && value.type === 'TypeCastExpression' && 'expression' in value;
+}
+
+function mergeBranchTypes(a: SluaType, b: SluaType): SluaType {
+	if (sluaTypeEquals(a, b)) return a;
+	if ((a.kind === 'primitive' && a.name === 'unknown') || (b.kind === 'primitive' && b.name === 'unknown')) return slua.unknown();
+	return slua.union([a, b]);
 }
 
 type TypeGuard = { kind: 'type' | 'typeof'; varName: string; asserted: SluaType; isEqual: boolean };
@@ -307,6 +331,18 @@ function inferExpression(expr: unknown, env: InferEnv, registry: SluaRegistry): 
 	if (isNilNode(expr)) return { values: [slua.nil()], expands: false };
 	if (isTableNode(expr)) return { values: [slua.table()], expands: false };
 	if (isVarargLiteral(expr)) return { values: [slua.unknown()], expands: true };
+
+	if (isIfExpression(expr)) {
+		const consequent = inferExpression(expr.consequent, env, registry).values[0] ?? slua.unknown();
+		const alternate = inferExpression(expr.alternate, env, registry).values[0] ?? slua.unknown();
+		return { values: [mergeBranchTypes(consequent, alternate)], expands: false };
+	}
+
+	if (isTypeCastExpression(expr)) {
+		const annotated = sluaTypeFromLuauAnnotationText(expr.typeAnnotation);
+		if (!(annotated.kind === 'primitive' && annotated.name === 'unknown')) return { values: [annotated], expands: false };
+		return inferExpression(expr.expression, env, registry);
+	}
 
 	if (isIdentifier(expr)) {
 		const local = env.get(expr.name);
@@ -601,6 +637,17 @@ function inferFunctionReturns(body: unknown[], outerEnv: InferEnv, registry: Slu
 				continue;
 			}
 
+			if (isGenericForStatement(stmt)) {
+				for (const iterator of stmt.iterators) inferExpression(iterator, env, registry);
+				env.pushScope();
+				for (const variable of stmt.variables) {
+					if (isIdentifier(variable)) env.set(variable.name, slua.unknown());
+				}
+				visitStatementsInCurrentScope(stmt.body);
+				env.popScope();
+				continue;
+			}
+
 			// Recurse into common blocks.
 			const stmtRec = stmt as Record<string, unknown>;
 			const body = stmtRec.body;
@@ -736,6 +783,17 @@ function visitProgram(program: ProgramNode, env: InferEnv, registry: SluaRegistr
 					visitStatementsInCurrentScope([alt]);
 					env.popScope();
 				}
+				continue;
+			}
+
+			if (isGenericForStatement(stmt)) {
+				for (const iterator of stmt.iterators) inferExpression(iterator, env, registry);
+				env.pushScope();
+				for (const variable of stmt.variables) {
+					if (isIdentifier(variable)) env.set(variable.name, slua.unknown());
+				}
+				visitStatementsInCurrentScope(stmt.body);
+				env.popScope();
 				continue;
 			}
 

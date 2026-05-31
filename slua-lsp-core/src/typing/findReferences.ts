@@ -36,6 +36,18 @@ type ForStatementNode = AstNode & {
 	body: unknown[];
 };
 
+type GenericForStatementNode = AstNode & {
+	type: 'GenericForStatement';
+	variables: unknown[];
+	iterators: unknown[];
+	body: unknown[];
+};
+
+type ScopedBodyStatementNode = AstNode & {
+	type: 'DoStatement' | 'RepeatStatement';
+	body: unknown[];
+};
+
 export type ReferenceLocation = {
 	identifier: IdentifierNode;
 	kind: 'definition' | 'usage';
@@ -153,6 +165,20 @@ function isForStatement(value: unknown): value is ForStatementNode {
 		value.type === 'ForStatement' &&
 		Array.isArray((value as Record<string, unknown>).body)
 	);
+}
+
+function isGenericForStatement(value: unknown): value is GenericForStatementNode {
+	return (
+		isAstNode(value) &&
+		value.type === 'GenericForStatement' &&
+		Array.isArray((value as Record<string, unknown>).variables) &&
+		Array.isArray((value as Record<string, unknown>).iterators) &&
+		Array.isArray((value as Record<string, unknown>).body)
+	);
+}
+
+function isScopedBodyStatement(value: unknown): value is ScopedBodyStatementNode {
+	return isAstNode(value) && (value.type === 'DoStatement' || value.type === 'RepeatStatement') && Array.isArray((value as Record<string, unknown>).body);
 }
 
 /**
@@ -297,6 +323,36 @@ export function findAllReferences(
 					continue;
 				}
 
+				if (isGenericForStatement(stmt)) {
+					for (const iterator of stmt.iterators) {
+						visitExprForDef(iterator);
+						if (found) return;
+					}
+
+					env.pushScope();
+					for (const variable of stmt.variables) {
+						if (!isIdentifier(variable)) continue;
+						if (
+							variable.location &&
+							variable.location.start.line === targetLoc.start.line &&
+							variable.location.start.column === targetLoc.start.column &&
+							variable.location.end.line === targetLoc.end.line &&
+							variable.location.end.column === targetLoc.end.column
+						) {
+							targetDefinition = variable;
+							found = true;
+							env.define(variable);
+							env.popScope();
+							return;
+						}
+						env.define(variable);
+					}
+					visitStmtsForDef(stmt.body);
+					env.popScope();
+					if (found) return;
+					continue;
+				}
+
 				if (isFunctionDeclaration(stmt)) {
 					if (stmt.isLocal && stmt.identifier && isIdentifier(stmt.identifier)) {
 						// Check if the target is the function identifier
@@ -357,6 +413,16 @@ export function findAllReferences(
 						visitExprForDef(arg);
 						if (found) return;
 					}
+					continue;
+				}
+
+				if (isScopedBodyStatement(stmt)) {
+					env.pushScope();
+					visitStmtsForDef(stmt.body);
+					const test = (stmt as Record<string, unknown>).test;
+					if (isAstNode(test)) visitExprForDef(test);
+					env.popScope();
+					if (found) return;
 					continue;
 				}
 
@@ -491,6 +557,22 @@ export function findAllReferences(
 				continue;
 			}
 
+			if (isGenericForStatement(stmt)) {
+				for (const iterator of stmt.iterators) visitExprForRefs(iterator);
+
+				env.pushScope();
+				for (const variable of stmt.variables) {
+					if (!isIdentifier(variable)) continue;
+					env.define(variable);
+					if (includeDeclaration && isSameIdent(variable, targetDefinition!)) {
+						references.push({ identifier: variable, kind: 'definition' });
+					}
+				}
+				visitStmtsForRefs(stmt.body);
+				env.popScope();
+				continue;
+			}
+
 			if (isFunctionDeclaration(stmt)) {
 				if (stmt.isLocal && stmt.identifier && isIdentifier(stmt.identifier)) {
 					env.define(stmt.identifier);
@@ -531,6 +613,15 @@ export function findAllReferences(
 
 			if (isReturnStatement(stmt)) {
 				for (const arg of stmt.arguments) visitExprForRefs(arg);
+				continue;
+			}
+
+			if (isScopedBodyStatement(stmt)) {
+				env.pushScope();
+				visitStmtsForRefs(stmt.body);
+				const test = (stmt as Record<string, unknown>).test;
+				if (isAstNode(test)) visitExprForRefs(test);
+				env.popScope();
 				continue;
 			}
 

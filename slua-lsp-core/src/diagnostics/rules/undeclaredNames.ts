@@ -36,9 +36,20 @@ type ForStatementNode = AstNode & {
 	body: unknown[];
 };
 
+type GenericForStatementNode = AstNode & {
+	type: 'GenericForStatement';
+	variables: unknown[];
+	iterators: unknown[];
+	body: unknown[];
+};
+
 type IfStatementNode = AstNode & { type: 'IfStatement'; test: unknown; consequent: unknown[]; alternate?: unknown[] | unknown };
 
 type WhileStatementNode = AstNode & { type: 'WhileStatement'; test: unknown; body: unknown[] };
+
+type DoStatementNode = AstNode & { type: 'DoStatement'; body: unknown[] };
+
+type RepeatStatementNode = AstNode & { type: 'RepeatStatement'; body: unknown[]; test: unknown };
 
 type ReturnStatementNode = AstNode & { type: 'ReturnStatement'; arguments: unknown[] };
 
@@ -51,6 +62,8 @@ type IndexExpressionNode = AstNode & { type: 'IndexExpression'; object: unknown;
 type TableNode = AstNode & { type: 'Table'; fields?: unknown[] };
 
 type TableFieldNode = AstNode & { type: 'TableField'; key?: unknown; value?: unknown };
+
+type TypeCastExpressionNode = AstNode & { type: 'TypeCastExpression'; expression: unknown; typeAnnotation?: string };
 
 type ErrorStatementNode = AstNode & { type: 'ErrorStatement'; message?: string };
 
@@ -97,12 +110,24 @@ function isForStatement(v: unknown): v is ForStatementNode {
 	return isAstNode(v) && v.type === 'ForStatement' && Array.isArray((v as Record<string, unknown>).body);
 }
 
+function isGenericForStatement(v: unknown): v is GenericForStatementNode {
+	return isAstNode(v) && v.type === 'GenericForStatement' && Array.isArray((v as Record<string, unknown>).variables) && Array.isArray((v as Record<string, unknown>).iterators) && Array.isArray((v as Record<string, unknown>).body);
+}
+
 function isIfStatement(v: unknown): v is IfStatementNode {
 	return isAstNode(v) && v.type === 'IfStatement' && Array.isArray((v as Record<string, unknown>).consequent);
 }
 
 function isWhileStatement(v: unknown): v is WhileStatementNode {
 	return isAstNode(v) && v.type === 'WhileStatement' && Array.isArray((v as Record<string, unknown>).body);
+}
+
+function isDoStatement(v: unknown): v is DoStatementNode {
+	return isAstNode(v) && v.type === 'DoStatement' && Array.isArray((v as Record<string, unknown>).body);
+}
+
+function isRepeatStatement(v: unknown): v is RepeatStatementNode {
+	return isAstNode(v) && v.type === 'RepeatStatement' && Array.isArray((v as Record<string, unknown>).body) && 'test' in v;
 }
 
 function isReturnStatement(v: unknown): v is ReturnStatementNode {
@@ -127,6 +152,10 @@ function isTableNode(v: unknown): v is TableNode {
 
 function isTableField(v: unknown): v is TableFieldNode {
 	return isAstNode(v) && v.type === 'TableField';
+}
+
+function isTypeCastExpression(v: unknown): v is TypeCastExpressionNode {
+	return isAstNode(v) && v.type === 'TypeCastExpression' && 'expression' in v;
 }
 
 function isErrorStatement(v: unknown): v is ErrorStatementNode {
@@ -473,6 +502,12 @@ export function ruleUndeclaredNames(ast: unknown, registry?: SluaRegistry): Core
 			return;
 		}
 
+		if (isTypeCastExpression(expr)) {
+			visitExpression(expr.expression);
+			checkTypeAnnotation(expr, expr.typeAnnotation, registry, declaredTypes, diags);
+			return;
+		}
+
 		if (isCallExpression(expr)) {
 			// Member-call validation for known modules (e.g. lljson.decode).
 			// Object-type intrinsic methods are handled by ruleIntrinsicMethodCalls.
@@ -601,6 +636,17 @@ export function ruleUndeclaredNames(ast: unknown, registry?: SluaRegistry): Core
 				continue;
 			}
 
+			if (isGenericForStatement(stmt)) {
+				for (const iterator of stmt.iterators) visitExpression(iterator);
+				scopes.push();
+				for (const variable of stmt.variables) {
+					if (isIdentifier(variable)) scopes.declare(variable.name);
+				}
+				visitStatements(stmt.body);
+				scopes.pop();
+				continue;
+			}
+
 			if (isIfStatement(stmt)) {
 				visitExpression(stmt.test);
 				scopes.push();
@@ -623,6 +669,21 @@ export function ruleUndeclaredNames(ast: unknown, registry?: SluaRegistry): Core
 				visitExpression(stmt.test);
 				scopes.push();
 				visitStatements(stmt.body);
+				scopes.pop();
+				continue;
+			}
+
+			if (isDoStatement(stmt)) {
+				scopes.push();
+				visitStatements(stmt.body);
+				scopes.pop();
+				continue;
+			}
+
+			if (isRepeatStatement(stmt)) {
+				scopes.push();
+				visitStatements(stmt.body);
+				visitExpression(stmt.test);
 				scopes.pop();
 				continue;
 			}

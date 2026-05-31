@@ -81,4 +81,18 @@ describe('assignment-return-count-mismatch', () => {
 		const diags = analyzeText(code, { registry });
 		expect(diags.some((d) => d.code === 'assignment-return-count-mismatch')).toBe(false);
 	});
+
+	test('does not use outer function counts for shadowed generic for variables', () => {
+		const code = `
+			local function f()
+				return 1, 2
+			end
+			local list = {}
+			for _, f in pairs(list) do
+				local a = f()
+			end
+		`;
+		const diags = analyzeText(code, { registry });
+		expect(diags.some((d) => d.code === 'assignment-return-count-mismatch')).toBe(false);
+	});
 });

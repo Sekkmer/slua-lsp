@@ -85,6 +85,14 @@ describe('undeclared-names + unknown-type', () => {
 		expect(diags.some((d) => d.code === 'unknown-type')).toBe(true);
 	});
 
+	test('warns on unknown type cast annotations like :: Something', () => {
+		const code = `
+			local x = value :: Something
+		`;
+		const diags = analyzeText(code, { registry });
+		expect(diags.some((d) => d.code === 'unknown-type')).toBe(true);
+	});
+
 	test('does not warn on known SLua wiki type names (e.g. DetectedEvent)', () => {
 		const code = `
 			local ev: DetectedEvent = nil
@@ -101,8 +109,9 @@ describe('undeclared-names + unknown-type', () => {
 		expect(diags.some((d) => d.code === 'unknown-type')).toBe(false);
 	});
 
-	test('suppresses undeclared-name noise around parse-recovery errors', () => {
+	test('declares generic for loop variables', () => {
 		const code = `
+			local t = {}
 			for k, v in pairs(t) do
 				print(k, v)
 			end

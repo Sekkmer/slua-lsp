@@ -31,6 +31,8 @@ type ReturnStatementNode = AstNode & { type: 'ReturnStatement'; arguments: unkno
 
 type IfStatementNode = AstNode & { type: 'IfStatement'; test: unknown; consequent: unknown[]; alternate?: unknown[] | unknown };
 
+type GenericForStatementNode = AstNode & { type: 'GenericForStatement'; variables: unknown[]; iterators: unknown[]; body: unknown[] };
+
 type CallExpressionNode = AstNode & { type: 'CallExpression'; callee: unknown; arguments: unknown[] };
 
 type MemberExpressionNode = AstNode & { type: 'MemberExpression'; object: unknown; property: unknown; indexer?: '.' | ':' };
@@ -81,6 +83,10 @@ function isReturnStatement(v: unknown): v is ReturnStatementNode {
 
 function isIfStatement(v: unknown): v is IfStatementNode {
 	return isAstNode(v) && v.type === 'IfStatement' && Array.isArray((v as Record<string, unknown>).consequent);
+}
+
+function isGenericForStatement(v: unknown): v is GenericForStatementNode {
+	return isAstNode(v) && v.type === 'GenericForStatement' && Array.isArray((v as Record<string, unknown>).variables) && Array.isArray((v as Record<string, unknown>).iterators) && Array.isArray((v as Record<string, unknown>).body);
 }
 
 function isCallExpression(v: unknown): v is CallExpressionNode {
@@ -293,6 +299,16 @@ function inferLocalFunctionReturnCountFromBody(body: unknown[], outerEnv: Return
 				continue;
 			}
 
+			if (isGenericForStatement(stmt)) {
+				env.pushScope();
+				for (const variable of stmt.variables) {
+					if (isIdentifier(variable)) env.set(variable.name, null);
+				}
+				visitStatements(stmt.body);
+				env.popScope();
+				continue;
+			}
+
 			// Recurse into common blocks.
 			if (isRecord(stmt)) {
 				const stmtRec = stmt as Record<string, unknown>;
@@ -399,6 +415,16 @@ export function ruleAssignmentReturnCountMismatch(ast: unknown, registry: SluaRe
 				const alt = stmt.alternate;
 				if (Array.isArray(alt)) visitStatements(alt);
 				else if (isAstNode(alt) && alt.type === 'IfStatement') visitStatements([alt]);
+				continue;
+			}
+
+			if (isGenericForStatement(stmt)) {
+				env.pushScope();
+				for (const variable of stmt.variables) {
+					if (isIdentifier(variable)) env.set(variable.name, null);
+				}
+				visitStatements(stmt.body);
+				env.popScope();
 				continue;
 			}
 

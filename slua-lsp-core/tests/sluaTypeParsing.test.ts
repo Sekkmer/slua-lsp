@@ -22,4 +22,19 @@ describe('sluaTypeFromLuauAnnotationText', () => {
 		const t = sluaTypeFromLuauAnnotationText('thread?');
 		expect(sluaTypeToString(t)).toBe('nil | thread');
 	});
+
+	test('parses structured table annotations as tables', () => {
+		const t = sluaTypeFromLuauAnnotationText('{ readonly name: string, count: number }');
+		expect(sluaTypeToString(t)).toBe('table');
+	});
+
+	test('parses array annotations', () => {
+		expect(sluaTypeToString(sluaTypeFromLuauAnnotationText('{DetectedEvent}'))).toBe('DetectedEvent[]');
+		expect(sluaTypeToString(sluaTypeFromLuauAnnotationText('Array<string>'))).toBe('string[]');
+	});
+
+	test('parses function annotations', () => {
+		const t = sluaTypeFromLuauAnnotationText('(integer, string) -> boolean');
+		expect(sluaTypeToString(t)).toBe('(integer, string) -> boolean');
+	});
 });

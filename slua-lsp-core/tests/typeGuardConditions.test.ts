@@ -59,4 +59,16 @@ describe('type guard conditions', () => {
 		// typeof(x) == "string" is always true, so the negated condition is always false.
 		expect(diags.some((d) => d.code === 'type-guard-always-false')).toBe(true);
 	});
+
+	test('does not use outer locals for shadowed generic for variables', () => {
+		const text = `
+			local item: string = "outer"
+			local list = {}
+			for _, item in pairs(list) do
+				if typeof(item) == "string" then end
+			end
+		`;
+		const diags = analyzeText(text, { registry });
+		expect(diags.some((d) => d.code === 'type-guard-always-true' || d.code === 'type-guard-always-false')).toBe(false);
+	});
 });

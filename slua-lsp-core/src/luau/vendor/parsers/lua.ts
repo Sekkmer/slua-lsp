@@ -78,9 +78,15 @@ export class LuaParser {
 			if (this.match(TokenType.IF)) return this.ifStatement();
 			if (this.match(TokenType.WHILE)) return this.whileStatement();
 			if (this.match(TokenType.FOR)) return this.forStatement();
+			if (this.match(TokenType.DO)) return this.doStatement();
+			if (this.match(TokenType.REPEAT)) return this.repeatStatement();
 			if (this.match(TokenType.RETURN)) return this.returnStatement();
 			if (this.match(TokenType.BREAK)) return this.breakStatement();
-      
+			if (this.checkContinueStatement()) {
+				this.advance();
+				return this.continueStatement();
+			}
+
 			return this.assignmentOrExpressionStatement();
 		} catch (err) {
 			const token = err instanceof ParseError ? err.token : this.peek();
@@ -161,6 +167,7 @@ export class LuaParser {
 			}
 		}
 
+		const typeParameters = this.optionalGenericTypeParameters();
 		this.consume(TokenType.LEFT_PAREN, 'Expected \'(\' after function name');
     
 		const parameters: AST.Identifier[] = [];
@@ -209,6 +216,7 @@ export class LuaParser {
 			type: 'FunctionDeclaration',
 			identifier,
 			isLocal,
+			typeParameters,
 			parameters,
 			body,
 			location: this.getLocation(),
@@ -274,8 +282,33 @@ export class LuaParser {
 		};
 	}
 
-	private forStatement(): AST.ForStatement {
-		const variable = this.identifier();
+	private forStatement(): AST.ForStatement | AST.GenericForStatement {
+		const variables: AST.Identifier[] = [];
+		variables.push(this.identifier());
+
+		if (!this.check(TokenType.ASSIGN)) {
+			while (this.match(TokenType.COMMA)) {
+				variables.push(this.identifier());
+			}
+			this.consume(TokenType.IN, 'Expected \'in\' after generic for variables');
+			const iterators: AST.Expression[] = [];
+			iterators.push(this.expression());
+			while (this.match(TokenType.COMMA)) {
+				iterators.push(this.expression());
+			}
+			this.consume(TokenType.DO, 'Expected \'do\' after for clause');
+			const body = this.blockUntil(TokenType.END);
+			this.consume(TokenType.END, 'Expected \'end\' after for body');
+			return {
+				type: 'GenericForStatement',
+				variables,
+				iterators,
+				body,
+				location: this.getLocation(),
+			};
+		}
+
+		const variable = variables[0]!;
 		this.consume(TokenType.ASSIGN, 'Expected \'=\' after for variable');
 
 		const start = this.expression();
@@ -290,13 +323,7 @@ export class LuaParser {
 
 		this.consume(TokenType.DO, 'Expected \'do\' after for clause');
 
-		const body: AST.Statement[] = [];
-		while (!this.check(TokenType.END) && !this.isAtEnd()) {
-			if (this.match(TokenType.NEWLINE) || this.match(TokenType.COMMENT) || this.match(TokenType.MULTILINE_COMMENT)) continue;
-			const stmt = this.statement();
-			if (stmt) body.push(stmt);
-		}
-
+		const body = this.blockUntil(TokenType.END);
 		this.consume(TokenType.END, 'Expected \'end\' after for body');
 
 		return {
@@ -308,6 +335,38 @@ export class LuaParser {
 			body,
 			location: this.getLocation(),
 		};
+	}
+
+	private doStatement(): AST.Statement {
+		const body = this.blockUntil(TokenType.END);
+		this.consume(TokenType.END, 'Expected \'end\' after do block');
+		return {
+			type: 'DoStatement',
+			body,
+			location: this.getLocation(),
+		} as unknown as AST.Statement;
+	}
+
+	private repeatStatement(): AST.Statement {
+		const body = this.blockUntil(TokenType.UNTIL);
+		this.consume(TokenType.UNTIL, 'Expected \'until\' after repeat body');
+		const test = this.expression();
+		return {
+			type: 'RepeatStatement',
+			body,
+			test,
+			location: this.getLocation(),
+		} as unknown as AST.Statement;
+	}
+
+	private blockUntil(...endTokens: TokenType[]): AST.Statement[] {
+		const body: AST.Statement[] = [];
+		while (!endTokens.some((type) => this.check(type)) && !this.isAtEnd()) {
+			if (this.match(TokenType.NEWLINE) || this.match(TokenType.COMMENT) || this.match(TokenType.MULTILINE_COMMENT)) continue;
+			const stmt = this.statement();
+			if (stmt) body.push(stmt);
+		}
+		return body;
 	}
 
 	private typedIdentifierInParamList(): AST.Identifier {
@@ -379,6 +438,18 @@ export class LuaParser {
 		this.readTypeAnnotationRaw(stops);
 	}
 
+	private optionalGenericTypeParameters(): string[] | undefined {
+		if (!this.match(TokenType.LESS_THAN)) return undefined;
+
+		const params: string[] = [];
+		params.push(this.consume(TokenType.IDENTIFIER, 'Expected type parameter').value);
+		while (this.match(TokenType.COMMA)) {
+			params.push(this.consume(TokenType.IDENTIFIER, 'Expected type parameter').value);
+		}
+		this.consume(TokenType.GREATER_THAN, 'Expected \'>\' after type parameters');
+		return params;
+	}
+
 	private returnStatement(): AST.ReturnStatement {
 		const args: AST.Expression[] = [];
     
@@ -406,7 +477,17 @@ export class LuaParser {
 		};
 	}
 
+	private continueStatement(): AST.Statement {
+		return {
+			type: 'ContinueStatement',
+			location: this.getLocation(),
+		} as unknown as AST.Statement;
+	}
+
 	private assignmentOrExpressionStatement(): AST.Statement {
+		const compound = this.compoundAssignmentStatement();
+		if (compound) return compound;
+
 		const expr = this.expression();
     
 		if (this.match(TokenType.ASSIGN)) {
@@ -437,8 +518,72 @@ export class LuaParser {
 		};
 	}
 
+	private compoundAssignmentStatement(): AST.AssignmentStatement | null {
+		const start = this.current;
+		const variable = this.call();
+		const opToken = this.peek();
+		if (!this.isCompoundAssignmentOperator(opToken.type) || this.peekAt(1).type !== TokenType.ASSIGN) {
+			this.current = start;
+			return null;
+		}
+
+		this.advance();
+		this.advance();
+		const right = this.expression();
+		const init: AST.Expression = {
+			type: 'BinaryExpression',
+			operator: opToken.value as AST.BinaryOperator,
+			left: variable,
+			right,
+			location: this.getLocation(),
+		};
+		return {
+			type: 'AssignmentStatement',
+			variables: [variable],
+			init: [init],
+			location: this.getLocation(),
+		};
+	}
+
+	private isCompoundAssignmentOperator(type: TokenType): boolean {
+		return (
+			type === TokenType.PLUS ||
+			type === TokenType.MINUS ||
+			type === TokenType.MULTIPLY ||
+			type === TokenType.DIVIDE ||
+			type === TokenType.MODULO ||
+			type === TokenType.POWER ||
+			type === TokenType.CONCAT
+		);
+	}
+
 	private expression(): AST.Expression {
-		return this.or();
+		return this.typeCast();
+	}
+
+	private typeCast(): AST.Expression {
+		let expr = this.or();
+		while (this.match(TokenType.DOUBLE_COLON)) {
+			expr = {
+				type: 'TypeCastExpression',
+				expression: expr,
+				typeAnnotation: this.readTypeAnnotationRaw([
+					TokenType.COMMA,
+					TokenType.RIGHT_PAREN,
+					TokenType.RIGHT_BRACKET,
+					TokenType.RIGHT_BRACE,
+					TokenType.NEWLINE,
+					TokenType.END,
+					TokenType.ELSE,
+					TokenType.ELSEIF,
+					TokenType.THEN,
+					TokenType.DO,
+					TokenType.UNTIL,
+				]),
+				location: this.getLocation(),
+			};
+		}
+		return expr;
 	}
 
 	private or(): AST.Expression {
@@ -607,6 +752,10 @@ export class LuaParser {
 		while (true) {
 			if (this.match(TokenType.LEFT_PAREN)) {
 				expr = this.finishCall(expr);
+			} else if (this.match(TokenType.STRING)) {
+				expr = this.callWithSingleArg(expr, this.stringFromPrevious());
+			} else if (this.match(TokenType.LEFT_BRACE)) {
+				expr = this.callWithSingleArg(expr, this.table());
 			} else if (this.match(TokenType.DOT)) {
 				const property = this.identifier();
 				expr = {
@@ -663,6 +812,26 @@ export class LuaParser {
 	}
 
 	private primary(): AST.Expression {
+		if (this.match(TokenType.IF)) {
+			return this.ifExpression();
+		}
+
+		if (this.match(TokenType.CONTINUE)) {
+			return {
+				type: 'Identifier',
+				name: this.previous().value,
+				location: this.getLocation(),
+			};
+		}
+
+		if (this.match(TokenType.EXPORT)) {
+			return {
+				type: 'Identifier',
+				name: this.previous().value,
+				location: this.getLocation(),
+			};
+		}
+
 		if (this.match(TokenType.TRUE)) {
 			return {
 				type: 'Boolean',
@@ -694,16 +863,7 @@ export class LuaParser {
 			};
 		}
     
-		if (this.match(TokenType.STRING)) {
-			const value = this.previous().value;
-			// Remove quotes and handle escape sequences
-			const unquoted = value.slice(1, -1);
-			return {
-				type: 'String',
-				value: unquoted,
-				location: this.getLocation(),
-			};
-		}
+		if (this.match(TokenType.STRING)) return this.stringFromPrevious();
     
 		if (this.match(TokenType.IDENTIFIER)) {
 			return {
@@ -728,6 +888,40 @@ export class LuaParser {
 		}
     
 		throw new ParseError(`Unexpected token: ${this.peek().value}`, this.peek());
+	}
+
+	private ifExpression(): AST.Expression {
+		const test = this.expression();
+		this.consume(TokenType.THEN, 'Expected \'then\' after if expression condition');
+		const consequent = this.expression();
+		this.consume(TokenType.ELSE, 'Expected \'else\' after if expression consequent');
+		const alternate = this.expression();
+
+		return {
+			type: 'IfExpression',
+			test,
+			consequent,
+			alternate,
+			location: this.getLocation(),
+		} as unknown as AST.Expression;
+	}
+
+	private stringFromPrevious(): AST.LuaString {
+		const value = this.previous().value;
+		return {
+			type: 'String',
+			value: value.slice(1, -1),
+			location: this.getLocation(),
+		};
+	}
+
+	private callWithSingleArg(callee: AST.Expression, argument: AST.Expression): AST.CallExpression {
+		return {
+			type: 'CallExpression',
+			callee,
+			arguments: [argument],
+			location: this.getLocation(),
+		};
 	}
 
 	private table(): AST.LuaTable {
@@ -776,6 +970,7 @@ export class LuaParser {
 	}
 
 	private functionExpression(): AST.LuaFunction {
+		const typeParameters = this.optionalGenericTypeParameters();
 		this.consume(TokenType.LEFT_PAREN, 'Expected \'(\' after \'function\'');
     
 		const parameters: AST.Identifier[] = [];
@@ -818,6 +1013,7 @@ export class LuaParser {
 
 		const node: AST.LuaFunction = {
 			type: 'Function',
+			typeParameters,
 			parameters,
 			body,
 			location: this.getLocation(),
@@ -827,12 +1023,19 @@ export class LuaParser {
 	}
 
 	private identifier(): AST.Identifier {
-		this.consume(TokenType.IDENTIFIER, 'Expected identifier');
+		if (!this.isIdentifierLike(this.peek().type)) {
+			throw new ParseError('Expected identifier', this.peek());
+		}
+		const token = this.advance();
 		return {
 			type: 'Identifier',
-			name: this.previous().value,
+			name: token.value,
 			location: this.getLocation(),
 		};
+	}
+
+	private isIdentifierLike(type: TokenType): boolean {
+		return type === TokenType.IDENTIFIER || type === TokenType.CONTINUE || type === TokenType.EXPORT;
 	}
 
 	// Utility methods
@@ -871,14 +1074,39 @@ export class LuaParser {
 		return this.tokens[this.current + 1];
 	}
 
+	private peekAt(offset: number): Token {
+		const index = this.current + offset;
+		if (index >= this.tokens.length) return this.tokens[this.tokens.length - 1];
+		return this.tokens[index];
+	}
+
 	private previous(): Token {
 		return this.tokens[this.current - 1];
 	}
 
 	private consume(type: TokenType, message: string): Token {
 		if (this.check(type)) return this.advance();
-    
+
 		throw new ParseError(message, this.peek());
+	}
+
+	private checkContinueStatement(): boolean {
+		if (!this.check(TokenType.CONTINUE)) return false;
+		let offset = 1;
+		while (this.peekAt(offset).type === TokenType.COMMENT || this.peekAt(offset).type === TokenType.MULTILINE_COMMENT) offset++;
+		return this.isStatementBoundary(this.peekAt(offset).type);
+	}
+
+	private isStatementBoundary(type: TokenType): boolean {
+		return (
+			type === TokenType.EOF ||
+			type === TokenType.NEWLINE ||
+			type === TokenType.SEMICOLON ||
+			type === TokenType.END ||
+			type === TokenType.ELSE ||
+			type === TokenType.ELSEIF ||
+			type === TokenType.UNTIL
+		);
 	}
 
 	private synchronize(): void {

@@ -78,6 +78,58 @@ function normalizeUnionItems(items: SluaType[]): SluaType[] {
 	return [...unique.values()].sort((a, b) => sluaTypeToString(a).localeCompare(sluaTypeToString(b)));
 }
 
+function splitTopLevel(text: string, separator: string): string[] {
+	const parts: string[] = [];
+	let start = 0;
+	let depthParen = 0;
+	let depthBrace = 0;
+	let depthBracket = 0;
+	let depthAngle = 0;
+
+	for (let i = 0; i < text.length; i++) {
+		const ch = text[i];
+		if (ch === '(') depthParen++;
+		else if (ch === ')') depthParen = Math.max(0, depthParen - 1);
+		else if (ch === '{') depthBrace++;
+		else if (ch === '}') depthBrace = Math.max(0, depthBrace - 1);
+		else if (ch === '[') depthBracket++;
+		else if (ch === ']') depthBracket = Math.max(0, depthBracket - 1);
+		else if (ch === '<') depthAngle++;
+		else if (ch === '>') depthAngle = Math.max(0, depthAngle - 1);
+		else if (ch === separator && depthParen === 0 && depthBrace === 0 && depthBracket === 0 && depthAngle === 0) {
+			parts.push(text.slice(start, i).trim());
+			start = i + 1;
+		}
+	}
+
+	parts.push(text.slice(start).trim());
+	return parts.filter((part) => part.length > 0);
+}
+
+function findTopLevelArrow(text: string): number {
+	let depthParen = 0;
+	let depthBrace = 0;
+	let depthBracket = 0;
+	let depthAngle = 0;
+
+	for (let i = 0; i < text.length - 1; i++) {
+		const ch = text[i];
+		if (ch === '(') depthParen++;
+		else if (ch === ')') depthParen = Math.max(0, depthParen - 1);
+		else if (ch === '{') depthBrace++;
+		else if (ch === '}') depthBrace = Math.max(0, depthBrace - 1);
+		else if (ch === '[') depthBracket++;
+		else if (ch === ']') depthBracket = Math.max(0, depthBracket - 1);
+		else if (ch === '<') depthAngle++;
+		else if (ch === '>') depthAngle = Math.max(0, depthAngle - 1);
+		else if (ch === '-' && text[i + 1] === '>' && depthParen === 0 && depthBrace === 0 && depthBracket === 0 && depthAngle === 0) {
+			return i;
+		}
+	}
+
+	return -1;
+}
+
 export function sluaTypeEquals(a: SluaType, b: SluaType): boolean {
 	if (a.kind !== b.kind) return false;
 	switch (a.kind) {
@@ -127,6 +179,19 @@ export function sluaTypeFromLuauAnnotationText(text: string | undefined | null):
 	const norm = String(text).trim().toLowerCase();
 	if (!norm) return slua.unknown();
 
+	const arrow = findTopLevelArrow(norm);
+	if (arrow >= 0) {
+		const paramsText = norm.slice(0, arrow).trim();
+		const returnsText = norm.slice(arrow + 2).trim();
+		const unwrappedParams = paramsText.startsWith('(') && paramsText.endsWith(')')
+			? paramsText.slice(1, -1).trim()
+			: paramsText;
+		const params = unwrappedParams
+			? splitTopLevel(unwrappedParams, ',').map((part) => sluaTypeFromLuauAnnotationText(part))
+			: [];
+		return slua.fn(params, sluaTypeFromLuauAnnotationText(returnsText));
+	}
+
 	// Optional shorthand: T?
 	if (norm.endsWith('?') && norm.length > 1) {
 		const inner = norm.slice(0, -1).trim();
@@ -134,23 +199,31 @@ export function sluaTypeFromLuauAnnotationText(text: string | undefined | null):
 	}
 
 	// Union: A | B | C (conservative split, no parentheses handling)
-	if (norm.includes('|')) {
-		const parts = norm
-			.split('|')
-			.map((p) => p.trim())
-			.filter((p) => p.length > 0);
+	const unionParts = splitTopLevel(norm, '|');
+	if (unionParts.length > 1) {
+		const parts = unionParts;
 		if (parts.length > 1) return slua.union(parts.map((p) => sluaTypeFromLuauAnnotationText(p)));
 	}
+
+	if (norm.startsWith('{') && norm.endsWith('}')) {
+		const inner = norm.slice(1, -1).trim();
+		if (!inner) return slua.table();
+		const fields = splitTopLevel(inner, ',');
+		if (fields.length === 1 && !fields[0]?.includes(':') && !fields[0]?.startsWith('[')) {
+			return slua.array(sluaTypeFromLuauAnnotationText(fields[0]));
+		}
+		return slua.table();
+	}
+
+	const arrayMatch = /^(?:array|readonlyarray)<(.+)>$/.exec(norm);
+	if (arrayMatch) return slua.array(sluaTypeFromLuauAnnotationText(arrayMatch[1]));
 
 	// Best-effort tuple support: (t1, t2, ...)
 	// This is intentionally conservative and does not attempt full Luau type parsing.
 	if (norm.startsWith('(') && norm.endsWith(')')) {
 		const inner = norm.slice(1, -1).trim();
 		if (!inner) return slua.unknown();
-		const parts = inner
-			.split(',')
-			.map((p) => p.trim())
-			.filter((p) => p.length > 0);
+		const parts = splitTopLevel(inner, ',');
 		if (parts.length === 1) return sluaTypeFromLuauAnnotationText(parts[0]);
 		if (parts.length > 1) return slua.tuple(parts.map((p) => sluaTypeFromLuauAnnotationText(p)));
 	}

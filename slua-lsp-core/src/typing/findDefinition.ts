@@ -36,6 +36,18 @@ type ForStatementNode = AstNode & {
 	body: unknown[];
 };
 
+type GenericForStatementNode = AstNode & {
+	type: 'GenericForStatement';
+	variables: unknown[];
+	iterators: unknown[];
+	body: unknown[];
+};
+
+type ScopedBodyStatementNode = AstNode & {
+	type: 'DoStatement' | 'RepeatStatement';
+	body: unknown[];
+};
+
 export type DefinitionLocation = {
 	name: string;
 	identifier: IdentifierNode;
@@ -254,6 +266,20 @@ function isForStatement(value: unknown): value is ForStatementNode {
 	);
 }
 
+function isGenericForStatement(value: unknown): value is GenericForStatementNode {
+	return (
+		isAstNode(value) &&
+		value.type === 'GenericForStatement' &&
+		Array.isArray((value as Record<string, unknown>).variables) &&
+		Array.isArray((value as Record<string, unknown>).iterators) &&
+		Array.isArray((value as Record<string, unknown>).body)
+	);
+}
+
+function isScopedBodyStatement(value: unknown): value is ScopedBodyStatementNode {
+	return isAstNode(value) && (value.type === 'DoStatement' || value.type === 'RepeatStatement') && Array.isArray((value as Record<string, unknown>).body);
+}
+
 /**
  * Check if a position is within a location range.
  */
@@ -344,13 +370,33 @@ function buildScopeAtPosition(program: ProgramNode, pos: { line: number; charact
 		}
 
 		if (isForStatement(stmt)) {
-			visitExpr(stmt.start);
-			visitExpr(stmt.end);
-			if (stmt.step) visitExpr(stmt.step);
+			for (const expr of [stmt.start, stmt.end, stmt.step]) {
+				if (!expr) continue;
+				visitExpr(expr);
+				if (isAstNode(expr) && expr.location && posInLoc(pos, expr.location)) return true;
+			}
 
 			if (inThisStmt) {
 				env.pushScope();
 				if (isIdentifier(stmt.variable)) env.define(stmt.variable.name, stmt.variable, 'local');
+				if (visitStmts(stmt.body)) return true;
+				env.popScope();
+				return true;
+			}
+			return false;
+		}
+
+		if (isGenericForStatement(stmt)) {
+			for (const iterator of stmt.iterators) {
+				visitExpr(iterator);
+				if (isAstNode(iterator) && iterator.location && posInLoc(pos, iterator.location)) return true;
+			}
+
+			if (inThisStmt) {
+				env.pushScope();
+				for (const variable of stmt.variables) {
+					if (isIdentifier(variable)) env.define(variable.name, variable, 'local');
+				}
 				if (visitStmts(stmt.body)) return true;
 				env.popScope();
 				return true;
@@ -396,6 +442,23 @@ function buildScopeAtPosition(program: ProgramNode, pos: { line: number; charact
 
 				return true;
 			}
+			return false;
+		}
+
+		if (isScopedBodyStatement(stmt)) {
+			const rec = stmt as Record<string, unknown>;
+			const test = rec.test;
+			if (inThisStmt) {
+				env.pushScope();
+				if (visitStmts(stmt.body)) return true;
+				if (isAstNode(test)) {
+					visitExpr(test);
+					if (test.location && posInLoc(pos, test.location)) return true;
+				}
+				env.popScope();
+				return true;
+			}
+			if (isAstNode(test)) visitExpr(test);
 			return false;
 		}
 
@@ -559,6 +622,31 @@ export function findDefinitionAtPosition(
 				continue;
 			}
 
+			if (isGenericForStatement(stmt)) {
+				for (const iterator of stmt.iterators) {
+					visitExpression(iterator);
+					if (foundDefinition) return;
+				}
+
+				env.pushScope();
+				for (const variable of stmt.variables) {
+					if (!isIdentifier(variable)) continue;
+					env.define(variable.name, variable, 'local');
+					if (checkIfAtTarget(variable)) {
+						foundDefinition = {
+							name: variable.name,
+							identifier: variable,
+							kind: 'local'
+						};
+					}
+				}
+				visitStatementsInCurrentScope(stmt.body);
+				env.popScope();
+
+				if (foundDefinition) return;
+				continue;
+			}
+
 			// Function declarations
 			if (isFunctionDeclaration(stmt)) {
 				if (stmt.isLocal && stmt.identifier && isIdentifier(stmt.identifier)) {
@@ -601,6 +689,19 @@ export function findDefinitionAtPosition(
 					env.popScope();
 				}
 				
+				if (foundDefinition) return;
+				continue;
+			}
+
+			if (isScopedBodyStatement(stmt)) {
+				const rec = stmt as Record<string, unknown>;
+				const test = rec.test;
+				env.pushScope();
+				visitStatementsInCurrentScope(stmt.body);
+				if (isAstNode(test)) {
+					visitExpression(test);
+				}
+				env.popScope();
 				if (foundDefinition) return;
 				continue;
 			}

@@ -238,6 +238,19 @@ describe('findAllReferences', () => {
 		expect(refs.every((r) => r.identifier.name === 'i')).toBe(true);
 	});
 
+	test('finds references for generic for-loop variables', () => {
+		const code = ['local t = {}', 'for k, v in pairs(t) do', '\tprint(k, v)', 'end'].join('\n') + '\n';
+		const parsed = parseSlua(code);
+		expect(parsed.ast).toBeTruthy();
+
+		const registry = buildSluaRegistryFromLslDefinitions(null);
+		const refs = findAllReferences(parsed.ast, { line: 1, character: code.split(/\r?\n/)[1]!.indexOf('k,') }, registry, true);
+		expect(refs.length).toBe(2);
+		expect(refs[0]?.kind).toBe('definition');
+		expect(refs[1]?.kind).toBe('usage');
+		expect(refs.every((r) => r.identifier.name === 'k')).toBe(true);
+	});
+
 	test('finds references inside `{...}` of backtick template strings', () => {
 		const code = ['local message = "hi"', 'll.Say(0, `You selected {message}`)'].join('\n') + '\n';
 		const parsed = parseSlua(code);
@@ -247,5 +260,18 @@ describe('findAllReferences', () => {
 		// Cursor on `message` inside `{message}`
 		const refs = findAllReferences(parsed.ast, { line: 1, character: 25 }, registry, true);
 		expect(refs.map((r) => r.kind)).toEqual(['definition', 'usage']);
+	});
+
+	test('respects do-block shadowing when collecting references', () => {
+		const code = ['local value = 1', 'do', '\tlocal value = 2', '\tlocal result = value', 'end', 'local outside = value'].join('\n') + '\n';
+		const parsed = parseSlua(code);
+		expect(parsed.ast).toBeTruthy();
+
+		const registry = buildSluaRegistryFromLslDefinitions(null);
+		const outerRefs = findAllReferences(parsed.ast, { line: 0, character: code.split(/\r?\n/)[0]!.indexOf('value') }, registry, true);
+		expect(outerRefs.map((r) => r.identifier.location?.start.line)).toEqual([1, 6]);
+
+		const innerRefs = findAllReferences(parsed.ast, { line: 2, character: code.split(/\r?\n/)[2]!.indexOf('value') }, registry, true);
+		expect(innerRefs.map((r) => r.identifier.location?.start.line)).toEqual([3, 4]);
 	});
 });

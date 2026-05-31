@@ -244,5 +244,16 @@ describe('rename', () => {
 			expect(edits.length).toBe(2);
 			expect(edits.every((edit) => edit.identifier.name === 'i')).toBe(true);
 		});
+
+		test('renames generic for-loop variables', () => {
+			const code = ['local t = {}', 'for k, v in pairs(t) do', '\tprint(k, v)', 'end'].join('\n') + '\n';
+			const parsed = parseSlua(code);
+			expect(parsed.ast).toBeTruthy();
+			const registry = buildSluaRegistryFromLslDefinitions(null);
+
+			const edits = getRenameEdits(parsed.ast, { line: 1, character: code.split(/\r?\n/)[1]!.indexOf('k,') }, 'key', registry);
+			expect(edits.length).toBe(2);
+			expect(edits.every((edit) => edit.identifier.name === 'k')).toBe(true);
+		});
 	});
 });

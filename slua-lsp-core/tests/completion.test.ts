@@ -91,6 +91,22 @@ describe('getCompletions', () => {
 			expect(labels).toContain('outer');
 			expect(labels).not.toContain('inner');
 		});
+
+		it('suggests locals inside do-block scope', () => {
+			const src = ['local outer = 1', 'do', '\tlocal inner = 2', '\t$ ', 'end'].join('\n') + '\n';
+			const labels = getCompletionLabels(src, { triggerCharacter: ' ' });
+			expect(labels).toContain('outer');
+			expect(labels).toContain('inner');
+		});
+
+		it('suggests loop variables inside numeric and generic for bodies', () => {
+			const numericLabels = getCompletionLabels(['for i = 1, 3 do', '\t$ ', 'end'].join('\n') + '\n', { triggerCharacter: ' ' });
+			expect(numericLabels).toContain('i');
+
+			const genericLabels = getCompletionLabels(['local t = {}', 'for key, value in pairs(t) do', '\t$ ', 'end'].join('\n') + '\n', { triggerCharacter: ' ' });
+			expect(genericLabels).toContain('key');
+			expect(genericLabels).toContain('value');
+		});
 	});
 
 	describe('member completions', () => {

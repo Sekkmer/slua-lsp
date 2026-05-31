@@ -81,6 +81,51 @@ describe('inferLocalVariableTypes', () => {
 		expect(map.get('m')).toBe('number');
 	});
 
+	test('infers if-expression branch types', () => {
+		const code = `
+			local a = if true then "yes" else "no"
+			local b = if true then integer(1) else "no"
+		`;
+		const parsed = parseSlua(code);
+		expect(parsed.ast).toBeTruthy();
+		const registry = buildSluaRegistryFromLslDefinitions(null);
+		const inferred = inferLocalVariableTypes(parsed.ast, registry);
+		const map = new Map(inferred.map((x) => [x.name, sluaTypeToString(x.type)]));
+		expect(map.get('a')).toBe('string');
+		expect(map.get('b')).toBe('integer | string');
+	});
+
+	test('infers Luau type casts from annotations', () => {
+		const code = `
+			local x = value :: integer
+		`;
+		const parsed = parseSlua(code);
+		expect(parsed.ast).toBeTruthy();
+		const registry = buildSluaRegistryFromLslDefinitions(null);
+		const inferred = inferLocalVariableTypes(parsed.ast, registry);
+		const map = new Map(inferred.map((x) => [x.name, sluaTypeToString(x.type)]));
+		expect(map.get('x')).toBe('integer');
+	});
+
+	test('does not infer shadowed generic for variables from outer locals', () => {
+		const code = `
+			local item: string = "outer"
+			local list = {}
+			local function f()
+				for _, item in pairs(list) do
+					return item
+				end
+			end
+			local out = f()
+		`;
+		const parsed = parseSlua(code);
+		expect(parsed.ast).toBeTruthy();
+		const registry = buildSluaRegistryFromLslDefinitions(null);
+		const inferred = inferLocalVariableTypes(parsed.ast, registry);
+		const map = new Map(inferred.map((x) => [x.name, sluaTypeToString(x.type)]));
+		expect(map.get('out')).toBeUndefined();
+	});
+
 	test('infers registry-backed call return types', () => {
 		const code = `
 			local id = uuid("00000000-0000-0000-0000-000000000000")

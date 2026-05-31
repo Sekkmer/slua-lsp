@@ -31,6 +31,12 @@ type ReturnStatementNode = AstNode & { type: 'ReturnStatement'; arguments: unkno
 
 type IfStatementNode = AstNode & { type: 'IfStatement'; test: unknown; consequent: unknown[]; alternate?: unknown[] | unknown };
 
+type GenericForStatementNode = AstNode & { type: 'GenericForStatement'; variables: unknown[]; iterators: unknown[]; body: unknown[] };
+
+type IfExpressionNode = AstNode & { type: 'IfExpression'; test: unknown; consequent: unknown; alternate: unknown };
+
+type TypeCastExpressionNode = AstNode & { type: 'TypeCastExpression'; expression: unknown; typeAnnotation?: string };
+
 type CallExpressionNode = AstNode & { type: 'CallExpression'; callee: unknown; arguments: unknown[] };
 
 type MemberExpressionNode = AstNode & { type: 'MemberExpression'; object: unknown; property: unknown };
@@ -112,6 +118,18 @@ function isIfStatement(v: unknown): v is IfStatementNode {
 	return isAstNode(v) && v.type === 'IfStatement' && Array.isArray((v as Record<string, unknown>)['consequent']);
 }
 
+function isGenericForStatement(v: unknown): v is GenericForStatementNode {
+	return isAstNode(v) && v.type === 'GenericForStatement' && Array.isArray((v as Record<string, unknown>)['variables']) && Array.isArray((v as Record<string, unknown>)['iterators']) && Array.isArray((v as Record<string, unknown>)['body']);
+}
+
+function isIfExpression(v: unknown): v is IfExpressionNode {
+	return isAstNode(v) && v.type === 'IfExpression' && 'consequent' in v && 'alternate' in v;
+}
+
+function isTypeCastExpression(v: unknown): v is TypeCastExpressionNode {
+	return isAstNode(v) && v.type === 'TypeCastExpression' && 'expression' in v;
+}
+
 function isCallExpression(v: unknown): v is CallExpressionNode {
 	return isAstNode(v) && v.type === 'CallExpression' && Array.isArray((v as Record<string, unknown>)['arguments']);
 }
@@ -146,6 +164,12 @@ function isNilNode(v: unknown): v is NilNode {
 
 function isTableNode(v: unknown): v is TableNode {
 	return isAstNode(v) && v.type === 'Table';
+}
+
+function mergeBranchTypes(a: SluaType, b: SluaType): SluaType {
+	if (sluaTypeEquals(a, b)) return a;
+	if ((a.kind === 'primitive' && a.name === 'unknown') || (b.kind === 'primitive' && b.name === 'unknown')) return slua.unknown();
+	return slua.union([a, b]);
 }
 
 class Env {
@@ -193,6 +217,18 @@ function inferExpression(expr: unknown, env: Env, registry: SluaRegistry): Multi
 	if (isBooleanNode(expr)) return { values: [slua.boolean()], expands: false };
 	if (isNilNode(expr)) return { values: [slua.nil()], expands: false };
 	if (isTableNode(expr)) return { values: [slua.table()], expands: false };
+
+	if (isIfExpression(expr)) {
+		const consequent = inferExpression(expr.consequent, env, registry).values[0] ?? slua.unknown();
+		const alternate = inferExpression(expr.alternate, env, registry).values[0] ?? slua.unknown();
+		return { values: [mergeBranchTypes(consequent, alternate)], expands: false };
+	}
+
+	if (isTypeCastExpression(expr)) {
+		const annotated = sluaTypeFromLuauAnnotationText(expr.typeAnnotation);
+		if (!(annotated.kind === 'primitive' && annotated.name === 'unknown')) return { values: [annotated], expands: false };
+		return inferExpression(expr.expression, env, registry);
+	}
 
 	if (isIdentifier(expr)) {
 		const local = env.get(expr.name);
@@ -471,6 +507,17 @@ function checkFunctionAgainstDeclared(
 				continue;
 			}
 
+			if (isGenericForStatement(stmt)) {
+				for (const iterator of stmt.iterators) inferExpression(iterator, fnEnv, registry);
+				fnEnv.pushScope();
+				for (const variable of stmt.variables) {
+					if (isIdentifier(variable)) fnEnv.set(variable.name, slua.unknown());
+				}
+				visitStatements(stmt.body);
+				fnEnv.popScope();
+				continue;
+			}
+
 			const r = stmt as Record<string, unknown>;
 			if (Array.isArray(r['body'])) visitStatements(r['body'] as unknown[]);
 			if (Array.isArray(r['consequent'])) visitStatements(r['consequent'] as unknown[]);
@@ -556,6 +603,17 @@ export function ruleDeclaredReturnMismatch(ast: unknown, registry: SluaRegistry)
 				for (const s of alt) if (isAstNode(s)) applyStatement(s);
 				env.popScope();
 			}
+			return;
+		}
+
+		if (isGenericForStatement(stmt)) {
+			for (const iterator of stmt.iterators) inferExpression(iterator, env, registry);
+			env.pushScope();
+			for (const variable of stmt.variables) {
+				if (isIdentifier(variable)) env.set(variable.name, slua.unknown());
+			}
+			for (const s of stmt.body) if (isAstNode(s)) applyStatement(s);
+			env.popScope();
 			return;
 		}
 

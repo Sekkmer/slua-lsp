@@ -56,6 +56,27 @@ type NilNode = AstNode & { type: 'Nil' };
 
 type IfStatementNode = AstNode & { type: 'IfStatement'; test: unknown; consequent: unknown[]; alternate?: unknown[] | unknown };
 
+type ForStatementNode = AstNode & {
+	type: 'ForStatement';
+	variable: unknown;
+	start: unknown;
+	end: unknown;
+	step?: unknown;
+	body: unknown[];
+};
+
+type GenericForStatementNode = AstNode & {
+	type: 'GenericForStatement';
+	variables: unknown[];
+	iterators: unknown[];
+	body: unknown[];
+};
+
+type ScopedBodyStatementNode = AstNode & {
+	type: 'DoStatement' | 'RepeatStatement';
+	body: unknown[];
+};
+
 export type CompletionItemKind =
 	| 'variable'
 	| 'function'
@@ -583,6 +604,18 @@ function isNilNode(value: unknown): value is NilNode {
 
 function isIfStatement(value: unknown): value is IfStatementNode {
 	return isAstNode(value) && value.type === 'IfStatement' && Array.isArray((value as Record<string, unknown>).consequent);
+}
+
+function isForStatement(value: unknown): value is ForStatementNode {
+	return isAstNode(value) && value.type === 'ForStatement' && Array.isArray((value as Record<string, unknown>).body);
+}
+
+function isGenericForStatement(value: unknown): value is GenericForStatementNode {
+	return isAstNode(value) && value.type === 'GenericForStatement' && Array.isArray((value as Record<string, unknown>).variables) && Array.isArray((value as Record<string, unknown>).iterators) && Array.isArray((value as Record<string, unknown>).body);
+}
+
+function isScopedBodyStatement(value: unknown): value is ScopedBodyStatementNode {
+	return isAstNode(value) && (value.type === 'DoStatement' || value.type === 'RepeatStatement') && Array.isArray((value as Record<string, unknown>).body);
 }
 
 /**
@@ -1390,6 +1423,40 @@ function buildScopeAtPosition(
 						if (visitStmt(stmt.alternate)) return true;
 					}
 				}
+				return true;
+			}
+		}
+
+		if (isForStatement(stmt)) {
+			if (stmt.location && posInLoc(pos, stmt.location)) {
+				for (const expr of [stmt.start, stmt.end, stmt.step]) {
+					if (isAstNode(expr) && expr.location && posInLoc(pos, expr.location)) return true;
+				}
+				env.pushScope();
+				if (isIdentifier(stmt.variable)) env.define(stmt.variable.name, stmt.variable, 'local', slua.number());
+				visitStmts(stmt.body);
+				return true;
+			}
+		}
+
+		if (isGenericForStatement(stmt)) {
+			if (stmt.location && posInLoc(pos, stmt.location)) {
+				for (const iterator of stmt.iterators) {
+					if (isAstNode(iterator) && iterator.location && posInLoc(pos, iterator.location)) return true;
+				}
+				env.pushScope();
+				for (const variable of stmt.variables) {
+					if (isIdentifier(variable)) env.define(variable.name, variable, 'local', slua.unknown());
+				}
+				visitStmts(stmt.body);
+				return true;
+			}
+		}
+
+		if (isScopedBodyStatement(stmt)) {
+			if (stmt.location && posInLoc(pos, stmt.location)) {
+				env.pushScope();
+				visitStmts(stmt.body);
 				return true;
 			}
 		}

@@ -49,30 +49,28 @@ export class LuauParser {
 			}
 
 			// Handle Luau-specific statements
-			if (this.check(TokenType.EXPORT)) {
+			if (this.check(TokenType.EXPORT) && this.checkTypeAliasStatement(1)) {
 				this.advance();
-				if (this.check(TokenType.TYPE)) {
-					try {
-						const node = this.typeAliasDeclaration(pendingComments);
-						(node as AST.TypeAlias & { exported?: true }).exported = true;
-						pendingComments = [];
-						statements.push(node);
-						continue;
-					} catch (err) {
-						if (err instanceof ParseError) {
-							this.errors.push(err);
-							statements.push(this.errorStatement(err));
-						} else {
-							statements.push(this.errorStatementMessage(String(err)));
-						}
-						this.synchronize();
-						pendingComments = [];
-						continue;
+				try {
+					const node = this.typeAliasDeclaration(pendingComments);
+					(node as AST.TypeAlias & { exported?: true }).exported = true;
+					pendingComments = [];
+					statements.push(node);
+					continue;
+				} catch (err) {
+					if (err instanceof ParseError) {
+						this.errors.push(err);
+						statements.push(this.errorStatement(err));
+					} else {
+						statements.push(this.errorStatementMessage(String(err)));
 					}
+					this.synchronize();
+					pendingComments = [];
+					continue;
 				}
 			}
 
-			if (this.check(TokenType.TYPE)) {
+			if (this.checkTypeAliasStatement()) {
 				try {
 					const node = this.typeAliasDeclaration(pendingComments);
 					pendingComments = [];
@@ -91,7 +89,7 @@ export class LuauParser {
 				}
 			}
 
-			if (this.check(TokenType.CONTINUE)) {
+			if (this.checkContinueStatement()) {
 				this.advance();
 				statements.push({
 					type: 'ContinueStatement',
@@ -191,7 +189,7 @@ export class LuauParser {
 
 	private typeAliasDeclaration(pendingComments?: LuauComment[]): AST.TypeAlias {
 
-		this.consume(TokenType.TYPE, 'Expected \'type\'');
+		this.consumeTypeAliasKeyword('Expected \'type\'');
 		const name = this.identifier();
 
 		let typeParameters: string[] | undefined = undefined;
@@ -583,6 +581,12 @@ export class LuauParser {
 		return this.tokens[this.current];
 	}
 
+	private peekAt(offset: number): Token {
+		const index = this.current + offset;
+		if (index >= this.tokens.length) return this.tokens[this.tokens.length - 1];
+		return this.tokens[index];
+	}
+
 	private previous(): Token {
 		return this.tokens[this.current - 1];
 	}
@@ -590,6 +594,43 @@ export class LuauParser {
 	private consume(type: TokenType, message: string): Token {
 		if (this.check(type)) return this.advance();
 		throw new ParseError(message, this.peek());
+	}
+
+	private checkTypeAliasKeyword(offset = 0): boolean {
+		const token = this.peekAt(offset);
+		if (token.type === TokenType.TYPE) return true;
+		return token.type === TokenType.IDENTIFIER && token.value === 'type';
+	}
+
+	private checkTypeAliasStatement(offset = 0): boolean {
+		if (!this.checkTypeAliasKeyword(offset)) return false;
+		if (this.peekAt(offset + 1).type !== TokenType.IDENTIFIER) return false;
+		const afterName = this.peekAt(offset + 2);
+		return afterName.type === TokenType.ASSIGN || afterName.type === TokenType.LESS_THAN;
+	}
+
+	private consumeTypeAliasKeyword(message: string): Token {
+		if (this.checkTypeAliasKeyword()) return this.advance();
+		throw new ParseError(message, this.peek());
+	}
+
+	private checkContinueStatement(): boolean {
+		if (!this.check(TokenType.CONTINUE)) return false;
+		let offset = 1;
+		while (this.peekAt(offset).type === TokenType.COMMENT || this.peekAt(offset).type === TokenType.MULTILINE_COMMENT) offset++;
+		return this.isStatementBoundary(this.peekAt(offset).type);
+	}
+
+	private isStatementBoundary(type: TokenType): boolean {
+		return (
+			type === TokenType.EOF ||
+			type === TokenType.NEWLINE ||
+			type === TokenType.SEMICOLON ||
+			type === TokenType.END ||
+			type === TokenType.ELSE ||
+			type === TokenType.ELSEIF ||
+			type === TokenType.UNTIL
+		);
 	}
 
 	private getLocation(): AST.SourceLocation {

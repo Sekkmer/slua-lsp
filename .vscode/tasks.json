@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "slua-lsp: build (vscode:prepublish)",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"-C",
+				"slua-lsp-client",
+				"vscode:prepublish"
+			],
+			"problemMatcher": []
+		}
+	]
+}

@@ -1,0 +1,512 @@
+# Canonical built-in Lua/SLua surfaces for completion/typing.
+# This is intentionally "best-effort" and conservative.
+# Types are Luau-ish strings parsed by sluaTypeFromLuauAnnotationText.
+# - "any" becomes unknown
+# - tuples can be written as "(t1, t2, ...)"
+
+globals:
+  type:
+    params: [unknown]
+    returns: string
+    docs: "type(value): returns the Lua type name"
+  tostring:
+    params: [unknown]
+    returns: string
+    docs: "tostring(value): converts to string"
+  tonumber:
+    params: [unknown, number]
+    returns: number
+    docs: "tonumber(value [, base])"
+  assert:
+    params: [unknown, string]
+    returns: unknown
+    docs: "assert(value [, message])"
+  error:
+    params: [unknown, number]
+    returns: nil
+    docs: "error(message [, level])"
+  pcall:
+    params: [function]
+    returns:
+      tuple: [boolean, unknown]
+    docs: "pcall(fn, ...): protected call"
+  xpcall:
+    params: [function, function]
+    returns:
+      tuple: [boolean, unknown]
+    docs: "xpcall(fn, errHandler, ...): protected call with error handler"
+  print:
+    params: [unknown]
+    returns: nil
+    docs: "print(...): writes values to output"
+  next:
+    params: [table, unknown]
+    returns:
+      tuple: [unknown, unknown]
+    docs: "next(table [, index])"
+  pairs:
+    params: [table]
+    returns:
+      tuple: [function, table, unknown]
+    docs: "pairs(table): iterator"
+  ipairs:
+    params: [table]
+    returns:
+      tuple: [function, table, unknown]
+    docs: "ipairs(table): array iterator"
+  unpack:
+    params: [table, number, number]
+    returns: unknown
+    docs: "unpack(table [, i [, j]])"
+  select:
+    params: [unknown, unknown]
+    returns: unknown
+    docs: "select(index, ...): index can be '#'."
+  rawget:
+    params: [table, unknown]
+    returns: unknown
+    docs: "rawget(table, key)"
+  rawset:
+    params: [table, unknown, unknown]
+    returns: table
+    docs: "rawset(table, key, value)"
+  rawequal:
+    params: [unknown, unknown]
+    returns: boolean
+    docs: "rawequal(a, b)"
+  rawlen:
+    params: [unknown]
+    returns: number
+    docs: "rawlen(value): length of table or string"
+  gcinfo:
+    params: []
+    returns: number
+    docs: "gcinfo(): returns memory usage in KBytes"
+  newproxy:
+    params: [boolean]
+    returns: unknown
+    docs: "newproxy([withMetatable])"
+  getfenv:
+    params: [unknown]
+    returns: table
+    docs: "getfenv([f]): get function or thread environment"
+  setfenv:
+    params: [unknown, table]
+    returns: unknown
+    docs: "setfenv(f, env): set function or thread environment"
+  getmetatable:
+    params: [unknown]
+    returns: table
+    docs: "getmetatable(value)"
+  setmetatable:
+    params: [table, table]
+    returns: table
+    docs: "setmetatable(table, metatable)"
+  dangerouslyexecuterequiredmodule:
+    params: [function]
+    returns: unknown
+    docs: "dangerouslyexecuterequiredmodule(fn): run module body in sandboxed environment"
+
+  # SLua common helpers
+  vector:
+    params: [number, number, number]
+    returns: vector
+  rotation:
+    params: [number, number, number, number]
+    returns: rotation
+  quaternion:
+    params: [number, number, number, number]
+    returns: rotation
+  uuid:
+    params: [string]
+    returns: uuid
+  touuid:
+    params: [string]
+    returns: uuid
+  integer:
+    params: [number]
+    returns: integer
+  number:
+    params: [unknown]
+    returns: number
+  tovector:
+    params: [string]
+    returns: vector
+  toquaternion:
+    params: [string]
+    returns: rotation
+  torotation:
+    params: [string]
+    returns: rotation
+  typeof:
+    params: [unknown]
+    returns: string
+    docs: "typeof(value): Luau typeof (engine-defined)"
+
+modules:
+  lljson:
+    functions:
+      encode: { params: [table], returns: string }
+      decode: { params: [string], returns: table }
+      slencode: { params: [table], returns: string }
+      sldecode: { params: [string], returns: table }
+    values:
+      null: { type: unknown, readonly: true }
+      empty_array: { type: unknown, readonly: true }
+      array_mt: { type: table, readonly: true }
+      empty_array_mt: { type: table, readonly: true }
+
+  llbase64:
+    functions:
+      encode: { params: [string], returns: string }
+      decode: { params: [string], returns: string }
+
+  # SLua core custom types exposed as modules (used for module completion and to derive instance members).
+  vector:
+    functions:
+      create: { params: [number, number, number], returns: vector }
+      abs: { params: [vector], returns: vector }
+      angle: { params: [vector, vector], returns: number }
+      ceil: { params: [vector], returns: vector }
+      clamp: { params: [vector, vector, vector], returns: vector }
+      cross: { params: [vector, vector], returns: vector }
+      dot: { params: [vector, vector], returns: number }
+      floor: { params: [vector], returns: vector }
+      magnitude: { params: [vector], returns: number }
+      max: { params: [vector, vector], returns: vector }
+      min: { params: [vector, vector], returns: vector }
+      normalize: { params: [vector], returns: vector }
+      sign: { params: [vector], returns: vector }
+    values:
+      zero: { type: vector, readonly: true }
+      one: { type: vector, readonly: true }
+
+  rotation:
+    functions:
+      create: { params: [number, number, number, number], returns: rotation }
+      conjugate: { params: [rotation], returns: rotation }
+      dot: { params: [rotation, rotation], returns: number }
+      magnitude: { params: [rotation], returns: number }
+      normalize: { params: [rotation], returns: rotation }
+      slerp: { params: [rotation, rotation, number], returns: rotation }
+      tofwd: { params: [rotation], returns: vector }
+      toleft: { params: [rotation], returns: vector }
+      toup: { params: [rotation], returns: vector }
+    values:
+      identity: { type: rotation, readonly: true }
+
+  uuid:
+    functions:
+      create: { params: [string], returns: uuid }
+
+  # Lua stdlib (best-effort)
+  string:
+    functions:
+      byte: { params: [string, number, number], returns: number, docs: "string.byte(s [, i [, j]])" }
+      char: { params: [number], returns: string, docs: "string.char(...): bytes to string" }
+      len: { params: [string], returns: number }
+      sub: { params: [string, number, number], returns: string }
+      lower: { params: [string], returns: string }
+      upper: { params: [string], returns: string }
+      reverse: { params: [string], returns: string }
+      rep: { params: [string, number], returns: string }
+      find: { params: [string, string], returns: (number, number) }
+      match: { params: [string, string], returns: string }
+      gsub: { params: [string, string, string], returns: (string, number) }
+      format: { params: [string], returns: string, docs: "string.format(fmt, ...)" }
+      gmatch: { params: [string, string], returns: function, docs: "string.gmatch(s, pattern)" }
+      split: { params: [string, string], returns: table, docs: "string.split(s, sep)" }
+      pack: { params: [string], returns: string, docs: "string.pack(fmt, ...)" }
+      packsize: { params: [string], returns: number, docs: "string.packsize(fmt)" }
+      unpack: { params: [string, string, number], returns: (unknown, number), docs: "string.unpack(fmt, s [, pos])" }
+
+  table:
+    functions:
+      insert: { params: [table, unknown], returns: nil }
+      remove: { params: [table, number], returns: unknown }
+      sort: { params: [table], returns: nil }
+      concat: { params: [table], returns: string }
+      foreach: { params: [table, function], returns: unknown, docs: "table.foreach(t, f)" }
+      foreachi: { params: [table, function], returns: unknown, docs: "table.foreachi(t, f)" }
+      getn: { params: [table], returns: number, docs: "table.getn(t)" }
+      maxn: { params: [table], returns: number, docs: "table.maxn(t)" }
+      pack: { params: [unknown], returns: table, docs: "table.pack(...)" }
+      unpack: { params: [table, number, number], returns: unknown, docs: "table.unpack(t [, i [, j]])" }
+      move: { params: [table, number, number, number, table], returns: table, docs: "table.move(a, f, e, t [, dest])" }
+      create: { params: [number, unknown], returns: table, docs: "table.create(n, value)" }
+      find: { params: [table, unknown, number], returns: number, docs: "table.find(t, value [, init])" }
+      clear: { params: [table], returns: nil, docs: "table.clear(t)" }
+      freeze: { params: [table], returns: table, docs: "table.freeze(t)" }
+      isfrozen: { params: [table], returns: boolean, docs: "table.isfrozen(t)" }
+      clone: { params: [table], returns: table, docs: "table.clone(t)" }
+      shrink: { params: [table, boolean], returns: table, docs: "table.shrink(t [, reorder])" }
+
+  math:
+    functions:
+      abs: { params: [number], returns: number, docs: "math.abs(x)" }
+      acos: { params: [number], returns: number, docs: "math.acos(x)" }
+      asin: { params: [number], returns: number, docs: "math.asin(x)" }
+      atan: { params: [number], returns: number, docs: "math.atan(x)" }
+      atan2: { params: [number, number], returns: number, docs: "math.atan2(y, x)" }
+      ceil: { params: [number], returns: number, docs: "math.ceil(x)" }
+      cos: { params: [number], returns: number, docs: "math.cos(x)" }
+      cosh: { params: [number], returns: number, docs: "math.cosh(x)" }
+      deg: { params: [number], returns: number, docs: "math.deg(rad)" }
+      exp: { params: [number], returns: number, docs: "math.exp(x)" }
+      floor: { params: [number], returns: number, docs: "math.floor(x)" }
+      fmod: { params: [number, number], returns: number, docs: "math.fmod(x, y)" }
+      frexp: { params: [number], returns: (number, number), docs: "math.frexp(x) -> mantissa, exp" }
+      ldexp: { params: [number, number], returns: number, docs: "math.ldexp(m, exp)" }
+      log: { params: [number, number], returns: number, docs: "math.log(x [, base])" }
+      log10: { params: [number], returns: number, docs: "math.log10(x)" }
+      max: { params: [number, number], returns: number, docs: "math.max(x, y, ...)" }
+      min: { params: [number, number], returns: number, docs: "math.min(x, y, ...)" }
+      modf: { params: [number], returns: (number, number), docs: "math.modf(x) -> int, frac" }
+      pow: { params: [number, number], returns: number, docs: "math.pow(x, y)" }
+      rad: { params: [number], returns: number, docs: "math.rad(deg)" }
+      random: { params: [number, number], returns: number, docs: "math.random([m [, n]])" }
+      randomseed: { params: [number], returns: nil, docs: "math.randomseed(seed)" }
+      sin: { params: [number], returns: number, docs: "math.sin(x)" }
+      sinh: { params: [number], returns: number, docs: "math.sinh(x)" }
+      sqrt: { params: [number], returns: number, docs: "math.sqrt(x)" }
+      tan: { params: [number], returns: number, docs: "math.tan(x)" }
+      tanh: { params: [number], returns: number, docs: "math.tanh(x)" }
+      noise: { params: [number, number, number], returns: number, docs: "math.noise(x, y, z)" }
+      clamp: { params: [number, number, number], returns: number, docs: "math.clamp(x, min, max)" }
+      sign: { params: [number], returns: number, docs: "math.sign(x)" }
+      round: { params: [number], returns: number, docs: "math.round(x)" }
+      map: { params: [number, number, number, number, number], returns: number, docs: "math.map(x, inMin, inMax, outMin, outMax)" }
+      lerp: { params: [number, number, number], returns: number, docs: "math.lerp(a, b, t)" }
+      isnan: { params: [number], returns: boolean, docs: "math.isnan(x) (flag-gated)" }
+      isinf: { params: [number], returns: boolean, docs: "math.isinf(x) (flag-gated)" }
+      isfinite: { params: [number], returns: boolean, docs: "math.isfinite(x) (flag-gated)" }
+    values:
+      pi: { type: number, readonly: true, docs: "math.pi" }
+      huge: { type: number, readonly: true, docs: "math.huge" }
+
+  os:
+    functions:
+      time: { params: [], returns: number, docs: "os.time([table])" }
+      clock: { params: [], returns: number, docs: "os.clock()" }
+      difftime: { params: [number, number], returns: number, docs: "os.difftime(t2, t1)" }
+      date: { params: [string, number], returns: "string | table", docs: "os.date([format [, time]])" }
+
+  utf8:
+    functions:
+      len: { params: [string, number, number], returns: number, docs: "utf8.len(s [, i [, j]])" }
+      codepoint: { params: [string, number, number], returns: number, docs: "utf8.codepoint(s [, i [, j]])" }
+      char: { params: [number], returns: string, docs: "utf8.char(...)" }
+      offset: { params: [string, number, number], returns: number, docs: "utf8.offset(s, n [, i])" }
+      codes: { params: [string], returns: function, docs: "utf8.codes(s)" }
+    values:
+      charpattern: { type: string, readonly: true, docs: "utf8 character pattern" }
+
+  buffer:
+    functions:
+      create: { params: [number], returns: buffer, docs: "buffer.create(size)" }
+      fromstring: { params: [string], returns: buffer, docs: "buffer.fromstring(s)" }
+      tostring: { params: [buffer], returns: string, docs: "buffer.tostring(buf)" }
+      readi8: { params: [buffer, number], returns: integer, docs: "buffer.readi8(buf, offset)" }
+      readu8: { params: [buffer, number], returns: integer, docs: "buffer.readu8(buf, offset)" }
+      readi16: { params: [buffer, number], returns: integer, docs: "buffer.readi16(buf, offset)" }
+      readu16: { params: [buffer, number], returns: integer, docs: "buffer.readu16(buf, offset)" }
+      readi32: { params: [buffer, number], returns: integer, docs: "buffer.readi32(buf, offset)" }
+      readu32: { params: [buffer, number], returns: integer, docs: "buffer.readu32(buf, offset)" }
+      readf32: { params: [buffer, number], returns: number, docs: "buffer.readf32(buf, offset)" }
+      readf64: { params: [buffer, number], returns: number, docs: "buffer.readf64(buf, offset)" }
+      writei8: { params: [buffer, number, integer], returns: nil, docs: "buffer.writei8(buf, offset, value)" }
+      writeu8: { params: [buffer, number, integer], returns: nil, docs: "buffer.writeu8(buf, offset, value)" }
+      writei16: { params: [buffer, number, integer], returns: nil, docs: "buffer.writei16(buf, offset, value)" }
+      writeu16: { params: [buffer, number, integer], returns: nil, docs: "buffer.writeu16(buf, offset, value)" }
+      writei32: { params: [buffer, number, integer], returns: nil, docs: "buffer.writei32(buf, offset, value)" }
+      writeu32: { params: [buffer, number, integer], returns: nil, docs: "buffer.writeu32(buf, offset, value)" }
+      writef32: { params: [buffer, number, number], returns: nil, docs: "buffer.writef32(buf, offset, value)" }
+      writef64: { params: [buffer, number, number], returns: nil, docs: "buffer.writef64(buf, offset, value)" }
+      readstring: { params: [buffer, number, number], returns: string, docs: "buffer.readstring(buf, offset, count)" }
+      writestring: { params: [buffer, number, string, number], returns: nil, docs: "buffer.writestring(buf, offset, s [, count])" }
+      len: { params: [buffer], returns: number, docs: "buffer.len(buf)" }
+      copy: { params: [buffer, number, buffer, number, number], returns: nil, docs: "buffer.copy(dst, dstOffset, src, srcOffset, count)" }
+      fill: { params: [buffer, number, integer, number], returns: nil, docs: "buffer.fill(buf, offset, value [, count])" }
+      readbits: { params: [buffer, number, number], returns: integer, docs: "buffer.readbits(buf, bitOffset, bitCount)" }
+      writebits: { params: [buffer, number, number, integer], returns: nil, docs: "buffer.writebits(buf, bitOffset, bitCount, value)" }
+
+  debug:
+    functions:
+      info: { params: [unknown, string], returns: unknown, docs: "debug.info(f|level, options)" }
+      traceback: { params: [thread, string, number], returns: string, docs: "debug.traceback([thread], [message], [level])" }
+
+  coroutine:
+    functions:
+      create: { params: [function], returns: thread, docs: "coroutine.create(fn)" }
+      resume:
+        params: [thread]
+        returns:
+          tuple: [boolean, unknown]
+        docs: "coroutine.resume(co, ...)"
+      yield: { params: [unknown], returns: unknown, docs: "coroutine.yield(...)" }
+      status: { params: [thread], returns: string, docs: "coroutine.status(co)" }
+      running:
+        params: []
+        returns:
+          tuple: ["thread | nil", boolean]
+        docs: "Returns (thread, isMain). When on the main thread, thread is nil."
+      wrap: { params: [function], returns: function, docs: "coroutine.wrap(fn)" }
+      isyieldable: { params: [], returns: boolean, docs: "coroutine.isyieldable()" }
+      close: { params: [thread], returns: boolean, docs: "coroutine.close(co)" }
+
+  bit32:
+    functions:
+      band: { params: [integer, integer], returns: integer }
+      bor: { params: [integer, integer], returns: integer }
+      bxor: { params: [integer, integer], returns: integer }
+      bnot: { params: [integer], returns: integer }
+      btest: { params: [integer, integer], returns: boolean }
+      lshift: { params: [integer, integer], returns: integer }
+      rshift: { params: [integer, integer], returns: integer }
+      arshift: { params: [integer, integer], returns: integer }
+      lrotate: { params: [integer, integer], returns: integer }
+      rrotate: { params: [integer, integer], returns: integer }
+      extract: { params: [integer, integer, integer], returns: integer }
+      replace: { params: [integer, integer, integer, integer], returns: integer }
+      countlz: { params: [integer], returns: integer }
+      countrz: { params: [integer], returns: integer }
+      byteswap: { params: [integer], returns: integer }
+
+metatables:
+  table:
+    metamethods:
+      __len: { params: [table], returns: number, docs: "#table" }
+      __index: { params: [table, unknown], returns: unknown, docs: "table indexing" }
+      __newindex: { params: [table, unknown, unknown], returns: nil, docs: "table assignment" }
+
+  number:
+    metamethods:
+      __add: { params: [number, number], returns: number, docs: "number + number" }
+      __sub: { params: [number, number], returns: number, docs: "number - number" }
+      __mul: { params: [number, number], returns: number, docs: "number * number" }
+      __div: { params: [number, number], returns: number, docs: "number / number" }
+      __mod: { params: [number, number], returns: number, docs: "number % number" }
+      __pow: { params: [number, number], returns: number, docs: "number ^ number" }
+      __unm: { params: [number], returns: number, docs: "-number" }
+      __eq: { params: [number, number], returns: boolean, docs: "number == number" }
+      __lt: { params: [number, number], returns: boolean, docs: "number < number" }
+      __le: { params: [number, number], returns: boolean, docs: "number <= number" }
+      __tostring: { params: [number], returns: string, docs: "tostring(number)" }
+
+  string:
+    metamethods:
+      __concat: { params: [string, unknown], returns: string, docs: "string .. value" }
+      __eq: { params: [string, string], returns: boolean, docs: "string == string" }
+      __lt: { params: [string, string], returns: boolean, docs: "string < string" }
+      __le: { params: [string, string], returns: boolean, docs: "string <= string" }
+      __len: { params: [string], returns: number, docs: "#string" }
+      __index: { params: [string, unknown], returns: unknown, docs: "string indexing / string lib methods" }
+
+  boolean:
+    metamethods:
+      __eq: { params: [boolean, boolean], returns: boolean, docs: "boolean == boolean" }
+      __tostring: { params: [boolean], returns: string, docs: "tostring(boolean)" }
+
+  vector:
+    metamethods:
+      __add: { params: [vector, vector], returns: vector, docs: "vector + vector" }
+      __sub: { params: [vector, vector], returns: vector, docs: "vector - vector" }
+      __mul:
+        docs: "vector * number | number * vector | vector * vector | vector * rotation"
+        overloads:
+          - params: [vector, number]
+            returns: vector
+          - params: [number, vector]
+            returns: vector
+          - params: [vector, vector]
+            returns: number
+          - params: [vector, rotation]
+            returns: vector
+      __div:
+        docs: "vector / number | vector / rotation"
+        overloads:
+          - params: [vector, number]
+            returns: vector
+          - params: [vector, rotation]
+            returns: vector
+      __mod: { params: [vector, vector], returns: vector, docs: "vector % vector" }
+      __unm: { params: [vector], returns: vector, docs: "-vector" }
+      __eq: { params: [vector, vector], returns: boolean, docs: "vector == vector" }
+      __tostring: { params: [vector], returns: string, docs: "tostring(vector)" }
+      __index: { params: [vector, string], returns: unknown, docs: "vector.x/y/z" }
+      __call: { params: [table, number, number, number], returns: vector, docs: "vector(x, y, z)" }
+      __iter:
+        params: [table]
+        returns:
+          fn:
+            params: []
+            returns: { tuple: [string, unknown] }
+        docs: "Iterate over vector module"
+      __pairs:
+        params: [vector]
+        returns:
+          tuple:
+            - fn:
+                params: []
+                returns: { tuple: [string, unknown] }
+        docs: "Iterate over vector components with pairs"
+      __ipairs:
+        params: [vector]
+        returns:
+          tuple:
+            - fn:
+                params: []
+                returns: { tuple: [number, unknown] }
+        docs: "Iterate over vector components with ipairs"
+    members:
+      x: { kind: property, type: number, docs: "Vector X component" }
+      y: { kind: property, type: number, docs: "Vector Y component" }
+      z: { kind: property, type: number, docs: "Vector Z component" }
+  rotation:
+    metamethods:
+      __add: { params: [rotation, rotation], returns: rotation, docs: "rotation + rotation" }
+      __sub: { params: [rotation, rotation], returns: rotation, docs: "rotation - rotation" }
+      __mul:
+        docs: "rotation * rotation"
+        overloads:
+          - params: [rotation, rotation]
+            returns: rotation
+      __div:
+        docs: "rotation / rotation"
+        overloads:
+          - params: [rotation, rotation]
+            returns: rotation
+      __unm: { params: [rotation], returns: rotation, docs: "-rotation" }
+      __eq: { params: [rotation, rotation], returns: boolean, docs: "rotation == rotation" }
+      __tostring: { params: [rotation], returns: string, docs: "tostring(rotation)" }
+      __index: { params: [rotation, string], returns: unknown, docs: "rotation.x/y/z/s" }
+      __call: { params: [table, number, number, number, number], returns: rotation, docs: "rotation(x, y, z, s)" }
+      __iter:
+        params: [table]
+        returns:
+          fn:
+            params: []
+            returns: { tuple: [string, unknown] }
+        docs: "Iterate over rotation module"
+      __pairs:
+        params: [rotation]
+        returns:
+          tuple:
+            - fn:
+                params: []
+              returns: { tuple: [string, unknown] }
+        docs: "Iterate over rotation components with pairs"
+      __ipairs:
+        params: [rotation]
+        returns:
+          tuple:
+            - fn:
+                params: []
+              returns: { tuple: [number, unknown] }
+        docs: "Iterate over rotation components with ipairs"
+    members:
+      x: { kind: property, type: number, docs: "Rotation X component" }
+      y: { kind: property, type: number, docs: "Rotation Y component" }
+      z: { kind: property, type: number, docs: "Rotation Z component" }
+      s: { kind: property, type: number, docs: "Rotation S component" }
+

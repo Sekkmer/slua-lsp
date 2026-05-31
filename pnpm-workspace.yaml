@@ -1,0 +1,9 @@
+packages:
+  - slua-lsp-core
+  - slua-lsp-server
+  - slua-lsp-client
+
+ignoredBuiltDependencies:
+  - '@vscode/vsce-sign'
+  - esbuild
+  - keytar

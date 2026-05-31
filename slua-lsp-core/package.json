@@ -1,0 +1,24 @@
+{
+	"name": "slua-lsp-core",
+	"version": "0.0.0",
+	"private": true,
+	"main": "out/index.js",
+	"types": "out/index.d.ts",
+	"scripts": {
+		"build": "tsc -p tsconfig.json && node scripts/copy-assets.cjs",
+		"watch": "tsc -w -p tsconfig.json",
+		"lint": "eslint src tests",
+		"lint:fix": "eslint src tests --fix",
+		"test": "vitest run",
+		"test:watch": "vitest"
+	},
+	"dependencies": {
+		"js-yaml": "^4.1.1"
+	},
+	"devDependencies": {
+		"@types/js-yaml": "^4.0.9",
+		"@types/node": "^24.10.4",
+		"typescript": "^5.9.3",
+		"vitest": "4.0.9"
+	}
+}

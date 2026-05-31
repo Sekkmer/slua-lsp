@@ -1,0 +1,19 @@
+{
+  "name": "slua-lsp",
+  "private": true,
+  "packageManager": "pnpm@10.27.0",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build": "pnpm -r build",
+    "watch": "pnpm -r watch",
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "typescript-eslint": "^8.52.0"
+  }
+}

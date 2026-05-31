@@ -1,0 +1,78 @@
+{
+	"name": "slua-lsp-client",
+	"displayName": "SLua LSP",
+	"description": "Luau support powered by slua-lsp (typechecking, navigation, diagnostics).",
+	"version": "0.0.0",
+	"private": true,
+	"engines": {
+		"vscode": "^1.90.0"
+	},
+	"main": "./out/extension.js",
+	"contributes": {
+		"semanticTokenScopes": [
+			{
+				"language": "luau",
+				"scopes": {
+					"comment": ["comment.line.double-dash.luau", "comment.block.luau", "comment"],
+					"string": ["string.quoted.double.luau", "string.quoted.single.luau", "string"],
+					"number": ["constant.numeric.luau", "constant.numeric"],
+					"keyword": ["keyword.control.luau", "keyword"],
+					"function": ["entity.name.function.luau", "entity.name.function"],
+					"method": ["entity.name.function.member.luau", "entity.name.function"],
+					"property": ["variable.other.property.luau", "variable.other.property"],
+					"variable": ["variable.other.luau", "variable"],
+					"type": ["storage.type.luau", "entity.name.type"],
+					"class": ["entity.name.type.class.luau", "entity.name.type.class"],
+					"namespace": ["entity.name.namespace.luau", "entity.name.namespace"],
+					"enumMember": ["constant.other.enum.luau", "constant.other.enum"]
+				}
+			}
+		],
+		"languages": [
+			{
+				"id": "luau",
+				"aliases": [
+					"Luau",
+					"luau"
+				],
+				"extensions": [
+					".luau",
+					".slua",
+					".lua"
+				],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "luau",
+				"scopeName": "source.luau",
+				"path": "./syntaxes/luau.tmLanguage.json"
+			}
+		]
+	},
+	"scripts": {
+		"prebuild": "pnpm -C ../slua-lsp-core build && pnpm run gen:grammar",
+		"build": "tsc -p tsconfig.json",
+		"watch": "tsc -w -p tsconfig.json",
+		"bundle": "esbuild src/extension.ts --bundle --platform=node --target=node18 --external:vscode --outfile=out/extension.js --sourcemap",
+		"bundle:server": "esbuild ../slua-lsp-server/src/index.ts --bundle --platform=node --target=node18 --outfile=server/out/index.js --sourcemap",
+		"gen:grammar": "node scripts/gen-grammar.cjs",
+		"copy:assets": "node scripts/copy-assets.cjs",
+		"vscode:prepublish": "pnpm -C ../slua-lsp-core build && pnpm run gen:grammar && pnpm -C ../slua-lsp-server build && pnpm run copy:assets && pnpm run bundle:server && pnpm run bundle",
+		"package": "pnpm exec vsce package --no-dependencies",
+		"lint": "eslint src",
+		"lint:fix": "eslint src --fix",
+		"test": "echo \"(slua-lsp-client) no tests\""
+	},
+	"dependencies": {
+		"vscode-languageclient": "^9.0.1"
+	},
+	"devDependencies": {
+		"@types/node": "^24.10.4",
+		"@types/vscode": "^1.107.0",
+		"@vscode/vsce": "^3.7.1",
+		"esbuild": "0.27.2",
+		"typescript": "^5.9.3"
+	}
+}

@@ -1,0 +1,136 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Luau",
+	"scopeName": "source.luau",
+	"patterns": [
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#slua"
+		},
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#types"
+		},
+		{
+			"include": "#numbers"
+		}
+	],
+	"repository": {
+		"slua": {
+			"patterns": [
+				{
+					"name": "support.type.luau",
+					"match": "\\b(LLEvents|LLTimers)\\b"
+				},
+				{
+					"name": "support.module.luau",
+					"match": "\\b(bit32|buffer|coroutine|debug|llbase64|lljson|math|os|rotation|string|table|utf8|uuid|vector)\\b"
+				},
+				{
+					"name": "support.function.luau",
+					"match": "\\b(assert|dangerouslyexecuterequiredmodule|error|gcinfo|getfenv|getmetatable|integer|ipairs|newproxy|next|number|pairs|pcall|print|quaternion|rawequal|rawget|rawlen|rawset|rotation|select|setfenv|setmetatable|tonumber|toquaternion|torotation|tostring|touuid|tovector|type|typeof|unpack|uuid|vector|xpcall)\\b"
+				},
+				{
+					"name": "meta.member.luau",
+					"match": "\\b(LLEvents|LLTimers)\\s*([:.])\\s*(eventNames|every|listeners|off|on|once)\\b",
+					"captures": {
+						"1": {
+							"name": "support.type.luau"
+						},
+						"2": {
+							"name": "punctuation.accessor.luau"
+						},
+						"3": {
+							"name": "support.function.luau"
+						}
+					}
+				},
+				{
+					"name": "meta.member.luau",
+					"match": "\\b(bit32|buffer|coroutine|debug|llbase64|lljson|math|os|rotation|string|table|utf8|uuid|vector)\\s*\\.\\s*([A-Za-z_][A-Za-z0-9_]*)\\b",
+					"captures": {
+						"1": {
+							"name": "support.module.luau"
+						},
+						"2": {
+							"name": "support.function.luau"
+						}
+					}
+				}
+			]
+		},
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line.double-dash.luau",
+					"match": "--.*$"
+				}
+			]
+		},
+		"strings": {
+			"patterns": [
+				{
+					"name": "string.quoted.double.luau",
+					"begin": "\"",
+					"end": "\"",
+					"patterns": [
+						{
+							"name": "constant.character.escape.luau",
+							"match": "\\\\."
+						}
+					]
+				},
+				{
+					"name": "string.quoted.single.luau",
+					"begin": "'",
+					"end": "'",
+					"patterns": [
+						{
+							"name": "constant.character.escape.luau",
+							"match": "\\\\."
+						}
+					]
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [
+				{
+					"name": "keyword.control.luau",
+					"match": "\\b(if|then|else|elseif|end|for|while|repeat|until|do|break|continue|return|function|local|and|or|not|in)\\b"
+				}
+			]
+		},
+		"types": {
+			"patterns": [
+				{
+					"name": "storage.type.luau",
+					"match": "(:|::)\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)?)",
+					"captures": {
+						"1": {
+							"name": "punctuation.separator.type.luau"
+						},
+						"2": {
+							"name": "storage.type.luau"
+						}
+					}
+				}
+			]
+		},
+		"numbers": {
+			"patterns": [
+				{
+					"name": "constant.numeric.luau",
+					"match": "\\b(0x[0-9A-Fa-f]+|\\d+(?:\\.\\d+)?)\\b"
+				}
+			]
+		}
+	}
+}

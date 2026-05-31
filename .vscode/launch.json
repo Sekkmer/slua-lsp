@@ -1,0 +1,21 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "SLua LSP: Extension Development Host",
+			"type": "extensionHost",
+			"request": "launch",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}/slua-lsp-client",
+				"--disable-extensions",
+				"${workspaceFolder}"
+			],
+			"preLaunchTask": "slua-lsp: build (vscode:prepublish)",
+			"outFiles": [
+				"${workspaceFolder}/slua-lsp-client/out/**/*.js",
+				"${workspaceFolder}/slua-lsp-client/server/out/**/*.js"
+			]
+		}
+	]
+}

@@ -1,0 +1,17 @@
+node_modules/
+**/node_modules/
+
+out/
+**/out/
+dist/
+**/dist/
+coverage/
+**/coverage/
+
+*.tsbuildinfo
+
+# VS Code extension build output
+*.vsix
+
+# Upstream SLua source (cloned for inspection)
+/slua/

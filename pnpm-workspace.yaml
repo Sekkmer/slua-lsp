@@ -2,6 +2,7 @@ packages:
   - slua-lsp-core
   - slua-lsp-server
   - slua-lsp-client
+  - slua-lsp-cli
 
 ignoredBuiltDependencies:
   - '@vscode/vsce-sign'

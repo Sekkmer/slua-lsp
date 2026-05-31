@@ -44,7 +44,7 @@ export class LuauParser {
 				});
 			}
 
-			if (this.match(TokenType.NEWLINE)) {
+			if (this.match(TokenType.NEWLINE) || this.match(TokenType.SEMICOLON)) {
 				continue;
 			}
 
@@ -125,7 +125,7 @@ export class LuauParser {
 				this.synchronize();
 				pendingComments = [];
 			}
-      
+
 			safetyCounter++;
 			if (safetyCounter > 10000) {
 				throw new Error('LuauParser safety break: too many iterations (possible infinite loop)');
@@ -195,21 +195,21 @@ export class LuauParser {
 		let typeParameters: string[] | undefined = undefined;
 		if (this.match(TokenType.LESS_THAN)) {
 			typeParameters = [];
-			typeParameters.push(this.consume(TokenType.IDENTIFIER, 'Expected type parameter').value);
+			typeParameters.push(this.parseTypeParameterName());
 
 			while (this.match(TokenType.COMMA)) {
-				typeParameters.push(this.consume(TokenType.IDENTIFIER, 'Expected type parameter').value);
+				typeParameters.push(this.parseTypeParameterName());
 			}
 
 			this.consume(TokenType.GREATER_THAN, 'Expected \'>\' after type parameters');
 		}
 
 		this.consume(TokenType.ASSIGN, 'Expected \'=\' after type name');
-    
+
 		while (this.match(TokenType.NEWLINE)) {
 			// Skip newlines
 		}
-    
+
 		const definition = this.parseType();
 
 		const typeAlias: AST.TypeAlias = {
@@ -219,7 +219,7 @@ export class LuauParser {
 			definition,
 			location: this.getLocation(),
 		};
-    
+
 		if (pendingComments && pendingComments.length) {
 			(typeAlias as AST.TypeAlias & { comments?: LuauComment[] }).comments = pendingComments;
 		}
@@ -228,22 +228,65 @@ export class LuauParser {
 	}
 
 	private parseParameter(): AST.Parameter {
-		const name = this.identifier();
-		let typeAnnotation: AST.TypeAnnotation | undefined = undefined;
-    
-		if (this.match(TokenType.COLON)) {
-			typeAnnotation = {
-				type: 'TypeAnnotation',
-				typeAnnotation: this.parseType(),
+		if (this.match(TokenType.DOTS)) {
+			let typeAnnotation: AST.TypeAnnotation | undefined = undefined;
+			if (this.match(TokenType.COLON)) {
+				typeAnnotation = {
+					type: 'TypeAnnotation',
+					typeAnnotation: this.parseType(),
+					location: this.getLocation(),
+				};
+			} else if (!this.check(TokenType.COMMA) && !this.check(TokenType.RIGHT_PAREN)) {
+				typeAnnotation = {
+					type: 'TypeAnnotation',
+					typeAnnotation: this.parseType(),
+					location: this.getLocation(),
+				};
+			}
+			return {
+				type: 'Parameter',
+				name: { type: 'Identifier', name: '...', location: this.getLocation() },
+				typeAnnotation,
 				location: this.getLocation(),
 			};
 		}
 
-		if (this.match(TokenType.DOTS)) {
+		if (!this.check(TokenType.IDENTIFIER)) {
 			return {
 				type: 'Parameter',
-				name: { type: 'Identifier', name: '...', location: this.getLocation() },
-				typeAnnotation: undefined,
+				name: { type: 'Identifier', name: '_', location: this.getLocation() },
+				typeAnnotation: {
+					type: 'TypeAnnotation',
+					typeAnnotation: this.parseType(),
+					location: this.getLocation(),
+				},
+				location: this.getLocation(),
+			};
+		}
+
+		if (this.peekAt(1).type !== TokenType.COLON && this.peekAt(1).type !== TokenType.DOTS) {
+			return {
+				type: 'Parameter',
+				name: { type: 'Identifier', name: '_', location: this.getLocation() },
+				typeAnnotation: {
+					type: 'TypeAnnotation',
+					typeAnnotation: this.parseType(),
+					location: this.getLocation(),
+				},
+				location: this.getLocation(),
+			};
+		}
+
+		const name = this.identifier();
+		if (this.match(TokenType.DOTS)) {
+			name.name += '...';
+		}
+		let typeAnnotation: AST.TypeAnnotation | undefined = undefined;
+
+		if (this.match(TokenType.COLON)) {
+			typeAnnotation = {
+				type: 'TypeAnnotation',
+				typeAnnotation: this.parseType(),
 				location: this.getLocation(),
 			};
 		}
@@ -262,12 +305,16 @@ export class LuauParser {
 
 	private parseUnionType(): AST.LuauType {
 		let left = this.parseIntersectionType();
-    
-		while (this.match(TokenType.PIPE)) {
+
+		while (true) {
 			while (this.match(TokenType.NEWLINE)) {
 				// Skip newlines
 			}
-      
+			if (!this.match(TokenType.PIPE)) break;
+			while (this.match(TokenType.NEWLINE)) {
+				// Skip newlines
+			}
+
 			const right = this.parseIntersectionType();
 			left = {
 				type: 'UnionType',
@@ -277,15 +324,22 @@ export class LuauParser {
 						: [left, right],
 			};
 		}
-    
+
 		return left;
 	}
 
 	private parseIntersectionType(): AST.LuauType {
-		let left = this.parsePrimaryType();
-    
-		while (this.match(TokenType.AMPERSAND)) {
-			const right = this.parsePrimaryType();
+		let left = this.parsePostfixType();
+
+		while (true) {
+			while (this.match(TokenType.NEWLINE)) {
+				// Skip newlines
+			}
+			if (!this.match(TokenType.AMPERSAND)) break;
+			while (this.match(TokenType.NEWLINE)) {
+				// Skip newlines
+			}
+			const right = this.parsePostfixType();
 			left = {
 				type: 'IntersectionType',
 				types:
@@ -294,8 +348,20 @@ export class LuauParser {
 						: [left, right],
 			};
 		}
-    
+
 		return left;
+	}
+
+	private parsePostfixType(): AST.LuauType {
+		let type = this.parsePrimaryType();
+		while (this.match(TokenType.QUESTION)) {
+			type = {
+				type: 'UnionType',
+				types: [type, { type: 'NilType', location: this.getLocation() }],
+				location: this.getLocation(),
+			} as AST.UnionType;
+		}
+		return type;
 	}
 
 	private parsePrimaryType(): AST.LuauType {
@@ -303,16 +369,16 @@ export class LuauParser {
 			if (this.isFunctionType()) {
 				return this.parseFunctionType();
 			} else {
-				const type = this.parseType();
+				const type = this.parseTupleOrParenthesizedType();
 				this.consume(TokenType.RIGHT_PAREN, 'Expected \')\' after type');
 				return type;
 			}
 		}
-    
+
 		if (this.match(TokenType.LEFT_BRACE)) {
 			return this.parseRecordType();
 		}
-    
+
 		if (this.match(TokenType.STRING)) {
 			const value = this.previous().value;
 			return {
@@ -322,10 +388,41 @@ export class LuauParser {
 				location: this.getLocation(),
 			};
 		}
-    
+
+		if (this.match(TokenType.DOTS)) {
+			const inner = this.parsePrimaryType();
+			const innerName = inner.type === 'GenericType' ? (inner as AST.GenericType).name : inner.type;
+			return {
+				type: 'GenericType',
+				name: `...${innerName}`,
+				typeParameters: inner.type === 'GenericType' ? (inner as AST.GenericType).typeParameters : [inner],
+				location: this.getLocation(),
+			};
+		}
+
+		if (this.match(TokenType.TYPEOF)) {
+			this.consume(TokenType.LEFT_PAREN, 'Expected \'(\' after typeof');
+			this.skipBalancedExpressionUntilRightParen();
+			return {
+				type: 'GenericType',
+				name: 'typeof',
+				typeParameters: undefined,
+				location: this.getLocation(),
+			};
+		}
+
 		if (this.match(TokenType.IDENTIFIER)) {
 			const name = this.previous().value;
-      
+			if (name === 'typeof' && this.match(TokenType.LEFT_PAREN)) {
+				this.skipBalancedExpressionUntilRightParen();
+				return {
+					type: 'GenericType',
+					name: 'typeof',
+					typeParameters: undefined,
+					location: this.getLocation(),
+				};
+			}
+
 			switch (name) {
 				case 'string':
 					return { type: 'StringType', location: this.getLocation() };
@@ -341,25 +438,34 @@ export class LuauParser {
 				case 'false':
 					return { type: 'GenericType', name, typeParameters: undefined, location: this.getLocation() };
 				default: {
+					let typeName = name;
+					while (this.match(TokenType.DOT)) {
+						typeName += `.${this.consume(TokenType.IDENTIFIER, 'Expected identifier after \'.\' in type').value}`;
+					}
+					if (this.match(TokenType.DOTS)) {
+						typeName += '...';
+					}
 					let typeParameters: AST.LuauType[] | undefined = undefined;
 					if (this.match(TokenType.LESS_THAN)) {
 						typeParameters = [];
-						typeParameters.push(this.parseType());
-						while (this.match(TokenType.COMMA)) {
+						if (!this.check(TokenType.GREATER_THAN)) {
 							typeParameters.push(this.parseType());
+							while (this.match(TokenType.COMMA)) {
+								typeParameters.push(this.parseType());
+							}
 						}
 						this.consume(TokenType.GREATER_THAN, 'Expected \'>\' after type parameters');
 					}
 					return {
 						type: 'GenericType',
-						name,
+						name: typeName,
 						typeParameters,
 						location: this.getLocation(),
 					};
 				}
 			}
 		}
-    
+
 		if (this.match(TokenType.TRUE) || this.match(TokenType.FALSE)) {
 			const value = this.previous().value;
 			return {
@@ -369,20 +475,39 @@ export class LuauParser {
 				location: this.getLocation(),
 			};
 		}
-    
+
 		return { type: 'AnyType', location: this.getLocation() };
+	}
+
+	private parseTupleOrParenthesizedType(): AST.LuauType {
+		if (this.check(TokenType.RIGHT_PAREN)) {
+			return { type: 'GenericType', name: '()', typeParameters: [], location: this.getLocation() };
+		}
+
+		const types: AST.LuauType[] = [this.parseType()];
+		while (this.match(TokenType.COMMA)) {
+			if (this.check(TokenType.RIGHT_PAREN)) break;
+			types.push(this.parseType());
+		}
+		if (types.length === 1) return types[0]!;
+		return {
+			type: 'GenericType',
+			name: 'tuple',
+			typeParameters: types,
+			location: this.getLocation(),
+		};
 	}
 
 	private parseRecordType(): AST.TableType | AST.ArrayType {
 		const properties: Array<AST.PropertySignature | AST.IndexSignature> = [];
-    
+
 		while (!this.check(TokenType.RIGHT_BRACE) && !this.isAtEnd()) {
 			if (this.match(TokenType.NEWLINE) || this.match(TokenType.COMMENT) || this.match(TokenType.MULTILINE_COMMENT)) {
 				continue;
 			}
-      
+
 			if (this.check(TokenType.RIGHT_BRACE)) break;
-      
+
 			// Only check for array syntax at the beginning to prevent conflicts
 			if (properties.length === 0 && this.checkArraySyntax()) {
 				const elementType = this.parseType();
@@ -393,10 +518,10 @@ export class LuauParser {
 					location: this.getLocation(),
 				};
 			}
-      
+
 			let key: string;
 			let optional = false;
-      
+
 			// Allow reserved keywords as property names
 			if (this.check(TokenType.STRING)) {
 				const stringToken = this.advance();
@@ -414,14 +539,14 @@ export class LuauParser {
 				this.consume(TokenType.RIGHT_BRACKET, 'Expected \']\' after index signature key');
 				this.consume(TokenType.COLON, 'Expected \':\' after index signature');
 				const valueType = this.parseType();
-        
+
 				properties.push({
 					type: 'IndexSignature',
 					keyType,
 					valueType,
 					location: this.getLocation(),
 				});
-        
+
 				if (this.check(TokenType.COMMA)) {
 					this.advance();
 				}
@@ -430,14 +555,14 @@ export class LuauParser {
 				this.advance();
 				continue;
 			}
-      
+
 			if (!this.check(TokenType.COLON)) {
 				continue;
 			}
-      
+
 			this.advance();
 			const valueType = this.parseType();
-      
+
 			properties.push({
 				type: 'PropertySignature',
 				key: { type: 'Identifier', name: key },
@@ -445,7 +570,7 @@ export class LuauParser {
 				optional,
 				location: this.getLocation(),
 			});
-      
+
 			if (this.check(TokenType.COMMA)) {
 				this.advance();
 				while (this.match(TokenType.NEWLINE)) {
@@ -457,9 +582,9 @@ export class LuauParser {
 				}
 			}
 		}
-    
+
 		this.consume(TokenType.RIGHT_BRACE, 'Expected \'}\' after table type');
-    
+
 		return {
 			type: 'TableType',
 			properties,
@@ -468,12 +593,12 @@ export class LuauParser {
 	}
 
 	private checkArraySyntax(): boolean {
-		if (!this.check(TokenType.IDENTIFIER)) return false;
-    
+		if (!this.check(TokenType.IDENTIFIER) && !this.check(TokenType.TYPEOF)) return false;
+
 		let lookahead = 1;
 		while (this.current + lookahead < this.tokens.length) {
 			const token = this.tokens[this.current + lookahead];
-      
+
 			if (token.type === TokenType.NEWLINE || token.type === TokenType.COMMENT) {
 				lookahead++;
 				continue;
@@ -483,64 +608,84 @@ export class LuauParser {
 				return false;
 			}
 		}
-    
+
 		return false;
 	}
 
 	private isFunctionType(): boolean {
 		let lookahead = 0;
-    
+		let depthParen = 1;
+		let depthBrace = 0;
+		let depthBracket = 0;
+
 		while (this.current + lookahead < this.tokens.length) {
 			const token = this.tokens[this.current + lookahead];
-      
-			if (token.type === TokenType.RIGHT_PAREN) {
-				lookahead++;
-				if (this.current + lookahead < this.tokens.length) {
-					const next = this.tokens[this.current + lookahead];
-					return next.type === TokenType.MINUS;
-				}
-				return false;
-			}
-      
-			if (token.type === TokenType.IDENTIFIER) {
-				lookahead++;
-				if (this.current + lookahead < this.tokens.length) {
-					const next = this.tokens[this.current + lookahead];
-					if (next.type === TokenType.COLON) {
-						return true;
-					}
-					if (next.type === TokenType.COMMA || next.type === TokenType.RIGHT_PAREN) {
-						return true;
-					}
-				}
-				return false;
-			}
-      
-			if (token.type === TokenType.NEWLINE || token.type === TokenType.COMMENT) {
+
+			if (token.type === TokenType.NEWLINE || token.type === TokenType.COMMENT || token.type === TokenType.MULTILINE_COMMENT) {
 				lookahead++;
 				continue;
 			}
-      
-			return false;
+
+			switch (token.type) {
+				case TokenType.LEFT_PAREN:
+					depthParen++;
+					break;
+				case TokenType.RIGHT_PAREN:
+					depthParen--;
+					if (depthParen === 0 && depthBrace === 0 && depthBracket === 0) {
+						lookahead++;
+						while (this.current + lookahead < this.tokens.length) {
+							const next = this.tokens[this.current + lookahead];
+							if (next.type === TokenType.NEWLINE || next.type === TokenType.COMMENT || next.type === TokenType.MULTILINE_COMMENT) {
+								lookahead++;
+								continue;
+							}
+							return next.type === TokenType.MINUS;
+						}
+						return false;
+					}
+					break;
+				case TokenType.LEFT_BRACE:
+					depthBrace++;
+					break;
+				case TokenType.RIGHT_BRACE:
+					if (depthBrace > 0) depthBrace--;
+					break;
+				case TokenType.LEFT_BRACKET:
+					depthBracket++;
+					break;
+				case TokenType.RIGHT_BRACKET:
+					if (depthBracket > 0) depthBracket--;
+					break;
+			}
+
+			lookahead++;
 		}
-    
+
 		return false;
 	}
 
 	private parseFunctionType(): AST.FunctionType {
 		const parameters: AST.Parameter[] = [];
-    
+		this.skipTypeSeparators();
+
 		if (!this.check(TokenType.RIGHT_PAREN)) {
 			parameters.push(this.parseParameter());
+			this.skipTypeSeparators();
 			while (this.match(TokenType.COMMA)) {
+				this.skipTypeSeparators();
+				if (this.check(TokenType.RIGHT_PAREN)) break;
 				parameters.push(this.parseParameter());
+				this.skipTypeSeparators();
 			}
 		}
-    
+
 		this.consume(TokenType.RIGHT_PAREN, 'Expected \')\' after function parameters');
 
 		let returnType: AST.LuauType = { type: 'AnyType', location: this.getLocation() };
+		this.skipTypeSeparators();
 		if (this.match(TokenType.MINUS) && this.match(TokenType.GREATER_THAN)) {
+			this.skipTypeSeparators();
 			returnType = this.parseType();
 		}
 
@@ -550,6 +695,51 @@ export class LuauParser {
 			returnType,
 			location: this.getLocation(),
 		};
+	}
+
+	private skipTypeSeparators(): void {
+		while (this.match(TokenType.NEWLINE) || this.match(TokenType.COMMENT) || this.match(TokenType.MULTILINE_COMMENT)) {
+			// skip
+		}
+	}
+
+	private parseTypeParameterName(): string {
+		let name = this.consume(TokenType.IDENTIFIER, 'Expected type parameter').value;
+		if (this.match(TokenType.DOTS)) name += '...';
+		return name;
+	}
+
+	private skipBalancedExpressionUntilRightParen(): void {
+		let depthParen = 1;
+		let depthBrace = 0;
+		let depthBracket = 0;
+
+		while (!this.isAtEnd()) {
+			const t = this.peek().type;
+			switch (t) {
+				case TokenType.LEFT_PAREN:
+					depthParen++;
+					break;
+				case TokenType.RIGHT_PAREN:
+					depthParen--;
+					this.advance();
+					if (depthParen === 0 && depthBrace === 0 && depthBracket === 0) return;
+					continue;
+				case TokenType.LEFT_BRACE:
+					depthBrace++;
+					break;
+				case TokenType.RIGHT_BRACE:
+					if (depthBrace > 0) depthBrace--;
+					break;
+				case TokenType.LEFT_BRACKET:
+					depthBracket++;
+					break;
+				case TokenType.RIGHT_BRACKET:
+					if (depthBracket > 0) depthBracket--;
+					break;
+			}
+			this.advance();
+		}
 	}
 
 	// Utility methods

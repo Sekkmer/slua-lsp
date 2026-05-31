@@ -43,16 +43,24 @@ export class NumberTokenizer extends BaseTokenizer {
 
 	tokenize(): Token {
 		const start = this.context.position - 1;
+
+		if (this.context.input[start] === '0' && (this.context.peek() === 'x' || this.context.peek() === 'X')) {
+			this.context.advance();
+			while (/[0-9a-fA-F_]/.test(this.context.peek())) {
+				this.context.advance();
+			}
+			return this.context.createToken(TokenType.NUMBER, this.context.input.slice(start, this.context.position));
+		}
     
 		// Integer part
-		while (/\d/.test(this.context.peek())) {
+		while (/[\d_]/.test(this.context.peek())) {
 			this.context.advance();
 		}
     
 		// Decimal part
 		if (this.context.peek() === '.' && /\d/.test(this.context.peek(1))) {
 			this.context.advance(); // consume '.'
-			while (/\d/.test(this.context.peek())) {
+			while (/[\d_]/.test(this.context.peek())) {
 				this.context.advance();
 			}
 		}
@@ -63,7 +71,7 @@ export class NumberTokenizer extends BaseTokenizer {
 			if (this.context.peek() === '+' || this.context.peek() === '-') {
 				this.context.advance();
 			}
-			while (/\d/.test(this.context.peek())) {
+			while (/[\d_]/.test(this.context.peek())) {
 				this.context.advance();
 			}
 		}

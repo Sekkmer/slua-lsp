@@ -56,6 +56,7 @@ export interface TableField extends ASTNode {
 // Expressions
 export type Expression = 
   | LuaValue
+  | VarargLiteral
   | Identifier
   | BinaryExpression
   | UnaryExpression
@@ -116,6 +117,10 @@ export interface TypeCastExpression extends ASTNode {
   type: 'TypeCastExpression';
   expression: Expression;
   typeAnnotation: string;
+}
+
+export interface VarargLiteral extends ASTNode {
+  type: 'VarargLiteral';
 }
 
 // Statements

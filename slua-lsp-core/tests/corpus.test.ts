@@ -213,6 +213,159 @@ describe('local and Luau corpus parsing', () => {
 		expect(statement?.type).toBe('FunctionDeclaration');
 		expect(statement?.typeParameters).toEqual(['T']);
 	});
+
+	it('parses Luau optional and tuple type aliases', () => {
+		const parsed = parseSlua('type Middleware = { Inbound: ClientMiddleware? }\ntype Fn = (args: { any }) -> (boolean, ...any)\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses Luau type packs, typeof aliases, and dotted generic annotations', () => {
+		const parsed = parseSlua([
+			'export type QueueEntry<TArgs..., T...> = {',
+			'\tpromise: Promise.Promise<T...>,',
+			'\ttuple: Tuple.Tuple<TArgs...>,',
+			'}',
+			'export type Box = typeof(setmetatable({} :: { _value: ValueObject.ValueObject<Instance?> }, {})) & BaseObject.BaseObject',
+			'function Box.new<TArgs..., T...>(self: Box, value: Promise.Promise<T...>): () -> ()',
+			'\treturn function() end',
+			'end'
+		].join('\n') + '\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses chained calls split across newlines', () => {
+		const parsed = parseSlua('Knit.Start({ ServicePromises = true })\n\t:andThen(function()\n\t\tprint("started")\n\tend)\n\t:catch(warn)\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses multiline table literals and call arguments', () => {
+		const parsed = parseSlua('local options = {\n\tServicePromises = true,\n\tMiddleware = nil,\n}\nKnit.Start(\n\toptions,\n)\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses Luau intersections split across lines', () => {
+		const parsed = parseSlua('export type Box = typeof(setmetatable({}, {}))\n\t& BaseObject.BaseObject\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses vararg expressions in function bodies', () => {
+		const parsed = parseSlua('local f = function(player, ...)\n\tprint(player, ...)\n\treturn ...\nend\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses multiline function parameter lists', () => {
+		const parsed = parseSlua('function Box.SetWeightedTracks(\n\tself: Box,\n\tweightedTracks: { Track },\n\ttransitionTime: number?\n)\n\treturn nil\nend\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses binary expressions continued across newlines', () => {
+		const parsed = parseSlua('local ok = type(value) == "table"\n\tand value.x ~= nil\n\tand value.y ~= nil\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses elseif chains with a single closing end', () => {
+		const parsed = parseSlua('if type(v) == "function" then\n\tcallA()\nelseif v == marker then\n\tcallB()\nelseif type(v) == "table" and v[1] == marker then\n\tcallC()\nend\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses multi-target assignments', () => {
+		const parsed = parseSlua('local result, err\nresult, err = loadstring(code)\nok, err = pcall(function() end)\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses typed generic for variables', () => {
+		const parsed = parseSlua('for _, brio: any in brios do\n\tprint(brio)\nend\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses multiline function type parameters', () => {
+		const parsed = parseSlua('export type Callback = (\n\tpercentHighlighted: AccelTween.AccelTween,\n\tpercentChosen: AccelTween.AccelTween\n) -> boolean\nexport type BulkQuery<T> = ({ number }) -> Promise.Promise<T>\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses multiline if expressions', () => {
+		const parsed = parseSlua('local value = if state.enabled and state.visible\n\tthen true\n\telse false\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses assignments whose values start on the next line', () => {
+		const parsed = parseSlua('self._renderPreview.Value =\n\tself:_showPreviewText("missing")\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses multiline local variable lists', () => {
+		const parsed = parseSlua('local _, _, _,\n\t_, _, zx,\n\t_, _, _,\n\t_, _, zz = cframe:GetComponents()\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses multiline if statement conditions before then', () => {
+		const parsed = parseSlua('if\n\thasProperties["BorderColor3"]\n\tand Color3Utils.areEqual(instance.BorderColor3, Color3.fromRGB(27, 42, 53))\nthen\n\tmap.BorderColor3 = nil\nend\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses nested generic function return annotations', () => {
+		const parsed = parseSlua('function AttributeValue.ObserveBrio<T>(\n\tself: AttributeValue<T>,\n\tcondition: Rx.Predicate<T>?\n): Observable.Observable<Brio.Brio<any>>\n\treturn RxAttributeUtils.observeAttributeBrio(self._object, self._attributeName, condition)\nend\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses unnamed union and optional function type parameters', () => {
+		const parsed = parseSlua('export type KeyGenerator = (Player | PlayerUserId) -> string\nexport type RemovingCallback = (Player?) -> Promise.Promise<any>?\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses multiline unary expressions', () => {
+		const parsed = parseSlua('if\n\tnot (\n\t\ta\n\t\tor b\n\t)\nthen\n\tc()\nend\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses multiline return value lists', () => {
+		const parsed = parseSlua('return cframe * Vector3.new(1, 2, 3),\n\tcframe.Position\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses hexadecimal numeric literals', () => {
+		const parsed = parseSlua('if c1 > 0xffffff then\n\tc2 = c2 + 1\nend\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses numeric separators and semicolon statement separators', () => {
+		const parsed = parseSlua('local n = 50_000_000; local h = 0xff_ff\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses local assignments with the equals sign on the next line', () => {
+		const parsed = parseSlua('local a1, b1, c1, d1\n\t= q0[1], q0[2], q0[3], q0[4]\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses return statements with inline comments', () => {
+		const parsed = parseSlua('if ok then\n\treturn -- handled\nend\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
 });
 
 async function collectLocalScripts(): Promise<string[]> {

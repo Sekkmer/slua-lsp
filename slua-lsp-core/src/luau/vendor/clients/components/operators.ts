@@ -9,8 +9,8 @@ export interface OperatorConfig {
 export const OPERATORS: Map<string, OperatorConfig> = new Map([
 	['=', { single: TokenType.ASSIGN, double: TokenType.EQUAL }],
 	['~', { single: TokenType.LENGTH, double: TokenType.NOT_EQUAL }],
-	['<', { single: TokenType.LESS_THAN, double: TokenType.LESS_EQUAL }],
-	['>', { single: TokenType.GREATER_THAN, double: TokenType.GREATER_EQUAL }],
+	['<', { single: TokenType.LESS_THAN }],
+	['>', { single: TokenType.GREATER_THAN }],
 	['.', { single: TokenType.DOT, double: TokenType.CONCAT, triple: TokenType.DOTS }],
 	[':', { single: TokenType.COLON, double: TokenType.DOUBLE_COLON }],
 ]);

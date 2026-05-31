@@ -1,11 +1,6 @@
-type Position = { line: number; column: number };
-export type SourceLocation = { start: Position; end: Position };
+import { isRecord, type AstPosition as Position, type SourceLocation } from './ast.js';
 
 type NodeLike = { type: unknown; location?: unknown } & Record<string, unknown>;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
 
 function isPosition(value: unknown): value is Position {
 	if (!isRecord(value)) return false;

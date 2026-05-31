@@ -38,6 +38,18 @@ import {
 	isValidRenameIdentifier,
 	getCompletions,
 	getSignatureHelp,
+	isCallExpression,
+	isFunctionDeclarationNode,
+	isFunctionNode,
+	isIdentifier,
+	isMemberExpression,
+	isProgramNode,
+	isRecord,
+	isStringNode,
+	lspRangeFromLoc,
+	posInLoc,
+	type AstNode,
+	type IdentifierNode,
 	type SluaType,
 	type SluaEventSignature,
 	type CompletionItemKind
@@ -259,22 +271,6 @@ connection.onSignatureHelp((params): SignatureHelp | null => {
 	};
 });
 
-type AstNode = { type: string; location?: { start: { line: number; column: number }; end: { line: number; column: number } } };
-type IdentifierNode = AstNode & { type: 'Identifier'; name: string; typeAnnotation?: string };
-type MemberExpressionNode = AstNode & {
-	type: 'MemberExpression';
-	object: unknown;
-	property: unknown;
-	/** Luau parser uses '.' or ':' */
-	indexer?: '.' | ':';
-	/** Legacy/older shape (kept for safety) */
-	colonCall?: boolean;
-};
-type CallExpressionNode = AstNode & { type: 'CallExpression'; callee: unknown; arguments: unknown[] };
-type StringNode = AstNode & { type: 'String'; value: string };
-type FunctionNode = AstNode & { type: 'Function'; parameters: unknown[] };
-type FunctionDeclarationNode = AstNode & { type: 'FunctionDeclaration'; identifier?: unknown; isLocal?: boolean; body?: unknown[] };
-
 const IDENT_START = /[A-Za-z_]/;
 const IDENT_PART = /[A-Za-z0-9_]/;
 
@@ -361,49 +357,6 @@ function isInTemplateInterpolation(sourceText: string, pos: { line: number; char
 	return depth > 0;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isIdentifier(value: unknown): value is IdentifierNode {
-	return isRecord(value) && value.type === 'Identifier' && typeof value.name === 'string';
-}
-
-function isMemberExpression(value: unknown): value is MemberExpressionNode {
-	return isRecord(value) && value.type === 'MemberExpression';
-}
-
-function isCallExpression(value: unknown): value is CallExpressionNode {
-	return isRecord(value) && value.type === 'CallExpression' && Array.isArray(value.arguments);
-}
-
-function isStringNode(value: unknown): value is StringNode {
-	return isRecord(value) && value.type === 'String' && typeof value.value === 'string';
-}
-
-function isFunctionNode(value: unknown): value is FunctionNode {
-	return isRecord(value) && value.type === 'Function' && Array.isArray(value.parameters);
-}
-
-function isFunctionDeclarationNode(value: unknown): value is FunctionDeclarationNode {
-	return isRecord(value) && value.type === 'FunctionDeclaration';
-}
-
-function posInLoc(pos: { line: number; character: number }, loc: NonNullable<AstNode['location']>): boolean {
-	const line = pos.line + 1;
-	const col = pos.character + 1;
-	const afterStart = line > loc.start.line || (line === loc.start.line && col >= loc.start.column);
-	const beforeEnd = line < loc.end.line || (line === loc.end.line && col <= loc.end.column);
-	return afterStart && beforeEnd;
-}
-
-function lspRangeFromLoc(loc: NonNullable<AstNode['location']>) {
-	return {
-		start: { line: Math.max(0, loc.start.line - 1), character: Math.max(0, loc.start.column - 1) },
-		end: { line: Math.max(0, loc.end.line - 1), character: Math.max(0, loc.end.column - 1) }
-	};
-}
-
 function getFunctionNameFromIdentifier(id: unknown): { name: string; selectionLoc?: NonNullable<AstNode['location']> } | null {
 	if (!isRecord(id)) return null;
 	if (isIdentifier(id)) return { name: id.name, selectionLoc: id.location };
@@ -418,8 +371,8 @@ function getFunctionNameFromIdentifier(id: unknown): { name: string; selectionLo
 }
 
 function collectDocumentSymbolsFromAst(ast: unknown): DocumentSymbol[] {
-	if (!isRecord(ast) || ast.type !== 'Program' || !Array.isArray((ast as Record<string, unknown>).body)) return [];
-	const program = ast as { body: unknown[] };
+	if (!isProgramNode(ast)) return [];
+	const program = ast;
 
 	function visitStatements(stmts: unknown[]): DocumentSymbol[] {
 		const out: DocumentSymbol[] = [];

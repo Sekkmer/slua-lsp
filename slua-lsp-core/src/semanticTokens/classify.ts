@@ -1,17 +1,17 @@
 import { Lexer, TokenType } from '../luau/vendor.js';
+import {
+	isCallExpression,
+	isFunctionDeclarationNode,
+	isIdentifier,
+	isMemberExpression,
+	type AstNode,
+	visitAst
+} from '../parser/ast.js';
 
 import { buildSluaRegistryFromLslDefinitions } from '../slua/registry.js';
 import type { SluaEventSignature } from '../slua/events.js';
 
 import type { SluaSemanticTokenModifier, SluaSemanticTokenType } from './legend.js';
-
-type AstNode = { type: string; location?: { start: { line: number; column: number }; end: { line: number; column: number } } };
-
-type IdentifierNode = AstNode & { type: 'Identifier'; name: string; typeAnnotation?: string };
-
-type CallExpressionNode = AstNode & { type: 'CallExpression'; callee: unknown; arguments: unknown[] };
-type MemberExpressionNode = AstNode & { type: 'MemberExpression'; object: unknown; property: unknown; indexer?: '.' | ':' };
-type FunctionDeclarationNode = AstNode & { type: 'FunctionDeclaration'; identifier: unknown };
 
 export type ClassifiedSemanticToken = {
 	line: number; // 0-based
@@ -26,30 +26,6 @@ export type ClassifySemanticTokensContext = {
 	eventSignatures?: Record<string, SluaEventSignature>;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
-
-function isAstNode(value: unknown): value is AstNode {
-	return isRecord(value) && typeof value.type === 'string';
-}
-
-function isIdentifier(value: unknown): value is IdentifierNode {
-	return isAstNode(value) && value.type === 'Identifier' && typeof (value as Record<string, unknown>).name === 'string';
-}
-
-function isCallExpression(value: unknown): value is CallExpressionNode {
-	return isAstNode(value) && value.type === 'CallExpression' && Array.isArray((value as Record<string, unknown>).arguments) && 'callee' in value;
-}
-
-function isMemberExpression(value: unknown): value is MemberExpressionNode {
-	return isAstNode(value) && value.type === 'MemberExpression' && 'object' in value && 'property' in value;
-}
-
-function isFunctionDeclaration(value: unknown): value is FunctionDeclarationNode {
-	return isAstNode(value) && value.type === 'FunctionDeclaration' && 'identifier' in value;
-}
-
 function rangeFromNode(node: AstNode): { line: number; character: number; length: number } | null {
 	const loc = node.location;
 	if (!loc) return null;
@@ -59,26 +35,6 @@ function rangeFromNode(node: AstNode): { line: number; character: number; length
 	const endChar = Math.max(0, loc.end.column - 1);
 	if (endLine !== line) return null; // keep single-line only
 	return { line, character, length: Math.max(0, endChar - character) };
-}
-
-function visitAll(root: unknown, fn: (node: AstNode) => void): void {
-	const seen = new WeakSet<object>();
-	function visit(value: unknown): void {
-		if (!value) return;
-		if (Array.isArray(value)) {
-			for (const item of value) visit(item);
-			return;
-		}
-		if (!isAstNode(value)) return;
-		if (seen.has(value as object)) return;
-		seen.add(value as object);
-		fn(value);
-		for (const child of Object.values(value as Record<string, unknown>)) {
-			if (child === value.location) continue;
-			visit(child);
-		}
-	}
-	visit(root);
 }
 
 const KEYWORD_TOKEN_TYPES = new Set<TokenType>([
@@ -173,9 +129,9 @@ export function classifySemanticTokens(text: string, ctx: ClassifySemanticTokens
 	const allowedIntrinsic = buildAllowedIntrinsicMethods();
 	void ctx.eventSignatures;
 
-	visitAll(ctx.ast, (node) => {
+	visitAst(ctx.ast, (node) => {
 		// Highlight function declarations: function foo() ...
-		if (isFunctionDeclaration(node)) {
+		if (isFunctionDeclarationNode(node)) {
 			const id = node.identifier;
 			const nameNode = isIdentifier(id) ? id : isMemberExpression(id) && isIdentifier(id.property) ? id.property : null;
 			if (nameNode) {

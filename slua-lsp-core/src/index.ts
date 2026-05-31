@@ -3,6 +3,7 @@ export * from './lsl/definitionUpdate.js';
 export * from './diagnostics/index.js';
 export * from './diagnostics/engine.js';
 export * from './parser/parseSlua.js';
+export * from './parser/ast.js';
 export * from './slua/index.js';
 export * from './semanticTokens/index.js';
 export * from './typing/inferLocals.js';

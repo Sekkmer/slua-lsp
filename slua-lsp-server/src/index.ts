@@ -53,20 +53,40 @@ let defsLoaded = false;
 let semanticLegend: SemanticTokensLegend | null = null;
 let defs: unknown | null = null;
 let registry: ReturnType<typeof buildSluaRegistryFromLslDefinitions> | null = null;
+let activeDefinitionsPath: string | undefined;
 
-connection.onInitialize(async (_params: InitializeParams): Promise<InitializeResult> => {
-	// Load the YAML once at startup as a smoke-check that the repo vendoring works.
-	// Actual indexing/typechecking will live in slua-lsp-core.
+type ServerInitializationOptions = {
+	definitionsPath?: unknown;
+};
+
+function getDefinitionsPathFromSettings(settings: unknown): string | undefined {
+	if (!settings || typeof settings !== 'object') return undefined;
+	const root = settings as Record<string, unknown>;
+	const slua = root.slua;
+	const fromSlua = slua && typeof slua === 'object' ? (slua as Record<string, unknown>).definitionsPath : undefined;
+	const direct = root.definitionsPath;
+	const value = fromSlua ?? direct;
+	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+async function reloadDefinitions(definitionsPath?: string): Promise<void> {
 	try {
-		defs = await loadLslDefinitionsFromYamlFile();
+		defs = await loadLslDefinitionsFromYamlFile(definitionsPath);
 		registry = buildSluaRegistryFromLslDefinitions(defs);
 		defsLoaded = true;
+		activeDefinitionsPath = definitionsPath;
 	} catch (err) {
 		defsLoaded = false;
 		defs = null;
 		registry = null;
 		connection.console.error(`Failed to load LSL definitions YAML: ${String(err)}`);
 	}
+}
+
+connection.onInitialize(async (params: InitializeParams): Promise<InitializeResult> => {
+	const initializationOptions = params.initializationOptions as ServerInitializationOptions | undefined;
+	const definitionsPath = getDefinitionsPathFromSettings(initializationOptions);
+	await reloadDefinitions(definitionsPath);
 
 	return {
 		serverInfo: { name: SERVER_NAME, version: '0.0.0' },
@@ -610,6 +630,14 @@ connection.onInitialized(() => {
 		tokenTypes: [...SLUA_SEMANTIC_TOKEN_TYPES],
 		tokenModifiers: [...SLUA_SEMANTIC_TOKEN_MODIFIERS]
 	};
+});
+
+connection.onDidChangeConfiguration((params) => {
+	const definitionsPath = getDefinitionsPathFromSettings(params.settings);
+	if (definitionsPath === activeDefinitionsPath) return;
+	void reloadDefinitions(definitionsPath).then(() => {
+		for (const doc of documents.all()) void validateTextDocument(doc.uri);
+	});
 });
 
 function encodeSemanticTokens(tokens: ReturnType<typeof classifySemanticTokens>): number[] {

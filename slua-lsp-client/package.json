@@ -9,6 +9,42 @@
 	},
 	"main": "./out/extension.js",
 	"contributes": {
+		"commands": [
+			{
+				"command": "slua.updateDefinitions",
+				"title": "SLua: Update LSL Definitions"
+			},
+			{
+				"command": "slua.showActiveDefinitions",
+				"title": "SLua: Show Active LSL Definitions"
+			}
+		],
+		"configuration": {
+			"title": "SLua",
+			"properties": {
+				"slua.definitionsPath": {
+					"type": "string",
+					"default": "",
+					"description": "Path to an lsl_definitions.yaml file. Relative paths resolve from the workspace folder."
+				},
+				"slua.definitions.autoUpdate": {
+					"type": "boolean",
+					"default": true,
+					"description": "Automatically check for updated Second Life LSL definitions."
+				},
+				"slua.definitions.updateUrl": {
+					"type": "string",
+					"default": "https://raw.githubusercontent.com/secondlife/lsl-definitions/main/lsl_definitions.yaml",
+					"description": "URL used when updating the cached LSL definitions."
+				},
+				"slua.definitions.updateIntervalHours": {
+					"type": "number",
+					"default": 24,
+					"minimum": 0,
+					"description": "Minimum hours between automatic LSL definition update checks. Set to 0 to check whenever the extension activates."
+				}
+			}
+		},
 		"semanticTokenScopes": [
 			{
 				"language": "luau",
@@ -73,6 +109,7 @@
 		"@types/vscode": "^1.107.0",
 		"@vscode/vsce": "^3.7.1",
 		"esbuild": "0.27.2",
+		"slua-lsp-core": "workspace:*",
 		"typescript": "^5.9.3"
 	}
 }

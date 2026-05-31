@@ -34,5 +34,13 @@ export async function loadLslDefinitionsFromYamlFile(
 	filePath = process.env.SLUA_LSP_DEFS_PATH ?? getBundledLslDefinitionsYamlPath()
 ): Promise<LslDefinitions> {
 	const text = await fs.readFile(filePath, 'utf8');
-	return yaml.load(text) as LslDefinitions;
+	return loadLslDefinitionsFromSource(text, filePath);
+}
+
+export function loadLslDefinitionsFromSource(source: string, sourceName = '<lsl_definitions.yaml>'): LslDefinitions {
+	const defs = yaml.load(source) as LslDefinitions;
+	if (!defs || typeof defs !== 'object') {
+		throw new Error(`LSL definitions YAML did not parse to an object: ${sourceName}`);
+	}
+	return defs;
 }

@@ -1,4 +1,5 @@
 export * from './lsl/lslDefinitions.js';
+export * from './lsl/definitionUpdate.js';
 export * from './diagnostics/index.js';
 export * from './diagnostics/engine.js';
 export * from './parser/parseSlua.js';

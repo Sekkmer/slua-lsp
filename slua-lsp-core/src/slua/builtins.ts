@@ -242,12 +242,10 @@ function parseBuiltinsYaml(text: string): BuiltinsData {
 					const kind = memberSpec.kind === 'method' || memberSpec.kind === 'property' ? memberSpec.kind : undefined;
 					if (!kind) continue;
 
-					let memberType: SluaType = slua.unknown();
-					if (kind === 'property') {
-						memberType = toSluaType(memberSpec.type ?? 'unknown');
-					} else {
-						memberType = slua.fn(toParamTypeList(memberSpec.params), toSluaType(memberSpec.returns ?? 'unknown'));
-					}
+					const memberType: SluaType =
+						kind === 'property'
+							? toSluaType(memberSpec.type ?? 'unknown')
+							: slua.fn(toParamTypeList(memberSpec.params), toSluaType(memberSpec.returns ?? 'unknown'));
 
 					members[memberName] = {
 						name: memberName,

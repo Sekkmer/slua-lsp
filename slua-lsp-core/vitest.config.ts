@@ -9,9 +9,6 @@ export default defineConfig({
 		slowTestThreshold: 1_000,
 		testTimeout: 2_000,
 		hookTimeout: 10_000,
-		teardownTimeout: 10_000,
-		poolOptions: {
-			forks: { singleFork: false }
-		}
+		teardownTimeout: 10_000
 	}
 });

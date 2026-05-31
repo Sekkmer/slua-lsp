@@ -10,9 +10,6 @@ export default defineConfig({
 		testTimeout: 2_000,
 		hookTimeout: 10_000,
 		teardownTimeout: 10_000,
-		poolOptions: {
-			forks: { singleFork: false }
-		},
 		coverage: {
 			provider: 'v8',
 			reportsDirectory: './coverage',

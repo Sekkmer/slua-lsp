@@ -79,7 +79,7 @@ export interface BinaryExpression extends ASTNode {
 }
 
 export type BinaryOperator = 
-  | '+' | '-' | '*' | '/' | '%' | '^'
+  | '+' | '-' | '*' | '/' | '//' | '%' | '^'
   | '..'
   | '<' | '<=' | '>' | '>=' | '==' | '~='
   | 'and' | 'or';

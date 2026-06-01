@@ -43,6 +43,7 @@ export class LuauParser {
 					type: commentToken.type === TokenType.MULTILINE_COMMENT ? 'Block' : 'Line'
 				});
 			}
+			if (this.isAtEnd()) break;
 
 			if (this.match(TokenType.NEWLINE) || this.match(TokenType.SEMICOLON)) {
 				continue;
@@ -95,6 +96,13 @@ export class LuauParser {
 					type: 'ContinueStatement',
 					location: this.getLocation(),
 				} as unknown as AST.Statement);
+				continue;
+			}
+
+			if (this.checkClassDeclaration()) {
+				const stmt = this.classDeclaration(pendingComments);
+				pendingComments = [];
+				statements.push(stmt);
 				continue;
 			}
 
@@ -183,6 +191,100 @@ export class LuauParser {
 					return;
 			}
 
+			this.advance();
+		}
+	}
+
+	private checkClassDeclaration(): boolean {
+		return this.peek().type === TokenType.IDENTIFIER && this.peek().value === 'class' && this.peekAt(1).type === TokenType.IDENTIFIER;
+	}
+
+	private classDeclaration(pendingComments?: LuauComment[]): AST.Statement {
+		const classToken = this.advance();
+		const name = this.identifier();
+
+		if (this.match(TokenType.END)) {
+			return this.classDeclarationNode(classToken, name, pendingComments);
+		}
+
+		this.skipToNextStatementBoundary();
+		while (!this.isAtEnd()) {
+			while (this.match(TokenType.NEWLINE, TokenType.SEMICOLON, TokenType.COMMENT, TokenType.MULTILINE_COMMENT)) {
+				// skip class trivia
+			}
+			if (this.match(TokenType.END)) break;
+			if (this.isAtEnd()) break;
+
+			if (this.checkClassField()) {
+				this.skipToNextStatementBoundary();
+				continue;
+			}
+
+			if (this.check(TokenType.FUNCTION)) {
+				const baseParser = new LuaParser(this.input);
+				baseParser.setTokens(this.tokens, this.current);
+				const stmt = baseParser.parseStatement();
+				if (stmt) {
+					this.current = baseParser.getCurrentPosition();
+					continue;
+				}
+			}
+
+			this.skipToNextStatementBoundary();
+		}
+
+		return this.classDeclarationNode(classToken, name, pendingComments);
+	}
+
+	private classDeclarationNode(classToken: Token, name: AST.Identifier, pendingComments?: LuauComment[]): AST.Statement {
+		const node = {
+			type: 'ClassDeclaration',
+			name,
+			location: {
+				start: { line: classToken.line, column: classToken.column },
+				end: this.getLocation().end,
+			},
+		} as unknown as AST.Statement & { name: AST.Identifier; comments?: LuauComment[] };
+		if (pendingComments?.length) node.comments = pendingComments;
+		return node;
+	}
+
+	private checkClassField(): boolean {
+		const token = this.peek();
+		return token.type === TokenType.IDENTIFIER && token.value === 'public';
+	}
+
+	private skipToNextStatementBoundary(): void {
+		let depthParen = 0;
+		let depthBrace = 0;
+		let depthBracket = 0;
+
+		while (!this.isAtEnd()) {
+			const t = this.peek().type;
+			if (depthParen === 0 && depthBrace === 0 && depthBracket === 0 && (t === TokenType.NEWLINE || t === TokenType.SEMICOLON || t === TokenType.END)) {
+				return;
+			}
+
+			switch (t) {
+				case TokenType.LEFT_PAREN:
+					depthParen++;
+					break;
+				case TokenType.RIGHT_PAREN:
+					if (depthParen > 0) depthParen--;
+					break;
+				case TokenType.LEFT_BRACE:
+					depthBrace++;
+					break;
+				case TokenType.RIGHT_BRACE:
+					if (depthBrace > 0) depthBrace--;
+					break;
+				case TokenType.LEFT_BRACKET:
+					depthBracket++;
+					break;
+				case TokenType.RIGHT_BRACKET:
+					if (depthBracket > 0) depthBracket--;
+					break;
+			}
 			this.advance();
 		}
 	}
@@ -824,7 +926,7 @@ export class LuauParser {
 	}
 
 	private getLocation(): AST.SourceLocation {
-		const token = this.previous();
+		const token = this.current > 0 ? this.previous() : this.peek();
 		return {
 			start: { line: token.line, column: token.column },
 			end: { line: token.line, column: token.column + token.value.length },

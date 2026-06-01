@@ -194,6 +194,14 @@ describe('local and Luau corpus parsing', () => {
 		expect(statement?.init?.[0]?.typeAnnotation).toBe('integer');
 	});
 
+	it('parses type casts before commented logical continuations', () => {
+		const parsed = parseSlua(
+			'return instanceOf(mapLike, Map) and mapLike :: Map<any, any> -- inline note\n\tor Map.new(Object.entries(mapLike))\n',
+		);
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
 	it('parses Luau compound assignments', () => {
 		const parsed = parseSlua('local x = 1\nx += 2\nobj.count -= 1\n');
 
@@ -363,6 +371,113 @@ describe('local and Luau corpus parsing', () => {
 
 	it('parses return statements with inline comments', () => {
 		const parsed = parseSlua('if ok then\n\treturn -- handled\nend\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses binary operators followed by newlines', () => {
+		const parsed = parseSlua('return\n\tmath.abs(objPos.X) < 0.5 and\n\tmath.abs(objPos.Y) < 0.5 and\n\tmath.abs(objPos.Z) < 0.5\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses floor division expressions', () => {
+		const parsed = parseSlua('local a = 3\nlocal b = a // 2\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses long bracket strings', () => {
+		const parsed = parseSlua('local source = [[\nlocal M = {}\nreturn M\n]]\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses semicolon separators inside function expressions', () => {
+		const parsed = parseSlua('local f = function()\n\tlocal x = 1; local y = 2;\n\treturn x + y;\nend\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses cast expressions as assignment targets', () => {
+		const parsed = parseSlua('if not valueToSet then\n\tstorage[part] = nil\n\t(part :: any)[property] = partData.original\n\treturn\nend\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('does not merge a new parenthesized statement into the previous line call', () => {
+		const parsed = parseSlua('storage[part] = nil\n(part :: any)[property] = partData.original\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses decimal, binary, and integer-suffixed literals', () => {
+		const parsed = parseSlua('assert(1.1 == 1.+.1)\nassert(0b1000_1000i == 136i)\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses elseif chains in if expressions', () => {
+		const parsed = parseSlua('local value = if a then 10 elseif b then 20 elseif c then 30 else 40\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses explicit type instantiation calls', () => {
+		const parsed = parseSlua('assert(identity<<number>>(1) == 1)\nlocal a, b = typePacks<<(string, number)>>(1, "a")\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses empty files', () => {
+		const parsed = parseSlua('');
+
+		expect(parsed.diagnostics).toEqual([]);
+		expect(parsed.ast).toBeTruthy();
+	});
+
+	it('parses chained method calls across inline comments', () => {
+		const parsed = parseSlua('maid\n\t:GivePromise(load()) -- inline note\n\t:Then(function(crate)\n\t\tviewport:SetInstance(crate)\n\tend)\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses return statements terminated by semicolons', () => {
+		const parsed = parseSlua('function f()\n\tif true then return; end;\nend;\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('keeps single-bracket comments as line comments', () => {
+		const parsed = parseSlua('function f()\n\tself._listeners = {} --[orig] = { callback }\n\treturn self\nend\n');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('accepts trailing line comments at end of file', () => {
+		const parsed = parseSlua('local value = 1\n-- TODO: add more tests');
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses Luau class declarations enough to continue after the class body', () => {
+		const parsed = parseSlua([
+			'class Point',
+			'\tpublic x: number',
+			'\tpublic y',
+			'\tfunction new(x, y)',
+			'\t\treturn Point { x = x, y = y }',
+			'\tend',
+			'end',
+			'local p = Point.new(3, 4)',
+			''
+		].join('\n'));
+
+		expect(parsed.diagnostics).toEqual([]);
+	});
+
+	it('parses Luau line attributes before declarations', () => {
+		const parsed = parseSlua('@native\nlocal function makeentry(tier, ordering)\n\treturn Entry { tier = tier, ordering = ordering }\nend\n');
 
 		expect(parsed.diagnostics).toEqual([]);
 	});

@@ -13,13 +13,13 @@ export const OPERATORS: Map<string, OperatorConfig> = new Map([
 	['>', { single: TokenType.GREATER_THAN }],
 	['.', { single: TokenType.DOT, double: TokenType.CONCAT, triple: TokenType.DOTS }],
 	[':', { single: TokenType.COLON, double: TokenType.DOUBLE_COLON }],
+	['/', { single: TokenType.DIVIDE, double: TokenType.FLOOR_DIVIDE }],
 ]);
 
 export const SINGLE_CHAR_TOKENS: Map<string, TokenType> = new Map([
 	['+', TokenType.PLUS],
 	['-', TokenType.MINUS],
 	['*', TokenType.MULTIPLY],
-	['/', TokenType.DIVIDE],
 	['%', TokenType.MODULO],
 	['^', TokenType.POWER],
 	['#', TokenType.LENGTH],

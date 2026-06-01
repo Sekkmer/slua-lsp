@@ -46,6 +46,7 @@ export enum TokenType {
   POWER = 'POWER',
   CONCAT = 'CONCAT',
   LENGTH = 'LENGTH',
+  FLOOR_DIVIDE = 'FLOOR_DIVIDE',
 
   // Comparison
   EQUAL = 'EQUAL',

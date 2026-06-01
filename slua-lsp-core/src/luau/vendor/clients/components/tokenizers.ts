@@ -38,27 +38,45 @@ export abstract class BaseTokenizer {
 
 export class NumberTokenizer extends BaseTokenizer {
 	canHandle(char: string): boolean {
-		return /\d/.test(char);
+		return /\d/.test(char) || (char === '.' && /\d/.test(this.context.peek()));
 	}
 
 	tokenize(): Token {
 		const start = this.context.position - 1;
+
+		if (this.context.input[start] === '.' && /\d/.test(this.context.peek())) {
+			while (/[\d_]/.test(this.context.peek())) {
+				this.context.advance();
+			}
+			this.consumeIntegerSuffix();
+			return this.context.createToken(TokenType.NUMBER, this.context.input.slice(start, this.context.position));
+		}
 
 		if (this.context.input[start] === '0' && (this.context.peek() === 'x' || this.context.peek() === 'X')) {
 			this.context.advance();
 			while (/[0-9a-fA-F_]/.test(this.context.peek())) {
 				this.context.advance();
 			}
+			this.consumeIntegerSuffix();
 			return this.context.createToken(TokenType.NUMBER, this.context.input.slice(start, this.context.position));
 		}
-    
+
+		if (this.context.input[start] === '0' && (this.context.peek() === 'b' || this.context.peek() === 'B')) {
+			this.context.advance();
+			while (/[01_]/.test(this.context.peek())) {
+				this.context.advance();
+			}
+			this.consumeIntegerSuffix();
+			return this.context.createToken(TokenType.NUMBER, this.context.input.slice(start, this.context.position));
+		}
+
 		// Integer part
 		while (/[\d_]/.test(this.context.peek())) {
 			this.context.advance();
 		}
-    
+
 		// Decimal part
-		if (this.context.peek() === '.' && /\d/.test(this.context.peek(1))) {
+		if (this.context.peek() === '.' && this.context.peek(1) !== '.') {
 			this.context.advance(); // consume '.'
 			while (/[\d_]/.test(this.context.peek())) {
 				this.context.advance();
@@ -75,20 +93,31 @@ export class NumberTokenizer extends BaseTokenizer {
 				this.context.advance();
 			}
 		}
-    
+
+		this.consumeIntegerSuffix();
 		return this.context.createToken(TokenType.NUMBER, this.context.input.slice(start, this.context.position));
+	}
+
+	private consumeIntegerSuffix(): void {
+		if (this.context.peek() === 'i') {
+			this.context.advance();
+		}
 	}
 }
 
 export class StringTokenizer extends BaseTokenizer {
 	canHandle(char: string): boolean {
-		return char === '"' || char === '\'' || char === '`';
+		return char === '"' || char === '\'' || char === '`' || (char === '[' && this.isLongBracketStart());
 	}
 
 	tokenize(): Token {
 		const quote = this.context.input[this.context.position - 1];
 		const start = this.context.position - 1;
-    
+
+		if (quote === '[') {
+			return this.tokenizeLongBracketString(start);
+		}
+
 		if (quote === '`') {
 			return this.tokenizeTemplateString(start);
 		}
@@ -118,6 +147,42 @@ export class StringTokenizer extends BaseTokenizer {
     
 		this.context.advance(); // Closing quote
 		return this.context.createToken(TokenType.STRING, this.context.input.slice(start, this.context.position));
+	}
+
+	private isLongBracketStart(): boolean {
+		let offset = 0;
+		while (this.context.peek(offset) === '=') {
+			offset++;
+		}
+		return this.context.peek(offset) === '[';
+	}
+
+	private tokenizeLongBracketString(start: number): Token {
+		let level = 0;
+		while (this.context.peek() === '=') {
+			this.context.advance();
+			level++;
+		}
+
+		if (this.context.peek() !== '[') {
+			throw new Error(`Malformed long bracket string at line ${this.context.line}`);
+		}
+		this.context.advance();
+
+		const endPattern = ']' + '='.repeat(level) + ']';
+		while (!this.context.isAtEnd()) {
+			if (this.context.input.slice(this.context.position, this.context.position + endPattern.length) === endPattern) {
+				for (let i = 0; i < endPattern.length; i++) this.context.advance();
+				return this.context.createToken(TokenType.STRING, this.context.input.slice(start, this.context.position));
+			}
+			if (this.context.peek() === '\n') {
+				this.context.line++;
+				this.context.column = 1;
+			}
+			this.context.advance();
+		}
+
+		throw new Error(`Unterminated long bracket string at line ${this.context.line}`);
 	}
 
 	private tokenizeTemplateString(start: number): Token {
@@ -330,15 +395,22 @@ export class IdentifierTokenizer extends BaseTokenizer {
 
 export class CommentTokenizer extends BaseTokenizer {
 	canHandle(char: string): boolean {
-		return char === '-' && this.context.peek() === '-';
+		return (char === '-' && this.context.peek() === '-') || char === '@';
 	}
 
 	tokenize(): Token {
 		const start = this.context.position - 1;
+		if (this.context.input[start] === '@') {
+			while (!this.context.isAtEnd() && this.context.peek() !== '\n') {
+				this.context.advance();
+			}
+			return this.context.createToken(TokenType.COMMENT, this.context.input.slice(start, this.context.position));
+		}
+
 		this.context.advance(); // Skip second '-'
-    
+
 		// Check for multiline comment
-		if (this.context.peek() === '[') {
+		if (this.isMultilineCommentStart()) {
 			return this.tokenizeMultilineComment(start);
 		}
     
@@ -348,6 +420,15 @@ export class CommentTokenizer extends BaseTokenizer {
 		}
     
 		return this.context.createToken(TokenType.COMMENT, this.context.input.slice(start, this.context.position));
+	}
+
+	private isMultilineCommentStart(): boolean {
+		if (this.context.peek() !== '[') return false;
+		let offset = 1;
+		while (this.context.peek(offset) === '=') {
+			offset++;
+		}
+		return this.context.peek(offset) === '[';
 	}
 
 	private tokenizeMultilineComment(start: number): Token {

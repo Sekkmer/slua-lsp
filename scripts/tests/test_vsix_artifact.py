@@ -51,7 +51,7 @@ class VsixArtifact(unittest.TestCase):
     def test_valid_complete_payload_and_version(self):
         self.write()
         report, files = artifact.inspect_vsix(self.archive, '0.1.0')
-        self.assertEqual(len(report['inventory']), 17)
+        self.assertEqual(len(report['inventory']), 18)
         self.assertTrue(report['preRelease'])
         self.assertEqual(files, self.files)
         with self.assertRaisesRegex(ValueError, 'version mismatch'):

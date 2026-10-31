@@ -16,6 +16,7 @@ import xml.etree.ElementTree as ET
 
 FILES = frozenset({
     'extension.vsixmanifest', '[Content_Types].xml', 'extension/package.json',
+    'extension/media/icon.png',
     'extension/language-configuration.json', 'extension/bundled-licenses.json',
     'extension/THIRD_PARTY_NOTICES.txt', 'extension/readme.md', 'extension/changelog.md', 'extension/LICENSE.txt',
     'extension/syntaxes/luau.tmLanguage.json', 'extension/out/extension.js.map',

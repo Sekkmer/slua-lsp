@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- Added the SLua extension icon for the Marketplace and VS Code extension list.
+
 ## 0.1.0
 
 - Added a shared SLua language core, LSP server, VS Code extension, and standalone

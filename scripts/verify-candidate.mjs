@@ -162,6 +162,8 @@ try {
 	const extension = path.join(root, '.local/artifacts/vsix-unpacked/extension');
 	const extensionPackage = JSON.parse(await fs.readFile(path.join(extension, 'package.json'), 'utf8'));
 	assert.equal(extensionPackage.version, release.version);
+	assert.equal(extensionPackage.icon, 'media/icon.png');
+	assert.deepEqual(await fs.readFile(path.join(extension, extensionPackage.icon)), await fs.readFile(path.join(root, 'slua-lsp-client/media/icon.png')));
 	const server = launchServer(path.join(extension, 'server/out/index.js'), temporary);
 	try {
 		const definitionsPath = path.join(extension, 'third_party/lsl-definitions/lsl_definitions.yaml');

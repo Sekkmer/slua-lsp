@@ -1,8 +1,9 @@
 {
 	"name": "slua-lsp-client",
 	"displayName": "SLua LSP",
+	"icon": "media/icon.png",
 	"description": "Luau support powered by slua-lsp (typechecking, navigation, diagnostics).",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"private": true,
 	"engines": {
 		"vscode": "^1.90.0"

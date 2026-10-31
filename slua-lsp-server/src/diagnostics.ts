@@ -7,12 +7,13 @@ type ComputeDiagnosticsOptions = {
 	registry: SluaRegistry | null;
 	defsLoaded: boolean;
 	serverName: string;
+	parsed?: ReturnType<typeof parseSlua>;
 };
 
 export function computeDiagnosticsForText(text: string, opts: ComputeDiagnosticsOptions): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
 
-	const parsed = parseSlua(text);
+	const parsed = opts.parsed ?? parseSlua(text);
 	for (const d of parsed.diagnostics) {
 		const sev =
 			d.severity === 'error'
@@ -22,6 +23,7 @@ export function computeDiagnosticsForText(text: string, opts: ComputeDiagnostics
 					: DiagnosticSeverity.Information;
 		diagnostics.push({
 			severity: sev,
+			tags: d.tags?.map(() => 2 as const),
 			range: d.range,
 			message: d.message,
 			code: d.code,
@@ -44,6 +46,7 @@ export function computeDiagnosticsForText(text: string, opts: ComputeDiagnostics
 						: DiagnosticSeverity.Information;
 			diagnostics.push({
 				severity: sev,
+				tags: d.tags?.map(() => 2 as const),
 				range: d.range,
 				message: d.message,
 				code: d.code,

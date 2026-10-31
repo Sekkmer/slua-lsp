@@ -1,0 +1,386 @@
+[
+  {
+    "name": "uuid-string",
+    "source": "local value: uuid=uuid(\"12345678-9abc-def0-1234-56789abcdef0\"); assert(value~=nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "uuid-empty",
+    "source": "local value: uuid=uuid(\"\"); assert(value~=nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "uuid-buffer",
+    "source": "local value: uuid=uuid(buffer.create(16)); assert(value~=nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "uuid-long-buffer",
+    "source": "local value: uuid=uuid(buffer.create(20)); assert(value~=nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "uuid-existing",
+    "source": "local value: uuid=uuid(uuid(\"\")); assert(value~=nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "uuid-short-buffer",
+    "source": "uuid(buffer.create(15))",
+    "codes": [],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "uuid-invalid-string",
+    "source": "uuid(\"invalid\")",
+    "codes": [],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "uuid-nil",
+    "source": "uuid(nil)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "uuid-missing",
+    "source": "uuid()",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "uuid-number",
+    "source": "uuid(42)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "uuid.create-string",
+    "source": "local value: uuid=uuid.create(\"12345678-9abc-def0-1234-56789abcdef0\"); assert(value~=nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "uuid.create-empty",
+    "source": "local value: uuid=uuid.create(\"\"); assert(value~=nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "uuid.create-buffer",
+    "source": "local value: uuid=uuid.create(buffer.create(16)); assert(value~=nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "uuid.create-long-buffer",
+    "source": "local value: uuid=uuid.create(buffer.create(20)); assert(value~=nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "uuid.create-existing",
+    "source": "local value: uuid=uuid.create(uuid(\"\")); assert(value~=nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "uuid.create-short-buffer",
+    "source": "uuid.create(buffer.create(15))",
+    "codes": [],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "uuid.create-invalid-string",
+    "source": "uuid.create(\"invalid\")",
+    "codes": [],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "uuid.create-nil",
+    "source": "uuid.create(nil)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "uuid.create-missing",
+    "source": "uuid.create()",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "uuid.create-number",
+    "source": "uuid.create(42)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "touuid-string",
+    "source": "local value: uuid?=touuid(\"12345678-9abc-def0-1234-56789abcdef0\"); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "touuid-existing",
+    "source": "local value: uuid?=touuid(uuid(\"\")); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "touuid-nil",
+    "source": "local value: uuid?=touuid(nil); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "touuid-invalid",
+    "source": "local value: uuid?=touuid(\"invalid\"); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "touuid-missing",
+    "source": "touuid()",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "touuid-number",
+    "source": "touuid(42)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "touuid-nullable-assignment",
+    "source": "local value: uuid=touuid(\"invalid\"); print(value)",
+    "codes": [
+      "assignment-type-mismatch"
+    ],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "touuid-refined",
+    "source": "local value=touuid(\"12345678-9abc-def0-1234-56789abcdef0\"); if value~=nil then local checked: uuid=value; print(checked) end",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "tovector-string",
+    "source": "local value: vector?=tovector(\"<1,2,3>\"); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "tovector-existing",
+    "source": "local value: vector?=tovector(vector(1,2,3)); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "tovector-nil",
+    "source": "local value: vector?=tovector(nil); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "tovector-invalid",
+    "source": "local value: vector?=tovector(\"invalid\"); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "tovector-missing",
+    "source": "tovector()",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "tovector-number",
+    "source": "tovector(42)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "tovector-nullable-assignment",
+    "source": "local value: vector=tovector(\"invalid\"); print(value)",
+    "codes": [
+      "assignment-type-mismatch"
+    ],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "tovector-refined",
+    "source": "local value=tovector(\"<1,2,3>\"); if value~=nil then local checked: vector=value; print(checked) end",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "toquaternion-string",
+    "source": "local value: quaternion?=toquaternion(\"<0,0,0,1>\"); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "toquaternion-existing",
+    "source": "local value: quaternion?=toquaternion(quaternion(0,0,0,1)); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "toquaternion-nil",
+    "source": "local value: quaternion?=toquaternion(nil); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "toquaternion-invalid",
+    "source": "local value: quaternion?=toquaternion(\"invalid\"); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "toquaternion-missing",
+    "source": "toquaternion()",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "toquaternion-number",
+    "source": "toquaternion(42)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "toquaternion-nullable-assignment",
+    "source": "local value: quaternion=toquaternion(\"invalid\"); print(value)",
+    "codes": [
+      "assignment-type-mismatch"
+    ],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "toquaternion-refined",
+    "source": "local value=toquaternion(\"<0,0,0,1>\"); if value~=nil then local checked: quaternion=value; print(checked) end",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "torotation-string",
+    "source": "local value: quaternion?=torotation(\"<0,0,0,1>\"); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "torotation-existing",
+    "source": "local value: quaternion?=torotation(quaternion(0,0,0,1)); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "torotation-nil",
+    "source": "local value: quaternion?=torotation(nil); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "torotation-invalid",
+    "source": "local value: quaternion?=torotation(\"invalid\"); print(value)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "torotation-missing",
+    "source": "torotation()",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "torotation-number",
+    "source": "torotation(42)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "torotation-nullable-assignment",
+    "source": "local value: quaternion=torotation(\"invalid\"); print(value)",
+    "codes": [
+      "assignment-type-mismatch"
+    ],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "torotation-refined",
+    "source": "local value=torotation(\"<0,0,0,1>\"); if value~=nil then local checked: quaternion=value; print(checked) end",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "touuid-buffer",
+    "source": "local value=touuid(buffer.create(16)); assert(value~=nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "touuid-short-buffer",
+    "source": "assert(touuid(buffer.create(15))==nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "aliases",
+    "source": "local make=uuid.create; local convert=touuid; local original=make(buffer.create(16)); local value=convert(original); assert(value==original)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "zero-result-vector",
+    "source": "local function absent() end; tovector(absent())",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "refined-vector-fields",
+    "source": "local value=tovector(\"<1,2,3>\"); if value~=nil then local x: number=value.x; print(x) end",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "refined-rotation-fields",
+    "source": "local value=torotation(\"<0,0,0,1>\"); if typeof(value)==\"quaternion\" then local x: number=value.x; print(x) end",
+    "codes": [],
+    "runtimeAccepted": true
+  }
+]

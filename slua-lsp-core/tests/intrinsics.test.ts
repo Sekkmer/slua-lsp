@@ -8,14 +8,11 @@ describe('SLua intrinsics overrides', () => {
 		const intrinsics = buildSluaIntrinsicMethods();
 		const once = intrinsics['LLTimers.once'];
 		expect(once.source).toBe('default');
-		expect(once.signature).toEqual({
-			kind: 'function',
-			params: [
-				{ kind: 'primitive', name: 'number' },
-				{ kind: 'function', params: [], returns: { kind: 'primitive', name: 'nil' } }
-			],
-			returns: { kind: 'function', params: [], returns: { kind: 'primitive', name: 'nil' } }
-		});
+		expect(once.signature.kind).toBe('function');
+		if (once.signature.kind !== 'function') throw new Error('Expected function');
+		expect(once.signature.params[0]).toEqual(slua.number());
+		expect(once.signature.params[1]).toEqual(slua.union([slua.fn([slua.number(), slua.nil()], slua.unknown()), slua.table()]));
+
 	});
 
 	it('can override LLTimers.once ordering for runtime reality', () => {

@@ -1,0 +1,251 @@
+[
+  {
+    "name": "basic-0",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nassert(class.isinstance(item,Box))",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "basic-1",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nassert(not class.isinstance(nil,Box))",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "basic-2",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nassert(not class.isinstance({},Box))",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "basic-3",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nassert(not class.isinstance(Box,Box))",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "basic-4",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nassert(class.classof(item)==Box)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "basic-5",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nassert(class.classof(nil)==nil)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "invalid-class-0",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nclass.isinstance(item,{})",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtime": false,
+    "nativeValid": false
+  },
+  {
+    "name": "invalid-class-1",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nclass.isinstance(item,item)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtime": false,
+    "nativeValid": false
+  },
+  {
+    "name": "invalid-class-2",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nclass.isinstance(item,nil)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtime": false,
+    "nativeValid": false
+  },
+  {
+    "name": "invalid-class-3",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nclass.isinstance(item,function() end)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtime": false,
+    "nativeValid": false
+  },
+  {
+    "name": "arity-0",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nclass.classof()",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "runtime": false,
+    "nativeValid": true,
+    "boundary": "Native runtime requires a supplied argument; pinned strict classof signature nevertheless accepts omission."
+  },
+  {
+    "name": "arity-1",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nclass.isinstance(item)",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "runtime": false,
+    "nativeValid": false
+  },
+  {
+    "name": "arity-2",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nclass.classof(item,1)",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "runtime": false,
+    "nativeValid": false
+  },
+  {
+    "name": "arity-3",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nclass.isinstance(item,Box,1)",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "runtime": false,
+    "nativeValid": false
+  },
+  {
+    "name": "constructor-direct",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nlocal Make=class.classof(item)\nlocal copy=Make{x=2}\nassert(copy.x==2 and Make.answer()==42)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": false,
+    "boundary": "Known-instance constructor inference is locally runtime-proven; pinned strict classof returns only nullable class top and rejects this constructor/member use."
+  },
+  {
+    "name": "constructor-module",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nlocal lib=class\nlocal Make=lib.classof(item)\nlocal copy=Make{x=2}\nassert(copy.x==2 and Make.answer()==42)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": false,
+    "boundary": "Known-instance constructor inference is locally runtime-proven; pinned strict classof returns only nullable class top and rejects this constructor/member use."
+  },
+  {
+    "name": "constructor-function",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nlocal inspect=class.classof\nlocal Make=inspect(item)\nlocal copy=Make{x=2}\nassert(copy.x==2 and Make.answer()==42)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": false,
+    "boundary": "Known-instance constructor inference is locally runtime-proven; pinned strict classof returns only nullable class top and rejects this constructor/member use."
+  },
+  {
+    "name": "constructor-stored",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nlocal lib={inspect=class.classof}\nlocal Make=lib.inspect(item)\nlocal copy=Make{x=2}\nassert(copy.x==2 and Make.answer()==42)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": false,
+    "boundary": "Known-instance constructor inference is locally runtime-proven; pinned strict classof returns only nullable class top and rejects this constructor/member use."
+  },
+  {
+    "name": "nonobject-0",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nassert(class.classof(nil)==nil)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "nonobject-1",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nassert(class.classof({})==nil)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "nonobject-2",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nassert(class.classof(Box)==nil)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "nonobject-3",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nassert(class.classof(42)==nil)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "nonobject-4",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nassert(class.classof(function() end)==nil)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "module-shadow",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nlocal class={classof=function(value: number): number return value end}\nlocal result: number=class.classof(42)\nassert(result==42)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "function-shadow",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nlocal inspect=class.classof\ninspect=function(value: number): number return value end\nlocal result: number=inspect(42)\nassert(result==42)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "nullable-unproven",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nlocal function inspect(value: unknown): class? return class.classof(value) end\nassert(inspect(nil)==nil)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "known-constructor-wrong-field",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nlocal Make=class.classof(item)\nMake.missing()",
+    "codes": [
+      "class-unknown-member"
+    ],
+    "runtime": false,
+    "nativeValid": false
+  },
+  {
+    "name": "known-constructor-readonly",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nlocal Make=class.classof(item)\nMake.answer=function(): number return 3 end",
+    "codes": [
+      "class-readonly-member"
+    ],
+    "runtime": false,
+    "nativeValid": false
+  },
+  {
+    "name": "instance-alias",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nlocal alias=item\nlocal Make=class.classof(alias)\nassert(Make==Box)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "required-nil-through-alias",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nlocal inspect=class.classof\nassert(inspect(nil)==nil)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "constructor-from-expression",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\nlocal Make=class.classof(Box{x=1})\nassert(Make==Box)",
+    "codes": [],
+    "runtime": true,
+    "nativeValid": true
+  },
+  {
+    "name": "suppression",
+    "source": "class Box\npublic x: number\nfunction answer(): number return 42 end\nend\nlocal item=Box{x=1}\n-- slua-lsp:disable-next-line call-argument-type-mismatch\nclass.isinstance(item,{})",
+    "codes": [],
+    "runtime": false,
+    "nativeValid": false
+  }
+]

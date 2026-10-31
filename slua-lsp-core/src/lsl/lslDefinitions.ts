@@ -26,6 +26,10 @@ function findWorkspaceRoot(startDir: string): string {
 }
 
 export function getBundledLslDefinitionsYamlPath(): string {
+	if (typeof __dirname !== 'undefined') {
+		const bundled = path.join(__dirname, 'lsl_definitions.yaml');
+		try { accessSync(bundled); return bundled; } catch { /* development fallback */ }
+	}
 	const workspaceRoot = findWorkspaceRoot(process.cwd());
 	return path.join(workspaceRoot, 'third_party', 'lsl-definitions', 'lsl_definitions.yaml');
 }

@@ -2,6 +2,11 @@
 export interface ASTNode {
   type: string;
   location?: SourceLocation | undefined;
+  parenthesized?: boolean;
+  isConst?: boolean;
+  exported?: boolean;
+  exportKeywordLocation?: SourceLocation;
+  constKeywordLocation?: SourceLocation;
 }
 
 export interface SourceLocation {
@@ -19,6 +24,7 @@ export type LuaValue =
   | LuaNil
   | LuaBoolean
   | LuaNumber
+  | LuaInteger
   | LuaString
   | LuaTable
   | LuaFunction;
@@ -37,6 +43,12 @@ export interface LuaNumber extends ASTNode {
   value: number;
 }
 
+export interface LuaInteger extends ASTNode {
+  type: 'Integer';
+  // Exact signed decimal string; JSON-safe and never rounded through a JS number.
+  value: string;
+}
+
 export interface LuaString extends ASTNode {
   type: 'String';
   value: string;
@@ -50,12 +62,14 @@ export interface LuaTable extends ASTNode {
 export interface TableField extends ASTNode {
   type: 'TableField';
   key: Expression | undefined;
+  computed?: boolean;
   value: Expression;
 }
 
 // Expressions
 export type Expression = 
   | LuaValue
+  | InterpolatedString
   | VarargLiteral
   | Identifier
   | BinaryExpression
@@ -64,6 +78,11 @@ export type Expression =
   | MemberExpression
   | IndexExpression
   | TypeCastExpression;
+
+export interface InterpolatedString extends ASTNode {
+  type: 'InterpolatedString';
+  parts: Expression[];
+}
 
 export interface Identifier extends ASTNode {
   type: 'Identifier';
@@ -138,6 +157,7 @@ export type Statement =
   | BreakStatement
   | ExpressionStatement
   | ErrorStatement
+  | ClassDeclaration
   | TypeAlias;
 
 export interface ErrorStatement extends ASTNode {
@@ -157,8 +177,17 @@ export interface AssignmentStatement extends ASTNode {
   init: Expression[];
 }
 
+/** Decoded literals only: attribute records never introduce runtime identifiers. */
+export type AttributeLiteral = null | boolean | number | string | { fields: Array<{ key?: string; value: AttributeLiteral }> };
+export interface FunctionAttribute extends ASTNode {
+  type: 'FunctionAttribute';
+  name: 'native' | 'checked' | 'deprecated';
+  arguments: AttributeLiteral[];
+}
+
 export interface FunctionDeclaration extends ASTNode {
   type: 'FunctionDeclaration';
+  attributes?: FunctionAttribute[];
   // Lua grammar allows function names like `a.b.c:d`.
   // Represent this as an expression (Identifier or MemberExpression).
   identifier: Expression | undefined;
@@ -171,6 +200,7 @@ export interface FunctionDeclaration extends ASTNode {
 
 export interface LuaFunction extends ASTNode {
   type: 'Function';
+  attributes?: FunctionAttribute[];
   typeParameters?: string[];
   parameters: Identifier[];
   body: Statement[];
@@ -179,6 +209,12 @@ export interface LuaFunction extends ASTNode {
 
 export interface IfStatement extends ASTNode {
   type: 'IfStatement';
+  conditionLocal?: Identifier;
+  conditionIsConst?: boolean;
+  conditionKeywordLocation?: SourceLocation;
+  constKeywordLocation?: SourceLocation;
+  thenKeywordLocation?: SourceLocation;
+  alternateKeywordLocation?: SourceLocation;
   test: Expression;
   consequent: Statement[];
   alternate: Statement[] | IfStatement | undefined;
@@ -229,6 +265,26 @@ export interface BreakStatement extends ASTNode {
 export interface ExpressionStatement extends ASTNode {
   type: 'ExpressionStatement';
   expression: Expression;
+}
+
+export interface ClassField extends ASTNode {
+  type: 'ClassField';
+  visibility: 'public';
+  name: Identifier;
+  typeAnnotation?: string;
+}
+
+export interface ClassDeclaration extends ASTNode {
+  type: 'ClassDeclaration';
+  name: Identifier;
+  open?: boolean;
+  superClass?: Expression;
+  openKeywordLocation?: SourceLocation;
+  classKeywordLocation?: SourceLocation;
+  extendsKeywordLocation?: SourceLocation;
+  fields: ClassField[];
+  methods: FunctionDeclaration[];
+  exported?: boolean;
 }
 
 // Program

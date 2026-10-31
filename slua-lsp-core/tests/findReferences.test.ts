@@ -274,4 +274,24 @@ describe('findAllReferences', () => {
 		const innerRefs = findAllReferences(parsed.ast, { line: 2, character: code.split(/\r?\n/)[2]!.indexOf('value') }, registry, true);
 		expect(innerRefs.map((r) => r.identifier.location?.start.line)).toEqual([3, 4]);
 	});
+
+	test('finds Luau class name references', () => {
+		const code = [
+			'class Point',
+			'\tpublic x: number',
+			'\tfunction new(x: number)',
+			'\t\treturn Point { x = x }',
+			'\tend',
+			'end',
+			'local p = Point.new(1)'
+		].join('\n') + '\n';
+		const parsed = parseSlua(code);
+		expect(parsed.ast).toBeTruthy();
+
+		const registry = buildSluaRegistryFromLslDefinitions(null);
+		const refs = findAllReferences(parsed.ast, { line: 0, character: code.split(/\r?\n/)[0]!.indexOf('Point') }, registry, true);
+		expect(refs.map((r) => r.kind)).toEqual(['definition', 'usage', 'usage']);
+		expect(refs.every((r) => r.identifier.name === 'Point')).toBe(true);
+		expect(refs.map((r) => r.identifier.location?.start.line)).toEqual([1, 4, 7]);
+	});
 });

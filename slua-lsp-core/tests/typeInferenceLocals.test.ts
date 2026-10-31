@@ -84,7 +84,7 @@ describe('inferLocalVariableTypes', () => {
 	test('infers if-expression branch types', () => {
 		const code = `
 			local a = if true then "yes" else "no"
-			local b = if true then integer(1) else "no"
+			local b = if true then integer.maxsigned else "no"
 		`;
 		const parsed = parseSlua(code);
 		expect(parsed.ast).toBeTruthy();
@@ -138,7 +138,8 @@ describe('inferLocalVariableTypes', () => {
 		const inferred = inferLocalVariableTypes(parsed.ast, registry);
 		const map = new Map(inferred.map((x) => [x.name, sluaTypeToString(x.type)]));
 		expect(map.get('id')).toBe('uuid');
-		expect(map.get('decoded')).toBe('table');
+		// JSON may decode to a primitive; unknown results are omitted from inlays.
+		expect(map.get('decoded')).toBeUndefined();
 		expect(map.get('names')).toBe('string[]');
 	});
 
@@ -152,9 +153,9 @@ describe('inferLocalVariableTypes', () => {
 		const registry = buildSluaRegistryFromLslDefinitions(null);
 		const inferred = inferLocalVariableTypes(parsed.ast, registry);
 		const map = new Map(inferred.map((x) => [x.name, sluaTypeToString(x.type)]));
-		// dec is a function value; out is the decoded table.
-		expect(map.get('dec')).toBe('(string) -> table');
-		expect(map.get('out')).toBe('table');
+		// dec is a function value; a decoded JSON value has no guaranteed table type.
+		expect(map.get('dec')).toBe('(string, [function | table]) -> unknown');
+		expect(map.get('out')).toBeUndefined();
 	});
 
 	test('narrows typeof(x) == "number" within if branch', () => {
@@ -234,7 +235,7 @@ describe('inferLocalVariableTypes', () => {
 
 	test('infers vector instance component fields', () => {
 		const code = `
-			local v = tovector("<1,2,3>")
+			local v = vector(1,2,3)
 			local x = v.x
 			local y = v.y
 			local z = v.z
@@ -251,7 +252,7 @@ describe('inferLocalVariableTypes', () => {
 
 	test('infers rotation/quaternion instance component fields and typeof narrowing', () => {
 		const code = `
-			local r = torotation("<0,0,0,1>")
+			local r = quaternion(0,0,0,1)
 			local rx = r.x
 			if typeof(r) == "quaternion" then
 				local ry = r.y
@@ -264,5 +265,33 @@ describe('inferLocalVariableTypes', () => {
 		const map = new Map(inferred.map((x) => [x.name, sluaTypeToString(x.type)]));
 		expect(map.get('rx')).toBe('number');
 		expect(map.get('ry')).toBe('number');
+	});
+
+	test('infers Luau class constructors and public fields', () => {
+		const code = `
+			class Point
+				public x: number
+				public y: number
+				public function new(x: number, y: number)
+					return Point { x = x, y = y }
+				end
+				function magnitude(self)
+					return self.x
+				end
+			end
+			local p = Point.new(1, 2)
+			local q = Point { x = 3, y = 4 }
+			local x = p.x
+			local m = q:magnitude()
+		`;
+		const parsed = parseSlua(code);
+		expect(parsed.ast).toBeTruthy();
+		const registry = buildSluaRegistryFromLslDefinitions(null);
+		const inferred = inferLocalVariableTypes(parsed.ast, registry);
+		const map = new Map(inferred.map((x) => [x.name, sluaTypeToString(x.type)]));
+		expect(map.get('p')).toBe('Point');
+		expect(map.get('q')).toBe('Point');
+		expect(map.get('x')).toBe('number');
+		expect(map.get('m')).toBe('number');
 	});
 });

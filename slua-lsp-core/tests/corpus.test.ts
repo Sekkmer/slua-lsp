@@ -7,16 +7,15 @@ import { describe, expect, it } from 'vitest';
 import { parseSlua } from '../src/parser/parseSlua.js';
 
 const packageRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
-const repoRoot = path.resolve(packageRoot, '..');
 
 const strictLocalScripts = [
 	'tests/fixtures/default_script.lua',
 	'tests/fixtures/dialog.lua',
 	'tests/fixtures/multi_user_input_coroutine.lua',
 	'tests/fixtures/user_input_coroutine.lua',
-	'../tools/slua_test_timers.lua',
-	'../tools/test_metatables.lua',
-	'../test_definition.lua'
+	'tests/fixtures/probes/slua_test_timers.lua',
+	'tests/fixtures/probes/test_metatables.lua',
+	'tests/fixtures/definition.lua'
 ];
 
 const luauSyntaxSnippets = [
@@ -59,7 +58,7 @@ describe('local and Luau corpus parsing', () => {
 		for (const file of files) {
 			const text = await fs.readFile(file, 'utf8');
 			const parsed = parseSlua(text);
-			expect(parsed.ast, path.relative(repoRoot, file)).toBeTruthy();
+			expect(parsed.ast, path.relative(packageRoot, file)).toBeTruthy();
 		}
 	});
 
@@ -462,10 +461,10 @@ describe('local and Luau corpus parsing', () => {
 
 	it('parses Luau class declarations enough to continue after the class body', () => {
 		const parsed = parseSlua([
-			'class Point',
+			'export class Point',
 			'\tpublic x: number',
 			'\tpublic y',
-			'\tfunction new(x, y)',
+			'\tpublic function new(x, y)',
 			'\t\treturn Point { x = x, y = y }',
 			'\tend',
 			'end',
@@ -474,6 +473,11 @@ describe('local and Luau corpus parsing', () => {
 		].join('\n'));
 
 		expect(parsed.diagnostics).toEqual([]);
+		const [klass] = (parsed.ast as { body: Array<{ type: string; fields?: unknown[]; methods?: unknown[] }> }).body;
+		expect(klass?.type).toBe('ClassDeclaration');
+		expect(klass?.fields).toHaveLength(2);
+		expect(klass?.methods).toHaveLength(1);
+		expect((klass as { exported?: boolean })?.exported).toBe(true);
 	});
 
 	it('parses Luau line attributes before declarations', () => {
@@ -485,9 +489,7 @@ describe('local and Luau corpus parsing', () => {
 
 async function collectLocalScripts(): Promise<string[]> {
 	const out: string[] = [];
-	await collectScripts(path.join(repoRoot, 'tools'), out);
 	await collectScripts(path.join(packageRoot, 'tests', 'fixtures'), out);
-	out.push(path.join(repoRoot, 'test_definition.lua'));
 	return [...new Set(out)].sort();
 }
 

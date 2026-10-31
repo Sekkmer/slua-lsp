@@ -1,0 +1,1796 @@
+[
+  {
+    "name": "open-empty",
+    "source": "open class Base end\nassert(class.isinstance(Base{},Base))",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "closed-child",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nlocal value=Child{x=42}\nassert(value:get()==42)\nassert(class.isinstance(value,Base) and class.isinstance(value,Child))\nassert(class.classof(value)==Child)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "own-and-inherited-fields",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base\npublic y: string\nend\nlocal value=Child{x=42,y=\"hi\"}\nassert(value.x==42 and value.y==\"hi\")",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "inherited-static",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nassert(Child.answer()==42)\nassert(Child{x=1}.answer()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Key 'answer' not found in external type 'Child'"
+      ]
+    ]
+  },
+  {
+    "name": "inherited-explicit-self",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nlocal value=Child{x=42}\nassert(value.get(value)==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "inherited-field-write",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nlocal value=Child{x=1}\nvalue.x=42\nassert(value:get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "inherited-wrong-field-write",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nlocal value=Child{x=1}\nvalue.x=\"bad\"",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Expected this to be 'number', but got 'string'"
+      ]
+    ]
+  },
+  {
+    "name": "inherited-wrong-constructor-field",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nChild{x=\"bad\"}",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "inherited-missing-constructor-field",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nChild{}",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "inherited-method-readonly",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nlocal value=Child{x=1}\nvalue.get=function(self): number return 2 end",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Property get of type 'Child' is read-only"
+      ]
+    ]
+  },
+  {
+    "name": "inherited-static-readonly",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nChild.answer=function(): number return 2 end",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Property answer of type 'Child' is read-only"
+      ]
+    ]
+  },
+  {
+    "name": "inherited-method-on-class",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nChild.get",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Incomplete statement: expected assignment or a function call"
+      ],
+      [
+        "TypeError",
+        "Key 'get' not found in external type 'Child'"
+      ]
+    ],
+    "note": "Deliberately malformed bare member statement; method-class-isolated separately tests visibility."
+  },
+  {
+    "name": "override-method",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base\nfunction get(self): number return self.x+1 end\nend\nassert(Child{x=41}:get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "override-static",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base\nfunction answer(): number return 43 end\nend\nassert(Child.answer()==43)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "override-inherited-field-method",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base\nfunction x(self): number return 42 end\nend",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 1
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "override-inherited-field-property",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base\npublic x: number\nend",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Illegal override of property 'x' on class 'Child' inherited from superclass 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "override-inherited-method-property",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base\npublic get: number\nend",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Illegal override of property 'get' on class 'Child' inherited from superclass 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "grandchild",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nopen class Child extends Base\npublic y: number\nend\nclass Grandchild extends Child end\nlocal value=Grandchild{x=40,y=2}\nassert(value:get()+value.y==42)\nassert(class.isinstance(value,Base) and class.isinstance(value,Child))",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "grandchild-field-override",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nopen class Child extends Base end\nclass Grandchild extends Child\npublic x: number\nend",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Illegal override of property 'x' on class 'Grandchild' inherited from superclass 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "closed-parent",
+    "source": "class Base end\nclass Child extends Base end",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Non-open class Base cannot be extended"
+      ]
+    ]
+  },
+  {
+    "name": "closed-middle",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nclass Grandchild extends Child end",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Non-open class Child cannot be extended"
+      ]
+    ]
+  },
+  {
+    "name": "open-middle",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nopen class Child extends Base end\nclass Grandchild extends Child end\nassert(Grandchild{x=42}:get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "base-annotation",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nlocal value: Base=Child{x=42}\nassert(value:get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "derived-annotation-reject",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nlocal value: Child=Base{x=42}\nassert(value:get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Expected this to be 'Child', but got 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "constructor-types-not-subtypes",
+    "source": "open class Base end\nclass Child extends Base end\nlocal value: typeof(Base)=Child\nassert(value~=nil)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Expected this to be 'Base', but got 'Child'"
+      ]
+    ]
+  },
+  {
+    "name": "sibling-not-subtype",
+    "source": "open class Base end\nclass Left extends Base end\nclass Right extends Base end\nlocal value: Left=Right{}\nassert(value~=nil)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Expected this to be 'Left', but got 'Right'"
+      ]
+    ]
+  },
+  {
+    "name": "known-class-alias",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nlocal Parent=Base\nclass Child extends Parent end\nassert(Child{x=42}:get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Key 'get' not found in external type 'Child'"
+      ]
+    ]
+  },
+  {
+    "name": "dotted-parent",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nlocal namespace={Parent=Base}\nclass Child extends namespace.Parent end\nassert(Child{x=42}:get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Key 'get' not found in external type 'Child'"
+      ]
+    ]
+  },
+  {
+    "name": "bracket-parent",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nlocal namespace={Parent=Base}\nclass Child extends namespace[\"Parent\"] end\nassert(Child{x=42}:get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Key 'get' not found in external type 'Child'"
+      ]
+    ]
+  },
+  {
+    "name": "dynamic-bracket-parent",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nlocal namespace={Parent=Base}\nlocal key=\"Parent\"\nclass Child extends namespace[key] end\nassert(Child{x=42}:get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Cannot extend non-class of type unknown"
+      ],
+      [
+        "TypeError",
+        "Key 'get' not found in external type 'Child'"
+      ]
+    ]
+  },
+  {
+    "name": "computed-bracket-parent",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nlocal namespace={Parent=Base}\nlocal function key(): string return \"Parent\" end\nclass Child extends namespace[key()] end\nassert(Child{x=42}:get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Cannot extend non-class of type unknown"
+      ],
+      [
+        "TypeError",
+        "Key 'get' not found in external type 'Child'"
+      ]
+    ]
+  },
+  {
+    "name": "multi-dot-parent",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nlocal namespace={nested={Parent=Base}}\nclass Child extends namespace.nested.Parent end",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only class properties and functions can be declared within a class"
+      ],
+      [
+        "SyntaxError",
+        "Only class properties and functions can be declared within a class"
+      ],
+      [
+        "TypeError",
+        "Cannot extend non-class of type { Parent: Base }"
+      ]
+    ]
+  },
+  {
+    "name": "dot-bracket-parent",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nlocal namespace={nested={Parent=Base}}\nclass Child extends namespace.nested[\"Parent\"] end",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only class properties and functions can be declared within a class"
+      ],
+      [
+        "SyntaxError",
+        "Only class properties and functions can be declared within a class"
+      ],
+      [
+        "SyntaxError",
+        "Only class properties and functions can be declared within a class"
+      ],
+      [
+        "TypeError",
+        "Cannot extend non-class of type { Parent: Base }"
+      ]
+    ]
+  },
+  {
+    "name": "call-parent",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nlocal function parent() return Base end\nclass Child extends parent() end",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only class properties and functions can be declared within a class"
+      ],
+      [
+        "SyntaxError",
+        "Only class properties and functions can be declared within a class"
+      ],
+      [
+        "TypeError",
+        "Cannot extend non-class of type (...any) -> Base"
+      ]
+    ]
+  },
+  {
+    "name": "parenthesized-parent",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends (Base) end",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected identifier when parsing class reference expression, got '('"
+      ],
+      [
+        "SyntaxError",
+        "Only class properties and functions can be declared within a class"
+      ],
+      [
+        "SyntaxError",
+        "Only class properties and functions can be declared within a class"
+      ]
+    ]
+  },
+  {
+    "name": "nonclass-parent",
+    "source": "local Parent={}\nclass Child extends Parent end",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Cannot extend non-class of type Parent"
+      ]
+    ]
+  },
+  {
+    "name": "instance-parent",
+    "source": "open class Base end\nlocal Parent=Base{}\nclass Child extends Parent end",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Object of type Base cannot be extended because it is an object, not a class"
+      ]
+    ]
+  },
+  {
+    "name": "missing-parent",
+    "source": "class Child extends Missing end",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Unknown global 'Missing'; consider assigning to it first"
+      ]
+    ]
+  },
+  {
+    "name": "self-cycle",
+    "source": "open class Base extends Base end",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Cyclic class inheritance detected: Base"
+      ]
+    ]
+  },
+  {
+    "name": "forward-parent",
+    "source": "class Child extends Base end\nopen class Base end",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Unknown global 'Base'; consider assigning to it first"
+      ]
+    ]
+  },
+  {
+    "name": "three-way-cycle",
+    "source": "open class A extends B end\nopen class B extends C end\nopen class C extends A end",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Unknown global 'B'; consider assigning to it first"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'C'; consider assigning to it first"
+      ],
+      [
+        "TypeError",
+        "Cyclic class inheritance detected: C -> A -> B"
+      ]
+    ]
+  },
+  {
+    "name": "custom-parent-missing-child-init",
+    "source": "open class Base\npublic x: number\nfunction __init(self,x: number) self.x=x end\nend\nclass Child extends Base end\nChild{x=42}",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 1
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "custom-parent-explicit-child-init",
+    "source": "open class Base\npublic x: number\nfunction __init(self,x: number) self.x=x end\nend\nclass Child extends Base\nfunction __init(self,x: number) Base.__init(self,x) end\nend\nassert(Child(42).x==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Key '__init' not found in external type 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "custom-child-inherited-field-write",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base\nfunction __init(self,x: number) self.x=x end\nend\nassert(Child(42):get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "custom-child-default-parent-init",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base\nfunction __init(self) Base.__init(self,{x=42}) end\nend\nassert(Child():get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Key '__init' not found in external type 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "child-missing-grandparent-init",
+    "source": "open class Base\nfunction __init(self) end\nend\nopen class Middle extends Base\nfunction __init(self) Base.__init(self) end\nend\nclass Child extends Middle end\nChild{}",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Key '__init' not found in external type 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "custom-parent-child-default-no-call",
+    "source": "open class Base\nfunction __init(self) end\nend\nclass Child extends Base end",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "no-implicit-parent-constructor",
+    "source": "open class Base\npublic x: number?\nfunction __init(self) self.x=42 end\nend\nclass Child extends Base\nfunction __init(self) end\nend\nassert(Child().x==nil)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "child-initializer-different-arity",
+    "source": "open class Base\nfunction __init(self,x: number) end\nend\nclass Child extends Base\nfunction __init(self,x: number,y: number) Base.__init(self,x) end\nend\nChild(1,2)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Method '__init' on class 'Child' is not a compatible override of the method inherited from superclass 'Base'"
+      ],
+      [
+        "TypeError",
+        "Key '__init' not found in external type 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "override-compatible-variance",
+    "source": "open class Base\nfunction get(self,x: number|string): {}? return {} end\nend\nclass Child extends Base\nfunction get(self,x: number|string|nil): {x:string} return {x=\"yes\"} end\nend\nassert(Child{}:get(42).x==\"yes\")",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "override-parameter-narrowing",
+    "source": "open class Base\nfunction get(self,x: number|string): number return 1 end\nend\nclass Child extends Base\nfunction get(self,x: number): number return 2 end\nend\nassert(Child{}:get(42)==2)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Method 'get' on class 'Child' is not a compatible override of the method inherited from superclass 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "override-return-widening",
+    "source": "open class Base\nfunction get(self): number return 1 end\nend\nclass Child extends Base\nfunction get(self): number|string return \"two\" end\nend\nassert(Child{}:get()==\"two\")",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Method 'get' on class 'Child' is not a compatible override of the method inherited from superclass 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "override-static-instance-transition",
+    "source": "open class Base\nfunction get(): number return 1 end\nend\nclass Child extends Base\nfunction get(self): number return 2 end\nend\nassert(Child{}:get()==2)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Method 'get' on class 'Child' is not a compatible override of the method inherited from superclass 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "override-__eq",
+    "source": "open class Base\nfunction __eq(self,other): boolean return true end\nend\nclass Child extends Base\nfunction __eq(self,other): boolean return true end\nend",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Type annotation required here.  Consider (self: Base, other: unknown) -> boolean"
+      ],
+      [
+        "TypeError",
+        "Illegal override of comparison metamethod '__eq' on class 'Child' inherited from superclass 'Base'"
+      ],
+      [
+        "TypeError",
+        "Type annotation required here.  Consider (self: Child, other: unknown) -> boolean"
+      ]
+    ]
+  },
+  {
+    "name": "override-__lt",
+    "source": "open class Base\nfunction __lt(self,other): boolean return true end\nend\nclass Child extends Base\nfunction __lt(self,other): boolean return true end\nend",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Type annotation required here.  Consider (self: Base, other: unknown) -> boolean"
+      ],
+      [
+        "TypeError",
+        "Illegal override of comparison metamethod '__lt' on class 'Child' inherited from superclass 'Base'"
+      ],
+      [
+        "TypeError",
+        "Type annotation required here.  Consider (self: Child, other: unknown) -> boolean"
+      ]
+    ]
+  },
+  {
+    "name": "override-__le",
+    "source": "open class Base\nfunction __le(self,other): boolean return true end\nend\nclass Child extends Base\nfunction __le(self,other): boolean return true end\nend",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Type annotation required here.  Consider (self: Base, other: unknown) -> boolean"
+      ],
+      [
+        "TypeError",
+        "Illegal override of comparison metamethod '__le' on class 'Child' inherited from superclass 'Base'"
+      ],
+      [
+        "TypeError",
+        "Type annotation required here.  Consider (self: Child, other: unknown) -> boolean"
+      ]
+    ]
+  },
+  {
+    "name": "override-__add",
+    "source": "open class Base\nfunction __add(self,other): number return 42 end\nend\nclass Child extends Base\nfunction __add(self,other): number return 42 end\nend",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Type annotation required here.  Consider (self: Base, other: unknown) -> number"
+      ],
+      [
+        "TypeError",
+        "Type annotation required here.  Consider (self: Child, other: unknown) -> number"
+      ]
+    ]
+  },
+  {
+    "name": "override-__tostring",
+    "source": "open class Base\nfunction __tostring(self): string return \"yes\" end\nend\nclass Child extends Base\nfunction __tostring(self): string return \"yes\" end\nend",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "nested-open",
+    "source": "do open class Nested end end",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Cannot declare class 'Nested' inside another statement or expression"
+      ]
+    ]
+  },
+  {
+    "name": "nested-derived",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\ndo class Child extends Base end end",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Cannot declare class 'Child' inside another statement or expression"
+      ]
+    ]
+  },
+  {
+    "name": "export-open",
+    "source": "export open class Base\npublic x: number\nend\nassert(Base{x=42}.x==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "export-child",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nexport class Child extends Base end\nassert(Child{x=42}:get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "export-open-child",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nexport open class Child extends Base end\nclass Grandchild extends Child end\nassert(Grandchild{x=42}:get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "export-open-module-return",
+    "source": "export open class Base end\nreturn {}",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Exporting values is not compatible with top-level return (export/return conflict)"
+      ]
+    ]
+  },
+  {
+    "name": "open-as-name",
+    "source": "local open=42\nassert(open==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "extends-as-name",
+    "source": "local extends=42\nassert(extends==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "open-class-name",
+    "source": "open class open end\nassert(class.isinstance(open{},open))",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "extends-class-name",
+    "source": "open class extends end\nclass Child extends extends end\nassert(class.isinstance(Child{},extends))",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "commented-header",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nopen -- comment\nclass Child -- another\nextends -- parent\nBase end\nassert(Child{x=42}:get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "missing-extends-base",
+    "source": "open class Base extends\nend",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected identifier when parsing class reference expression, got 'end'"
+      ]
+    ]
+  },
+  {
+    "name": "empty-bracket-parent",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base[] end",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected identifier when parsing expression, got ']'"
+      ],
+      [
+        "TypeError",
+        "Attempting a dynamic property access on type 'Base' is unsafe and may cause exceptions at runtime"
+      ]
+    ]
+  },
+  {
+    "name": "inheritance-disabled-control",
+    "source": "open class Base end\nclass Child extends Base end",
+    "runtime": false,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=false",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Incomplete statement: expected assignment or a function call"
+      ],
+      [
+        "SyntaxError",
+        "Incomplete statement: expected assignment or a function call"
+      ],
+      [
+        "SyntaxError",
+        "Incomplete statement: expected assignment or a function call"
+      ],
+      [
+        "SyntaxError",
+        "Expected <eof>, got 'end'"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'open'; consider assigning to it first"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'class'; consider assigning to it first"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'Base'; consider assigning to it first"
+      ]
+    ]
+  },
+  {
+    "name": "static-class-isolated",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nassert(Child.answer()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Key 'answer' not found in external type 'Child'"
+      ]
+    ]
+  },
+  {
+    "name": "static-instance-isolated",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nassert(Child{x=1}.answer()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "method-class-isolated",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nlocal value=Child.get\nassert(value~=nil)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Key 'get' not found in external type 'Child'"
+      ]
+    ]
+  },
+  {
+    "name": "wrong-inherited-field-runtime",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nlocal value=Child{x=\"bad\"}\nassert(type(value.x)==\"string\")",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "missing-inherited-field-runtime",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nlocal value=Child{}\nassert(value.x==nil)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "subtype-function-parameter",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nlocal function read(value: Base): number return value.x end\nassert(read(Child{x=42})==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "subtype-function-return",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nlocal function make(): Base return Child{x=42} end\nassert(make():get()==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "subtype-reverse-parameter",
+    "source": "open class Base\npublic x: number\nfunction get(self): number return self.x end\nfunction answer(): number return 42 end\nend\nclass Child extends Base end\nlocal function read(value: Child): number return value.x end\nassert(read(Base{x=42})==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Expected this to be 'Child', but got 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "typed-add-override",
+    "source": "open class Base\nfunction __add(self,other: number): number return other+1 end\nend\nclass Child extends Base\nfunction __add(self,other: number): number return other+2 end\nend\nassert(Child{}+40==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "typed-__eq-override",
+    "source": "open class Base\nfunction __eq(self,other: Base): boolean return true end\nend\nclass Child extends Base\nfunction __eq(self,other: Child): boolean return false end\nend",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Illegal override of comparison metamethod '__eq' on class 'Child' inherited from superclass 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "typed-__lt-override",
+    "source": "open class Base\nfunction __lt(self,other: Base): boolean return true end\nend\nclass Child extends Base\nfunction __lt(self,other: Child): boolean return false end\nend",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Illegal override of comparison metamethod '__lt' on class 'Child' inherited from superclass 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "typed-__le-override",
+    "source": "open class Base\nfunction __le(self,other: Base): boolean return true end\nend\nclass Child extends Base\nfunction __le(self,other: Child): boolean return false end\nend",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Illegal override of comparison metamethod '__le' on class 'Child' inherited from superclass 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "own-default-init-call",
+    "source": "class Base\npublic x: number\nend\nlocal value=Base{x=1}\nvalue.__init(value,{x=42})\nassert(value.x==42)",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Key '__init' not found in external type 'Base'"
+      ]
+    ]
+  },
+  {
+    "name": "grandparent-user-init-requires-child",
+    "source": "open class Base\nfunction __init(self) end\nend\nopen class Middle extends Base end\nclass Child extends Middle end\nChild{}",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 1
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "child-custom-init-reads-inherited-uninitialized",
+    "source": "open class Base\npublic x: number\nend\nclass Child extends Base\nfunction __init(self) print(self.x) end\nend\nChild()",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "official-class_is_not_subtype_of_superclass",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\nopen class Base end\n\nclass Child extends Base end\n\nlocal _b: typeof(Base) = Child",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Expected this to be 'Base', but got 'Child'"
+      ]
+    ],
+    "upstreamPath": "tests/golden/analysis/classes/class_is_not_subtype_of_superclass.luau"
+  },
+  {
+    "name": "official-compatible_method_override_is_allowed",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\n\nopen class Base\n    function method(self, x: number | string): {}?\n        return {}\n    end\n\n    function staticMethod(x: number | string): {}?\n        return {}\n    end\nend\n\nclass ChildOne extends Base\n    function method(self, x: number | string | nil): {x: string}\n        return {x = \"hello\"}\n    end\n\n    function staticMethod(x: number | string | nil): {x: string}\n        return {x = \"hello\"}\n    end\nend\n",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": [],
+    "upstreamPath": "tests/golden/analysis/classes/compatible_method_override_is_allowed.luau"
+  },
+  {
+    "name": "official-extend_class_instance",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\n\nclass Foo\nend\n\nlocal x = Foo {}\n\nclass Bar extends x\nend\n",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Object of type Foo cannot be extended because it is an object, not a class"
+      ]
+    ],
+    "upstreamPath": "tests/golden/analysis/classes/extend_class_instance.luau"
+  },
+  {
+    "name": "official-extend_undefined_class",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\n\nclass Dog extends nope_not_defined\n    function __init(self) end\nend\n",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Unknown global 'nope_not_defined'; consider assigning to it first"
+      ]
+    ],
+    "upstreamPath": "tests/golden/analysis/classes/extend_undefined_class.luau"
+  },
+  {
+    "name": "official-extend_undefined_class_from_nonexistent_module",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\n\nclass Dog extends None.nope_not_defined\n    function __init(self) end\nend\n",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Unknown global 'None'; consider assigning to it first"
+      ]
+    ],
+    "upstreamPath": "tests/golden/analysis/classes/extend_undefined_class_from_nonexistent_module.luau"
+  },
+  {
+    "name": "official-extends_non_class_is_an_error",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\n\nfunction sqrt(n: number) return n end\n\nclass Dog extends sqrt\n    function __init(self) end\nend\n",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Cannot extend non-class of type (number) -> number"
+      ]
+    ],
+    "upstreamPath": "tests/golden/analysis/classes/extends_non_class_is_an_error.luau"
+  },
+  {
+    "name": "official-extends_non_open_class_is_an_error",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\n\nclass Animal\n    function __init(self) end\nend\n\nclass Dog extends Animal\n    function __init(self) end\nend\n",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Non-open class Animal cannot be extended"
+      ]
+    ],
+    "upstreamPath": "tests/golden/analysis/classes/extends_non_open_class_is_an_error.luau"
+  },
+  {
+    "name": "official-incompatible_method_override_is_an_error",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\n\nopen class Base\n    function method(self, x: number | string): {}?\n        return {}\n    end\nend\n\nclass Child extends Base\n    function method(self, x: number): {} | string\n        return \"\"\n    end\nend\n\nopen class ChildTwo extends Base end\n\nclass GrandChild extends ChildTwo\n    function method(self, x: number): {} | string\n        return \"\"\n    end\nend",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Method 'method' on class 'Child' is not a compatible override of the method inherited from superclass 'Base'"
+      ],
+      [
+        "TypeError",
+        "Method 'method' on class 'GrandChild' is not a compatible override of the method inherited from superclass 'Base'"
+      ]
+    ],
+    "upstreamPath": "tests/golden/analysis/classes/incompatible_method_override_is_an_error.luau"
+  },
+  {
+    "name": "official-incompatible_static_method_override_is_an_error",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\n\nopen class Base\n    function method(x: number | string): {}?\n        return {}\n    end\n\n    function instanceMethod(self, x: number | string): {}?\n        return {}\n    end\n\n    function staticMethod(x: number | string): {}?\n        return {}\n    end\nend\n\nclass ChildTwo extends Base\n    function method(x: number): {} | string\n        return \"\"\n    end\n\n    function instanceMethod(s: string, x: number | string): {}?\n        return {}\n    end\n\n    function staticMethod(self): {}?\n        return {}\n    end\nend\n",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Method 'method' on class 'ChildTwo' is not a compatible override of the method inherited from superclass 'Base'"
+      ],
+      [
+        "TypeError",
+        "Method 'instanceMethod' on class 'ChildTwo' is not a compatible override of the method inherited from superclass 'Base'"
+      ],
+      [
+        "TypeError",
+        "Method 'staticMethod' on class 'ChildTwo' is not a compatible override of the method inherited from superclass 'Base'"
+      ]
+    ],
+    "upstreamPath": "tests/golden/analysis/classes/incompatible_static_method_override_is_an_error.luau"
+  },
+  {
+    "name": "official-overriding_eq_when_superclass_defines_it_is_an_error",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\n\nopen class Point\n    function __eq(self, other: Point): boolean\n        return true\n    end\nend\n\nclass NamedPoint extends Point\n    function __eq(self, other: NamedPoint): boolean\n        return true\n    end\nend\n",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Illegal override of comparison metamethod '__eq' on class 'NamedPoint' inherited from superclass 'Point'"
+      ]
+    ],
+    "upstreamPath": "tests/golden/analysis/classes/overriding_eq_when_superclass_defines_it_is_an_error.luau"
+  },
+  {
+    "name": "official-overriding_props_is_illegal",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\n\nopen class Point\n    public x: number\n    public y: number\nend\n\nclass Point1 extends Point\n    public x: string\n    public y: number\nend\n\nopen class PointChild extends Point end\n\nclass BadPointGrandchild extends PointChild\n    public x: number\nend",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Illegal override of property 'x' on class 'Point1' inherited from superclass 'Point'"
+      ],
+      [
+        "TypeError",
+        "Illegal override of property 'y' on class 'Point1' inherited from superclass 'Point'"
+      ],
+      [
+        "TypeError",
+        "Illegal override of property 'x' on class 'BadPointGrandchild' inherited from superclass 'Point'"
+      ]
+    ],
+    "upstreamPath": "tests/golden/analysis/classes/overriding_props_is_illegal.luau"
+  },
+  {
+    "name": "official-sqrt_cyclically_inherits_sqrt",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\n\nclass sqrt extends sqrt\nend\n",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Non-open class sqrt cannot be extended"
+      ]
+    ],
+    "upstreamPath": "tests/golden/analysis/classes/sqrt_cyclically_inherits_sqrt.luau"
+  },
+  {
+    "name": "official-subclass_instance_is_subtype_of_superclass",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\n\nopen class Animal\n    function __init(self) end\nend\n\nclass Dog extends Animal\n    function __init(self) end\nend\n\nlocal d = Dog()\nlocal a: Animal = d\n",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": [],
+    "upstreamPath": "tests/golden/analysis/classes/subclass_instance_is_subtype_of_superclass.luau"
+  },
+  {
+    "name": "official-superclass_instance_is_not_subtype_of_subclass",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\n\nopen class Animal\n    function __init(self) end\nend\n\nclass Dog extends Animal\n    function __init(self) end\nend\n\nlocal a = Animal()\nlocal d: Dog = a\n",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Expected this to be 'Dog', but got 'Animal'"
+      ]
+    ],
+    "upstreamPath": "tests/golden/analysis/classes/superclass_instance_is_not_subtype_of_subclass.luau"
+  },
+  {
+    "name": "official-three_step_cyclic_inheritance",
+    "source": "--!golden fflags=DebugLuauUserDefinedClasses=true,DebugLuauUserDefinedClassesRuntime=true\nopen class A extends B\nend\n\nopen class B extends C\nend\n\nopen class C extends A\nend\n",
+    "runtime": true,
+    "flags": "--fflags=DebugLuauUserDefinedClasses=true,LuauExportValueSyntax=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Unknown global 'B'; consider assigning to it first"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'C'; consider assigning to it first"
+      ],
+      [
+        "TypeError",
+        "Cyclic class inheritance detected: C -> A -> B"
+      ]
+    ],
+    "upstreamPath": "tests/golden/analysis/classes/three_step_cyclic_inheritance.luau"
+  }
+]

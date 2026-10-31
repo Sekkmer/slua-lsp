@@ -1,0 +1,198 @@
+[
+  {
+    "name": "literal-field-not-local",
+    "source": "local value=1\nlocal object={value=value}\nprint(object.value)",
+    "query": "value)",
+    "target": "value=value",
+    "targetLast": false
+  },
+  {
+    "name": "computed-string",
+    "source": "local object={[\"field\"]=1}\nprint(object[\"field\"])",
+    "query": "\"field\"]",
+    "target": "\"field\"]=1",
+    "targetLast": false
+  },
+  {
+    "name": "nested-fields",
+    "source": "local object={nested={field=1}}\nprint(object.nested.field)",
+    "query": "field)",
+    "target": "field=1",
+    "targetLast": false
+  },
+  {
+    "name": "alias-write",
+    "source": "local object={}\nlocal alias=object\nalias.field=1\nprint(object.field)",
+    "query": "field)",
+    "target": "field=1",
+    "targetLast": false
+  },
+  {
+    "name": "latest-reaching-write",
+    "source": "local object={field=1}\nobject.field=2\nprint(object.field)",
+    "query": "field)",
+    "target": "field=2",
+    "targetLast": false
+  },
+  {
+    "name": "rebound-alias",
+    "source": "local object={field=1}\nlocal alias=object\nobject={field=2}\nprint(alias.field)",
+    "query": "field)",
+    "target": "field=1",
+    "targetLast": false
+  },
+  {
+    "name": "function-method",
+    "source": "local object={}\nfunction object:method() return 1 end\nobject:method()",
+    "query": "method()",
+    "target": "method()",
+    "targetLast": false
+  },
+  {
+    "name": "function-table-result",
+    "source": "local function make() return {field=1} end\nlocal object=make()\nprint(object.field)",
+    "query": "field)",
+    "target": "field=1",
+    "targetLast": false
+  },
+  {
+    "name": "unchanged-field-through-branch",
+    "source": "local object={field=1}\nif math.random()>0 then object.other=1 else object.other=2 end\nprint(object.field)",
+    "query": "field)",
+    "target": "field=1",
+    "targetLast": false
+  },
+  {
+    "name": "ambiguous-write",
+    "source": "local object={field=1}\nif math.random()>0 then object.field=2 else object.field=3 end\nprint(object.field)",
+    "query": "field)",
+    "target": null,
+    "targetLast": false
+  },
+  {
+    "name": "ambiguous-table",
+    "source": "local object=if math.random()>0 then {field=1} else {field=2}\nprint(object.field)",
+    "query": "field)",
+    "target": null,
+    "targetLast": false
+  },
+  {
+    "name": "ambiguous-nested-table",
+    "source": "local object=if math.random()>0 then {nested={field=1}} else {nested={field=2}}\nprint(object.nested.field)",
+    "query": "field)",
+    "target": null,
+    "targetLast": false
+  },
+  {
+    "name": "unknown-key-invalidates",
+    "source": "local object={field=1}\nlocal key=if math.random()>0 then \"a\" else \"b\"\nobject[key]=2\nprint(object.field)",
+    "query": "field)",
+    "target": null,
+    "targetLast": false
+  },
+  {
+    "name": "numeric-key-preserves",
+    "source": "local object={field=1}\nobject[1]=2\nprint(object.field)",
+    "query": "field)",
+    "target": "field=1",
+    "targetLast": false
+  },
+  {
+    "name": "prototype-key",
+    "source": "local object={__proto__=1}\nprint(object.__proto__)",
+    "query": "__proto__)",
+    "target": "__proto__=1",
+    "targetLast": false
+  },
+  {
+    "name": "parameter-shape-no-origin",
+    "source": "local function use(object: {field: number}) print(object.field) end\nprint(use)",
+    "query": "field)",
+    "target": null,
+    "targetLast": false
+  },
+  {
+    "name": "builtin-no-origin",
+    "source": "ll.Say(0,\"local\")",
+    "query": "Say(",
+    "target": null,
+    "targetLast": false
+  },
+  {
+    "name": "shadow-receiver",
+    "source": "local object={field=1}\ndo local object={field=2} print(object.field) end",
+    "query": "field)",
+    "target": "field=2",
+    "targetLast": false
+  },
+  {
+    "name": "unicode-crlf",
+    "source": "local text=\"\ud83d\ude00\"\r\nlocal object={field=1}\r\nprint(text,object.field)",
+    "query": "field)",
+    "target": "field=1",
+    "targetLast": false
+  },
+  {
+    "name": "same-origin-conditional",
+    "source": "local original={field=1}\nlocal object=if math.random()>0 then original else original\nprint(object.field)",
+    "query": "field)",
+    "target": "field=1",
+    "targetLast": false
+  },
+  {
+    "name": "duplicate-key-last",
+    "source": "local object={field=1,field=2}\nprint(object.field)",
+    "query": "field)",
+    "target": "field=2",
+    "targetLast": false
+  },
+  {
+    "name": "nested-alias-write",
+    "source": "local inner={field=1}\nlocal object={inner=inner}\ninner.field=2\nprint(object.inner.field)",
+    "query": "field)",
+    "target": "field=2",
+    "targetLast": false
+  },
+  {
+    "name": "alias-write-after-join",
+    "source": "local object={field=1}\nlocal alias=object\nif math.random()>0 then object.other=2 else object.other=3 end\nalias.field=4\nprint(object.field)",
+    "query": "field)",
+    "target": "field=4",
+    "targetLast": false
+  },
+  {
+    "name": "annotated-shape-no-invented-origin",
+    "source": "local object: {field:number}={field=1}\nprint(object.field)",
+    "query": "field)",
+    "target": null,
+    "targetLast": false
+  },
+  {
+    "name": "cast-shape-no-invented-origin",
+    "source": "local object=({field=1} :: {field:number})\nprint(object.field)",
+    "query": "field)",
+    "target": null,
+    "targetLast": false
+  },
+  {
+    "name": "key-definition-self",
+    "source": "local object={field=1}\nprint(object)",
+    "query": "field=1",
+    "target": "field=1",
+    "targetLast": false
+  },
+  {
+    "name": "multiple-assignment-receiver-before-rebind",
+    "source": "local object={field=1}\nlocal old=object\nobject,object.field={},2\nprint(old.field)",
+    "query": "field)",
+    "target": "field={},2",
+    "targetLast": false
+  },
+  {
+    "name": "unknown-literal-key-no-guessed-origin",
+    "source": "local key=if math.random()>0 then \"field\" else \"other\"\nlocal object={field=1,[key]=2}\nprint(object.field)",
+    "query": "field)",
+    "target": null,
+    "targetLast": false
+  }
+]

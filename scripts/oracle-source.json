@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "repository": "https://github.com/secondlife/slua",
+  "commit": "4116d7f6a38338cef7bbf6ab061c913682d432fd",
+  "commit_date": "2026-10-20T11:07:46Z",
+  "archive_url": "https://codeload.github.com/secondlife/slua/tar.gz/4116d7f6a38338cef7bbf6ab061c913682d432fd",
+  "archive_sha256": "f5b71066b3b426cd48a9846c75dc90c3190f285d3449549be7c6dbad6c44db23",
+  "files": 2523,
+  "maximum_archive_bytes": 67108864,
+  "maximum_unpacked_bytes": 268435456
+}

@@ -1,4 +1,5 @@
 import { isRecord, type AstPosition as Position, type SourceLocation } from './ast.js';
+import type { SourceTextIndex } from './sourceTextIndex.js';
 
 type NodeLike = { type: unknown; location?: unknown } & Record<string, unknown>;
 
@@ -37,51 +38,47 @@ function isAstNodeLike(value: unknown): value is NodeLike {
  * this pass promotes locations by spanning children so features like hover/
  * go-to-definition can rely on a sane range.
  */
-export function normalizeAstLocations(root: unknown): void {
+export function normalizeAstLocations(root: unknown, index?: SourceTextIndex): void {
 	const seen = new WeakSet<object>();
+	const translated = new WeakSet<object>();
+	function translate(position: Position): void {
+		if (!index || translated.has(position)) return;
+		translated.add(position);
+		const point = index.positionAt(index.lfOffsetAt({ line: position.line - 1, character: position.column - 1 }));
+		position.line = point.line + 1; position.column = point.character + 1;
+	}
 
 	function visit(value: unknown): SourceLocation | undefined {
 		if (Array.isArray(value)) {
-			let merged: SourceLocation | undefined;
+			let start: Position | undefined, end: Position | undefined;
 			for (const item of value) {
-				const childLoc = visit(item);
-				if (!childLoc) continue;
-				if (!merged) merged = childLoc;
-				else {
-					merged = {
-						start: minPos(merged.start, childLoc.start),
-						end: maxPos(merged.end, childLoc.end)
-					};
-				}
+				const loc = visit(item);
+				if (!loc) continue;
+				start = start ? minPos(start, loc.start) : loc.start;
+				end = end ? maxPos(end, loc.end) : loc.end;
 			}
-			return merged;
+			return start && end ? { start, end } : undefined;
 		}
-
 		if (!isAstNodeLike(value)) return undefined;
 		if (seen.has(value)) return isLocation(value.location) ? value.location : undefined;
 		seen.add(value);
-
-		let merged: SourceLocation | undefined = isLocation(value.location) ? value.location : undefined;
-
-		for (const v of Object.values(value)) {
-			if (v === value.location) continue;
-			const childLoc = visit(v);
-			if (!childLoc) continue;
-			if (!merged) merged = childLoc;
-			else {
-				merged = {
-					start: minPos(merged.start, childLoc.start),
-					end: maxPos(merged.end, childLoc.end)
-				};
-			}
+		for (const key in value) if (isLocation(value[key])) {
+			const location = value[key] as SourceLocation; translate(location.start); translate(location.end);
 		}
-
-		if (merged) {
-			value.location = merged;
-			return merged;
+		const original = isLocation(value.location) ? value.location : undefined;
+		let start = original?.start, end = original?.end;
+		for (const key in value) {
+			if (key === 'location') continue;
+			const loc = visit(value[key]);
+			if (!loc) continue;
+			start = start ? minPos(start, loc.start) : loc.start;
+			end = end ? maxPos(end, loc.end) : loc.end;
 		}
-
-		return isLocation(value.location) ? value.location : undefined;
+		if (!start || !end) return original;
+		// One merged location per node, rather than one allocation per child.
+		const merged = original?.start === start && original.end === end ? original : { start, end };
+		value.location = merged;
+		return merged;
 	}
 
 	visit(root);

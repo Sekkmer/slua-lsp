@@ -7,6 +7,14 @@ import {
 } from '../src/slua/events.js';
 
 describe('SLua events (from YAML + overrides)', () => {
+	it('does not resurrect explicitly removed events through default or caller overrides', () => {
+		const defs = { events: { touch_start: { 'slua-removed': true, arguments: [] }, listen: { arguments: [] } } };
+		const sigs = buildSluaEventSignaturesFromLslDefinitions(defs);
+		expect(sigs.touch_start).toBeUndefined();
+		expect(sigs.listen.source).toBe('override');
+		const custom = buildSluaEventSignaturesFromLslDefinitions(defs, { touch_start: defaultSluaEventOverrides.touch_start });
+		expect(custom.touch_start).toBeUndefined();
+	});
 	it('uses YAML signature for listen', async () => {
 		const defs = await loadLslDefinitionsFromYamlFile();
 		const sigs = buildSluaEventSignaturesFromLslDefinitions(defs, defaultSluaEventOverrides);

@@ -5,34 +5,35 @@ import { buildSluaRegistryFromLslDefinitions } from '../src/slua/registry.js';
 import { loadLslDefinitionsFromYamlFile } from '../src/lsl/lslDefinitions.js';
 
 describe('call argument type mismatch', () => {
-	test('warns when number is passed to integer-only ll function', async () => {
+	test('accepts native ll integer coercion for ordinary Luau numbers', async () => {
 		const defs = await loadLslDefinitionsFromYamlFile();
 		const registry = buildSluaRegistryFromLslDefinitions(defs);
 		const text = `
 			ll.Abs(1.2)
 			ll.Abs(1)
-		`;
-		const diags = analyzeText(text, { registry });
-		const codes = diags.map((d) => d.code);
-		expect(codes).toContain('call-argument-type-mismatch');
-	});
-
-	test('does not warn when integer() is passed to integer-only ll function', async () => {
-		const defs = await loadLslDefinitionsFromYamlFile();
-		const registry = buildSluaRegistryFromLslDefinitions(defs);
-		const text = `
-			ll.Abs(integer(1.2))
+			ll.Say(0, "hello")
 		`;
 		const diags = analyzeText(text, { registry });
 		const codes = diags.map((d) => d.code);
 		expect(codes).not.toContain('call-argument-type-mismatch');
 	});
 
-	test('allows integer where number is expected', async () => {
+	test('does not warn when math.floor is passed to a native ll numeric parameter', async () => {
 		const defs = await loadLslDefinitionsFromYamlFile();
 		const registry = buildSluaRegistryFromLslDefinitions(defs);
 		const text = `
-			local v = vector(integer(1), 2, 3)
+			ll.Abs(math.floor(1.2))
+		`;
+		const diags = analyzeText(text, { registry });
+		const codes = diags.map((d) => d.code);
+		expect(codes).not.toContain('call-argument-type-mismatch');
+	});
+
+	test('allows a whole ordinary number where number is expected', async () => {
+		const defs = await loadLslDefinitionsFromYamlFile();
+		const registry = buildSluaRegistryFromLslDefinitions(defs);
+		const text = `
+			local v = vector(math.floor(1), 2, 3)
 		`;
 		const diags = analyzeText(text, { registry });
 		const codes = diags.map((d) => d.code);
@@ -46,7 +47,7 @@ describe('call argument type mismatch', () => {
 			local x = "bad"
 			ll.Abs(x)
 			if true then
-				local x = integer(1)
+				local x = math.floor(1)
 				ll.Abs(x)
 			end
 		`;
@@ -59,7 +60,7 @@ describe('call argument type mismatch', () => {
 		const defs = await loadLslDefinitionsFromYamlFile();
 		const registry = buildSluaRegistryFromLslDefinitions(defs);
 		const text = `
-			local x = integer(1)
+			local x = math.floor(1)
 			ll.Abs(x)
 			if true then
 				local x = "bad"
@@ -102,11 +103,11 @@ describe('call argument type mismatch', () => {
 		const text = `
 			local x = "bad"
 			do
-				local x = integer(1)
+				local x = math.floor(1)
 				ll.Abs(x)
 			end
 			repeat
-				local x = integer(1)
+				local x = math.floor(1)
 				ll.Abs(x)
 			until true
 		`;

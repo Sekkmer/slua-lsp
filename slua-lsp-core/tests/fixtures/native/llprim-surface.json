@@ -1,0 +1,311 @@
+{
+  "commit": "4116d7f6a38338cef7bbf6ab061c913682d432fd",
+  "source": "VM/src/llprim_set_primitive_params.inl",
+  "rules": [
+    {
+      "name": "targetLink",
+      "semantics": "i",
+      "tag": 34,
+      "variant": -1
+    },
+    {
+      "name": "physicsMaterial",
+      "semantics": "i",
+      "tag": 2,
+      "variant": -1
+    },
+    {
+      "name": "physical",
+      "semantics": "b",
+      "tag": 3,
+      "variant": -1
+    },
+    {
+      "name": "temporary",
+      "semantics": "b",
+      "tag": 4,
+      "variant": -1
+    },
+    {
+      "name": "phantom",
+      "semantics": "b",
+      "tag": 5,
+      "variant": -1
+    },
+    {
+      "name": "pos",
+      "semantics": "v",
+      "tag": 6,
+      "variant": -1
+    },
+    {
+      "name": "size",
+      "semantics": "v",
+      "tag": 7,
+      "variant": -1
+    },
+    {
+      "name": "rot",
+      "semantics": "r",
+      "tag": 8,
+      "variant": -1
+    },
+    {
+      "name": "primTypeBox",
+      "semantics": "ivfvvv",
+      "tag": 9,
+      "variant": 0
+    },
+    {
+      "name": "primTypeCylinder",
+      "semantics": "ivfvvv",
+      "tag": 9,
+      "variant": 1
+    },
+    {
+      "name": "primTypePrism",
+      "semantics": "ivfvvv",
+      "tag": 9,
+      "variant": 2
+    },
+    {
+      "name": "primTypeSphere",
+      "semantics": "ivfvv",
+      "tag": 9,
+      "variant": 3
+    },
+    {
+      "name": "primTypeTorus",
+      "semantics": "ivfvvvvvfff",
+      "tag": 9,
+      "variant": 4
+    },
+    {
+      "name": "primTypeTube",
+      "semantics": "ivfvvvvvfff",
+      "tag": 9,
+      "variant": 5
+    },
+    {
+      "name": "primTypeRing",
+      "semantics": "ivfvvvvvfff",
+      "tag": 9,
+      "variant": 6
+    },
+    {
+      "name": "primTypeSculpt",
+      "semantics": "ai",
+      "tag": 9,
+      "variant": 7
+    },
+    {
+      "name": "texture",
+      "semantics": "iavvf",
+      "tag": 17,
+      "variant": -1
+    },
+    {
+      "name": "color",
+      "semantics": "ivf",
+      "tag": 18,
+      "variant": -1
+    },
+    {
+      "name": "shinyBump",
+      "semantics": "iii",
+      "tag": 19,
+      "variant": -1
+    },
+    {
+      "name": "fullbright",
+      "semantics": "ib",
+      "tag": 20,
+      "variant": -1
+    },
+    {
+      "name": "flexible",
+      "semantics": "biffffv",
+      "tag": 21,
+      "variant": -1
+    },
+    {
+      "name": "texgen",
+      "semantics": "ii",
+      "tag": 22,
+      "variant": -1
+    },
+    {
+      "name": "pointLight",
+      "semantics": "bvfff",
+      "tag": 23,
+      "variant": -1
+    },
+    {
+      "name": "glow",
+      "semantics": "if",
+      "tag": 25,
+      "variant": -1
+    },
+    {
+      "name": "text",
+      "semantics": "svf",
+      "tag": 26,
+      "variant": -1
+    },
+    {
+      "name": "name",
+      "semantics": "s",
+      "tag": 27,
+      "variant": -1
+    },
+    {
+      "name": "description",
+      "semantics": "s",
+      "tag": 28,
+      "variant": -1
+    },
+    {
+      "name": "rotLocal",
+      "semantics": "r",
+      "tag": 29,
+      "variant": -1
+    },
+    {
+      "name": "physicsShapeType",
+      "semantics": "i",
+      "tag": 30,
+      "variant": -1
+    },
+    {
+      "name": "omega",
+      "semantics": "vff",
+      "tag": 32,
+      "variant": -1
+    },
+    {
+      "name": "posLocal",
+      "semantics": "v",
+      "tag": 33,
+      "variant": -1
+    },
+    {
+      "name": "slice",
+      "semantics": "v",
+      "tag": 35,
+      "variant": -1
+    },
+    {
+      "name": "specular",
+      "semantics": "iavvfvii",
+      "tag": 36,
+      "variant": -1
+    },
+    {
+      "name": "normal",
+      "semantics": "iavvf",
+      "tag": 37,
+      "variant": -1
+    },
+    {
+      "name": "alphaMode",
+      "semantics": "iii",
+      "tag": 38,
+      "variant": -1
+    },
+    {
+      "name": "allowUnsit",
+      "semantics": "b",
+      "tag": 39,
+      "variant": -1
+    },
+    {
+      "name": "scriptedSitOnly",
+      "semantics": "b",
+      "tag": 40,
+      "variant": -1
+    },
+    {
+      "name": "sitTarget",
+      "semantics": "bvr",
+      "tag": 41,
+      "variant": -1
+    },
+    {
+      "name": "projector",
+      "semantics": "sfff",
+      "tag": 42,
+      "variant": -1
+    },
+    {
+      "name": "clickAction",
+      "semantics": "i",
+      "tag": 43,
+      "variant": -1
+    },
+    {
+      "name": "reflectionProbe",
+      "semantics": "bffi",
+      "tag": 44,
+      "variant": -1
+    },
+    {
+      "name": "gltfNormal",
+      "semantics": "i?avvf",
+      "tag": 45,
+      "variant": -1
+    },
+    {
+      "name": "gltfEmissive",
+      "semantics": "i?avvfv",
+      "tag": 46,
+      "variant": -1
+    },
+    {
+      "name": "gltfMetallicRoughness",
+      "semantics": "i?avvfff",
+      "tag": 47,
+      "variant": -1
+    },
+    {
+      "name": "gltfBaseColor",
+      "semantics": "i?avvfvfifb",
+      "tag": 48,
+      "variant": -1
+    },
+    {
+      "name": "renderMaterial",
+      "semantics": "ia",
+      "tag": 49,
+      "variant": -1
+    },
+    {
+      "name": "sitFlags",
+      "semantics": "i",
+      "tag": 50,
+      "variant": -1
+    },
+    {
+      "name": "damage",
+      "semantics": "fi",
+      "tag": 51,
+      "variant": -1
+    },
+    {
+      "name": "health",
+      "semantics": "f",
+      "tag": 52,
+      "variant": -1
+    },
+    {
+      "name": "collisionSound",
+      "semantics": "af",
+      "tag": 53,
+      "variant": -1
+    }
+  ],
+  "extraMethods": [
+    "new",
+    "extend",
+    "apply"
+  ]
+}

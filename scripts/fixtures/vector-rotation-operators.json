@@ -1,0 +1,380 @@
+[
+  {
+    "name": "n+n",
+    "expression": "a + b",
+    "source": "local a=6\nlocal b=2\nlocal result=a + b\nprint(result)",
+    "expected": "number"
+  },
+  {
+    "name": "n+v",
+    "expression": "a + b",
+    "source": "local a=6\nlocal b=vector(2, 3, 4)\nlocal result=a + b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "n+r",
+    "expression": "a + b",
+    "source": "local a=6\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a + b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "v+n",
+    "expression": "a + b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=2\nlocal result=a + b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "v+v",
+    "expression": "a + b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=vector(2, 3, 4)\nlocal result=a + b\nprint(result)",
+    "expected": "vector"
+  },
+  {
+    "name": "v+r",
+    "expression": "a + b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a + b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r+n",
+    "expression": "a + b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=2\nlocal result=a + b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r+v",
+    "expression": "a + b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=vector(2, 3, 4)\nlocal result=a + b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r+r",
+    "expression": "a + b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a + b\nprint(result)",
+    "expected": "rotation"
+  },
+  {
+    "name": "n-n",
+    "expression": "a - b",
+    "source": "local a=6\nlocal b=2\nlocal result=a - b\nprint(result)",
+    "expected": "number"
+  },
+  {
+    "name": "n-v",
+    "expression": "a - b",
+    "source": "local a=6\nlocal b=vector(2, 3, 4)\nlocal result=a - b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "n-r",
+    "expression": "a - b",
+    "source": "local a=6\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a - b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "v-n",
+    "expression": "a - b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=2\nlocal result=a - b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "v-v",
+    "expression": "a - b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=vector(2, 3, 4)\nlocal result=a - b\nprint(result)",
+    "expected": "vector"
+  },
+  {
+    "name": "v-r",
+    "expression": "a - b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a - b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r-n",
+    "expression": "a - b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=2\nlocal result=a - b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r-v",
+    "expression": "a - b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=vector(2, 3, 4)\nlocal result=a - b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r-r",
+    "expression": "a - b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a - b\nprint(result)",
+    "expected": "rotation"
+  },
+  {
+    "name": "n*n",
+    "expression": "a * b",
+    "source": "local a=6\nlocal b=2\nlocal result=a * b\nprint(result)",
+    "expected": "number"
+  },
+  {
+    "name": "n*v",
+    "expression": "a * b",
+    "source": "local a=6\nlocal b=vector(2, 3, 4)\nlocal result=a * b\nprint(result)",
+    "expected": "vector"
+  },
+  {
+    "name": "n*r",
+    "expression": "a * b",
+    "source": "local a=6\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a * b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "v*n",
+    "expression": "a * b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=2\nlocal result=a * b\nprint(result)",
+    "expected": "vector"
+  },
+  {
+    "name": "v*v",
+    "expression": "a * b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=vector(2, 3, 4)\nlocal result=a * b\nprint(result)",
+    "expected": "vector"
+  },
+  {
+    "name": "v*r",
+    "expression": "a * b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a * b\nprint(result)",
+    "expected": "vector"
+  },
+  {
+    "name": "r*n",
+    "expression": "a * b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=2\nlocal result=a * b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r*v",
+    "expression": "a * b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=vector(2, 3, 4)\nlocal result=a * b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r*r",
+    "expression": "a * b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a * b\nprint(result)",
+    "expected": "rotation"
+  },
+  {
+    "name": "n/n",
+    "expression": "a / b",
+    "source": "local a=6\nlocal b=2\nlocal result=a / b\nprint(result)",
+    "expected": "number"
+  },
+  {
+    "name": "n/v",
+    "expression": "a / b",
+    "source": "local a=6\nlocal b=vector(2, 3, 4)\nlocal result=a / b\nprint(result)",
+    "expected": "vector"
+  },
+  {
+    "name": "n/r",
+    "expression": "a / b",
+    "source": "local a=6\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a / b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "v/n",
+    "expression": "a / b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=2\nlocal result=a / b\nprint(result)",
+    "expected": "vector"
+  },
+  {
+    "name": "v/v",
+    "expression": "a / b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=vector(2, 3, 4)\nlocal result=a / b\nprint(result)",
+    "expected": "vector"
+  },
+  {
+    "name": "v/r",
+    "expression": "a / b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a / b\nprint(result)",
+    "expected": "vector"
+  },
+  {
+    "name": "r/n",
+    "expression": "a / b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=2\nlocal result=a / b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r/v",
+    "expression": "a / b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=vector(2, 3, 4)\nlocal result=a / b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r/r",
+    "expression": "a / b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a / b\nprint(result)",
+    "expected": "rotation"
+  },
+  {
+    "name": "n//n",
+    "expression": "a // b",
+    "source": "local a=6\nlocal b=2\nlocal result=a // b\nprint(result)",
+    "expected": "number"
+  },
+  {
+    "name": "n//v",
+    "expression": "a // b",
+    "source": "local a=6\nlocal b=vector(2, 3, 4)\nlocal result=a // b\nprint(result)",
+    "expected": "vector"
+  },
+  {
+    "name": "n//r",
+    "expression": "a // b",
+    "source": "local a=6\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a // b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "v//n",
+    "expression": "a // b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=2\nlocal result=a // b\nprint(result)",
+    "expected": "vector"
+  },
+  {
+    "name": "v//v",
+    "expression": "a // b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=vector(2, 3, 4)\nlocal result=a // b\nprint(result)",
+    "expected": "vector"
+  },
+  {
+    "name": "v//r",
+    "expression": "a // b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a // b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r//n",
+    "expression": "a // b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=2\nlocal result=a // b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r//v",
+    "expression": "a // b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=vector(2, 3, 4)\nlocal result=a // b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r//r",
+    "expression": "a // b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a // b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "n%n",
+    "expression": "a % b",
+    "source": "local a=6\nlocal b=2\nlocal result=a % b\nprint(result)",
+    "expected": "number"
+  },
+  {
+    "name": "n%v",
+    "expression": "a % b",
+    "source": "local a=6\nlocal b=vector(2, 3, 4)\nlocal result=a % b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "n%r",
+    "expression": "a % b",
+    "source": "local a=6\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a % b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "v%n",
+    "expression": "a % b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=2\nlocal result=a % b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "v%v",
+    "expression": "a % b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=vector(2, 3, 4)\nlocal result=a % b\nprint(result)",
+    "expected": "vector"
+  },
+  {
+    "name": "v%r",
+    "expression": "a % b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a % b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r%n",
+    "expression": "a % b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=2\nlocal result=a % b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r%v",
+    "expression": "a % b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=vector(2, 3, 4)\nlocal result=a % b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r%r",
+    "expression": "a % b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a % b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "n^n",
+    "expression": "a ^ b",
+    "source": "local a=6\nlocal b=2\nlocal result=a ^ b\nprint(result)",
+    "expected": "number"
+  },
+  {
+    "name": "n^v",
+    "expression": "a ^ b",
+    "source": "local a=6\nlocal b=vector(2, 3, 4)\nlocal result=a ^ b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "n^r",
+    "expression": "a ^ b",
+    "source": "local a=6\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a ^ b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "v^n",
+    "expression": "a ^ b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=2\nlocal result=a ^ b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "v^v",
+    "expression": "a ^ b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=vector(2, 3, 4)\nlocal result=a ^ b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "v^r",
+    "expression": "a ^ b",
+    "source": "local a=vector(6, 9, 12)\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a ^ b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r^n",
+    "expression": "a ^ b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=2\nlocal result=a ^ b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r^v",
+    "expression": "a ^ b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=vector(2, 3, 4)\nlocal result=a ^ b\nprint(result)",
+    "expected": "unknown"
+  },
+  {
+    "name": "r^r",
+    "expression": "a ^ b",
+    "source": "local a=rotation(0, 0, 0, 1)\nlocal b=rotation(0, 0, 0, 1)\nlocal result=a ^ b\nprint(result)",
+    "expected": "unknown"
+  }
+]

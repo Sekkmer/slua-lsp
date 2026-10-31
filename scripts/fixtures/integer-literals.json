@@ -1,0 +1,140 @@
+[
+  {
+    "literal": "0i",
+    "valid": true,
+    "value": "0"
+  },
+  {
+    "literal": "42i",
+    "valid": true,
+    "value": "42"
+  },
+  {
+    "literal": "1_000i",
+    "valid": true,
+    "value": "1000"
+  },
+  {
+    "literal": "9007199254740993i",
+    "valid": true,
+    "value": "9007199254740993"
+  },
+  {
+    "literal": "9223372036854775807i",
+    "valid": true,
+    "value": "9223372036854775807"
+  },
+  {
+    "literal": "00042i",
+    "valid": true,
+    "value": "42"
+  },
+  {
+    "literal": "0xABi",
+    "valid": true,
+    "value": "171"
+  },
+  {
+    "literal": "0XFF_FFi",
+    "valid": true,
+    "value": "65535"
+  },
+  {
+    "literal": "0xffffffffffffffffi",
+    "valid": true,
+    "value": "-1"
+  },
+  {
+    "literal": "0x8000000000000000i",
+    "valid": true,
+    "value": "-9223372036854775808"
+  },
+  {
+    "literal": "0b101010i",
+    "valid": true,
+    "value": "42"
+  },
+  {
+    "literal": "0b1111111111111111111111111111111111111111111111111111111111111111i",
+    "valid": true,
+    "value": "-1"
+  },
+  {
+    "literal": "-42i",
+    "valid": true,
+    "value": "-42"
+  },
+  {
+    "literal": "-0xffffffffffffffffi",
+    "valid": true,
+    "value": "1"
+  },
+  {
+    "literal": "-0x8000000000000000i",
+    "valid": true,
+    "value": "-9223372036854775808"
+  },
+  {
+    "literal": "1__i",
+    "valid": true,
+    "value": "1"
+  },
+  {
+    "literal": "9223372036854775808i",
+    "valid": false
+  },
+  {
+    "literal": "-9223372036854775808i",
+    "valid": false
+  },
+  {
+    "literal": "18446744073709551615i",
+    "valid": false
+  },
+  {
+    "literal": "0x10000000000000000i",
+    "valid": false
+  },
+  {
+    "literal": "0b11111111111111111111111111111111111111111111111111111111111111111i",
+    "valid": false
+  },
+  {
+    "literal": ".5i",
+    "valid": false
+  },
+  {
+    "literal": "1.0i",
+    "valid": false
+  },
+  {
+    "literal": "1e3i",
+    "valid": false
+  },
+  {
+    "literal": "0xABMi",
+    "valid": false
+  },
+  {
+    "literal": "0b250i",
+    "valid": false
+  },
+  {
+    "literal": "123ii",
+    "valid": false
+  },
+  {
+    "literal": "0xABii",
+    "valid": false
+  },
+  {
+    "literal": "0b0b1i",
+    "valid": false
+  },
+  {
+    "literal": "table-metamethod-control",
+    "source": "local object=setmetatable({}, {__add=function(self, other: integer) return other end})\nlocal value=object+42i\nprint(type(value), tostring(value))",
+    "valid": true,
+    "value": "42"
+  }
+]

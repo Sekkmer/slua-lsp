@@ -1,0 +1,114 @@
+[
+  {
+    "name": "empty-backtick",
+    "source": "@[native(``)] local function answer(): number return 42 end\nassert(answer()==42)",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0
+    }
+  },
+  {
+    "name": "constant-backtick",
+    "source": "@[native(`tag`)] local function answer(): number return 42 end\nassert(answer()==42)",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0
+    }
+  },
+  {
+    "name": "string-interpolation",
+    "source": "@[native(`{\"tag\"}`)] local function answer(): number return 42 end\nassert(answer()==42)",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1
+    }
+  },
+  {
+    "name": "empty-string-interpolation",
+    "source": "@[native(`{\"\"}`)] local function answer(): number return 42 end\nassert(answer()==42)",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1
+    }
+  },
+  {
+    "name": "nested-string-interpolation",
+    "source": "@[native{tag=`{\"tag\"}`} ] local function answer(): number return 42 end\nassert(answer()==42)",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1
+    }
+  },
+  {
+    "name": "deprecated-interpolation",
+    "source": "@[deprecated{use=`{\"next\"}`} ] local function answer(): number return 42 end\nassert(answer()==42)",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1
+    }
+  },
+  {
+    "name": "argument-trailing-comma",
+    "source": "@[native(1,)] local function answer(): number return 42 end\nassert(answer()==42)",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1
+    }
+  },
+  {
+    "name": "spaced-list",
+    "source": "@ [native] local function answer(): number return 42 end\nassert(answer()==42)",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1
+    }
+  },
+  {
+    "name": "newline-list",
+    "source": "@\n[native] local function answer(): number return 42 end\nassert(answer()==42)",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1
+    }
+  },
+  {
+    "name": "multiline-lists",
+    "source": "@[\nnative,\nchecked,\ndeprecated{\nuse=\"next\",\nreason=\"old\"\n}\n] local function answer(): number return 42 end\nassert(answer()==42)",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0
+    }
+  },
+  {
+    "name": "type-of-comment",
+    "source": "local value: typeof( -- note\n@native function():number return 42 end)=@checked function():number return 42 end\nassert(value()==42)",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0
+    }
+  },
+  {
+    "name": "typeof-record-key",
+    "source": "local value: typeof({typeof=@native function():number return 42 end})\nprint(value)",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0
+    }
+  },
+  {
+    "name": "typeof-local-body-trivia",
+    "source": "local fn: typeof(function(): number\nlocal value: number\n@native local function answer(): number return 42 end\nvalue=answer()\nreturn value\nend)\nprint(fn)",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0
+    }
+  },
+  {
+    "name": "typeof-alias-body-trivia",
+    "source": "type F=typeof(function(): number\nlocal value: number\n@native local function answer(): number return 42 end\nvalue=answer()\nreturn value\nend)\nlocal fn: F\nprint(fn)",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0
+    }
+  }
+]

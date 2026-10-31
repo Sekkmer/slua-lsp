@@ -2,6 +2,10 @@ export enum TokenType {
   // Literals
   NUMBER = 'NUMBER',
   STRING = 'STRING',
+  TEMPLATE_START = 'TEMPLATE_START',
+  TEMPLATE_END = 'TEMPLATE_END',
+  INTERPOLATION_START = 'INTERPOLATION_START',
+  INTERPOLATION_END = 'INTERPOLATION_END',
   BOOLEAN = 'BOOLEAN',
   NIL = 'NIL',
 
@@ -60,6 +64,7 @@ export enum TokenType {
   ASSIGN = 'ASSIGN',
 
   // Punctuation
+  AT = 'AT',
   LEFT_PAREN = 'LEFT_PAREN',
   RIGHT_PAREN = 'RIGHT_PAREN',
   LEFT_BRACKET = 'LEFT_BRACKET',
@@ -91,4 +96,9 @@ export interface Token {
   column: number;
   start: number;
   end: number;
+  /** Decoded literal value; raw spelling remains in value. */
+  stringValue?: string;
+}
+export class LexerError extends Error {
+	constructor(message: string, readonly offset: number) { super(message); }
 }

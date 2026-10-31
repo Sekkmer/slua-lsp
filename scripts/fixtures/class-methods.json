@@ -1,0 +1,164 @@
+[
+  {
+    "name": "builtin-argument",
+    "source": "class Box\npublic x: number\nfunction value(self): ()\nmath.abs(\"wrong\")\nend\nend\n",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false
+  },
+  {
+    "name": "builtin-count",
+    "source": "class Box\npublic x: number\nfunction value(self): ()\nmath.abs()\nend\nend\n",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "nativeValid": false
+  },
+  {
+    "name": "local-assignment",
+    "source": "class Box\npublic x: number\nfunction value(self): ()\nlocal count: number = \"wrong\"\nprint(count)\nend\nend\n",
+    "codes": [
+      "assignment-type-mismatch"
+    ],
+    "nativeValid": false
+  },
+  {
+    "name": "declared-return",
+    "source": "class Box\npublic x: number\nfunction value(self): number\nreturn \"wrong\"\nend\nend\n",
+    "codes": [
+      "declared-return-type-mismatch"
+    ],
+    "nativeValid": false
+  },
+  {
+    "name": "field-return",
+    "source": "class Box\npublic x: number\nfunction value(self): string\nreturn self.x\nend\nend\n",
+    "codes": [
+      "declared-return-type-mismatch"
+    ],
+    "nativeValid": false
+  },
+  {
+    "name": "field-call",
+    "source": "class Box\npublic x: number\nfunction value(self): ()\nstring.lower(self.x)\nend\nend\n",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false
+  },
+  {
+    "name": "field-write",
+    "source": "class Box\npublic x: number\nfunction value(self): ()\nself.x=\"wrong\"\nend\nend\n",
+    "codes": [
+      "assignment-type-mismatch"
+    ],
+    "nativeValid": false
+  },
+  {
+    "name": "computed-field-write",
+    "source": "class Box\npublic x: number\nfunction value(self): ()\nself[\"x\"]=\"wrong\"\nend\nend\n",
+    "codes": [
+      "assignment-type-mismatch"
+    ],
+    "nativeValid": false
+  },
+  {
+    "name": "typed-parameter-call",
+    "source": "class Box\npublic x: number\nfunction value(self, text: string): ()\nmath.abs(text)\nend\nend\n",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false
+  },
+  {
+    "name": "nested-closure",
+    "source": "class Box\npublic x: number\nfunction value(self): ()\nlocal function nested(): () math.abs(\"wrong\") end\nnested()\nend\nend\n",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false
+  },
+  {
+    "name": "capture-self",
+    "source": "class Box\npublic x: number\nfunction value(self): ()\nlocal function nested(): number return self.x end\nstring.lower(nested())\nend\nend\n",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false
+  },
+  {
+    "name": "valid-field-return",
+    "source": "class Box\npublic x: number\nfunction value(self): number\nreturn self.x\nend\nend\nassert(Box {x=42}:value()==42)",
+    "codes": [],
+    "nativeValid": true
+  },
+  {
+    "name": "valid-field-write",
+    "source": "class Box\npublic x: number\nfunction value(self): ()\nself.x=42\nself[\"x\"]=43\nassert(self.x==43)\nend\nend\nBox {x=1}:value()",
+    "codes": [],
+    "nativeValid": true
+  },
+  {
+    "name": "valid-parameter",
+    "source": "class Box\npublic x: number\nfunction value(self, count: number): ()\nmath.abs(count)\nend\nend\nBox {x=1}:value(42)",
+    "codes": [],
+    "nativeValid": true
+  },
+  {
+    "name": "valid-shadow-self",
+    "source": "class Box\npublic x: number\nfunction value(self): ()\nlocal self={x=\"ok\"}\nstring.lower(self.x)\nend\nend\nBox {x=1}:value()",
+    "codes": [],
+    "nativeValid": true
+  },
+  {
+    "name": "valid-later-self",
+    "source": "class Box\npublic x: number\nfunction value(item: number, self: string): ()\nmath.abs(item)\nstring.lower(self)\nend\nend\nBox.value(42,\"ok\")",
+    "codes": [],
+    "nativeValid": true
+  },
+  {
+    "name": "valid-no-self",
+    "source": "class Box\npublic x: number\nfunction value(): number\nreturn 42\nend\nend\nassert(Box.value()==42)",
+    "codes": [],
+    "nativeValid": true
+  },
+  {
+    "name": "valid-capture-self",
+    "source": "class Box\npublic x: number\nfunction value(self): number\nlocal function nested(): number return self.x end\nreturn nested()\nend\nend\nassert(Box {x=42}:value()==42)",
+    "codes": [],
+    "nativeValid": true
+  },
+  {
+    "name": "valid-body-local-scope",
+    "source": "class Box\npublic x: number\nfunction value(self): ()\nlocal count: number=42\nmath.abs(count)\nend\nend\nlocal count: string=\"ok\"\nstring.lower(count)",
+    "codes": [],
+    "nativeValid": true
+  },
+  {
+    "name": "valid-parameter-scope",
+    "source": "class Box\npublic x: number\nfunction value(self, count: number): ()\nmath.abs(count)\nend\nend\nlocal count: string=\"ok\"\nstring.lower(count)",
+    "codes": [],
+    "nativeValid": true
+  },
+  {
+    "name": "valid-global-print",
+    "source": "class Box\npublic x: number\nfunction value(self): ()\nprint(self.x)\nend\nend\nBox {x=1}:value()",
+    "codes": [],
+    "nativeValid": true
+  },
+  {
+    "name": "directive-suppresses-call",
+    "source": "class Box\npublic x: number\nfunction value(self): ()\n-- slua-lsp:disable-next-line call-argument-type-mismatch\nmath.abs(\"wrong\")\nend\nend\n",
+    "codes": [],
+    "nativeValid": false,
+    "nativeNote": "LSP suppression is not a native Luau type directive."
+  },
+  {
+    "name": "directive-suppresses-write",
+    "source": "class Box\npublic x: number\nfunction value(self): ()\n-- slua-lsp:disable-next-line assignment-type-mismatch\nself.x=\"wrong\"\nend\nend\n",
+    "codes": [],
+    "nativeValid": false,
+    "nativeNote": "LSP suppression is not a native Luau type directive."
+  }
+]

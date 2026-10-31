@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "repository": "https://github.com/secondlife/sl-vscode-plugin",
+  "commit": "5769f7cb07ada04f58206782a3f80a8f82102b3d",
+  "commit_date": "2026-10-08T22:22:36Z",
+  "archive_url": "https://codeload.github.com/secondlife/sl-vscode-plugin/tar.gz/5769f7cb07ada04f58206782a3f80a8f82102b3d",
+  "archive_sha256": "704476220bfa3a73a02c28f4ed24691702c0a45edd80072dd09b53c3eee601b6",
+  "files": 186,
+  "maximum_archive_bytes": 16777216,
+  "maximum_unpacked_bytes": 67108864
+}

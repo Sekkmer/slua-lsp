@@ -1,0 +1,324 @@
+[
+  {
+    "name": "local-basic",
+    "source": "if local x=42 then assert(x==42) end\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "const-basic",
+    "source": "if const x=42 then assert(x==42) end\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "local-annotation",
+    "source": "if local x: number?=42 then math.abs(x) end",
+    "valid": true,
+    "disabled": false
+  },
+  {
+    "name": "const-annotation",
+    "source": "if const x: number?=42 then math.abs(x) end",
+    "valid": true,
+    "disabled": false
+  },
+  {
+    "name": "table-annotation",
+    "source": "if local t: {x:number}={x=42} then assert(t.x==42) end\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "function-annotation",
+    "source": "if local f: (number)->number=function(v) return v end then assert(f(42)==42) end\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "trivia",
+    "source": "if\n-- condition\nlocal\n-- name\nx\n=\n42\nthen\nprint(x)\nend",
+    "valid": true,
+    "disabled": false,
+    "stdout": "42\n"
+  },
+  {
+    "name": "const-trivia",
+    "source": "if const -- name\nx = 42 then print(x) end",
+    "valid": true,
+    "disabled": false,
+    "stdout": "42\n"
+  },
+  {
+    "name": "outer-initializer",
+    "source": "local x=\"42\"\nif local x=tonumber(x) then assert(x==42) end\nassert(x==\"42\")\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "outer-else",
+    "source": "local x=\"outer\"\nif local x=nil then assert(false) else assert(x==\"outer\") end\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "independent-elseif",
+    "source": "if local x=nil then error(\"bad\") elseif const y=42 then assert(y==42) else error(\"bad\") end\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "ordinary-elseif",
+    "source": "if false then error(\"bad\") elseif local x=false then error(\"bad\") elseif true then print(\"ok\") end",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "nested-statements",
+    "source": "if local t={x=42} then if const x=t.x then assert(x==42) end end\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "expression-local",
+    "source": "local result=if local x=42 then x else 0\nprint(result)",
+    "valid": true,
+    "disabled": false,
+    "stdout": "42\n"
+  },
+  {
+    "name": "expression-const",
+    "source": "local result=if const x=42 then x else 0\nprint(result)",
+    "valid": true,
+    "disabled": false,
+    "stdout": "42\n"
+  },
+  {
+    "name": "expression-elseif",
+    "source": "local result=if local x=nil then x elseif const y=42 then y else 0\nprint(result)",
+    "valid": true,
+    "disabled": false,
+    "stdout": "42\n"
+  },
+  {
+    "name": "expression-nested",
+    "source": "local result=if local t={x=42} then (if local x=t.x then x else 0) else 0\nprint(result)",
+    "valid": true,
+    "disabled": false,
+    "stdout": "42\n"
+  },
+  {
+    "name": "initializer-expression",
+    "source": "if local x=if true then 42 else 0 then print(x) end",
+    "valid": true,
+    "disabled": false,
+    "stdout": "42\n"
+  },
+  {
+    "name": "zero-truthy",
+    "source": "if local x=0 then assert(x==0) else error(\"bad\") end\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "empty-truthy",
+    "source": "if local x=\"\" then assert(x==\"\") else error(\"bad\") end\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "false-falls-through",
+    "source": "if local x=false then error(\"bad\") else print(\"ok\") end",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "first-result-only",
+    "source": "local function pair() return false,42 end\nlocal result=if local x=pair() then \"bad\" else \"ok\"\nprint(result)",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "evaluate-once",
+    "source": "local count=0\nlocal function nextValue() count+=1; return count,42 end\nif local x=nextValue() then assert(x==1) end\nassert(count==1)\nlocal result=if local x=nextValue() then x else 0\nassert(count==2 and result==2)\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "closure-capture",
+    "source": "local f\nif const x=42 then f=function() return x end end\nassert(f()==42)\nlocal g=if local x=43 then function() return x end else function() return 0 end\nassert(g()==43)\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "const-table-mutation",
+    "source": "if const t={x=1} then t.x+=1; assert(t.x==2) end\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "mutable-shadow",
+    "source": "if const x=1 then do local x=2; x+=1; assert(x==3) end end\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "contextual-const",
+    "source": "local const=42\nif const then assert(const==42) end\nassert((if const then const else 0)==42)\nprint(\"ok\")",
+    "valid": true,
+    "disabled": true,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "contextual-const-call",
+    "source": "local const=function() return true end\nif const() then print(\"ok\") end",
+    "valid": true,
+    "disabled": true,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "initializer-name-not-bound",
+    "source": "if local x=x then print(x) end",
+    "valid": true,
+    "disabled": false
+  },
+  {
+    "name": "initializer-compound-outer",
+    "source": "local x=42\nif local x=true and x then assert(x==42) end\nprint(\"ok\")",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "deep-elseif",
+    "source": "if local v0=nil then print(v0)\nelseif local v1=nil then print(v1)\nelseif local v2=nil then print(v2)\nelseif local v3=nil then print(v3)\nelseif local v4=nil then print(v4)\nelseif local v5=nil then print(v5)\nelseif local v6=nil then print(v6)\nelseif local v7=nil then print(v7)\nelseif local v8=nil then print(v8)\nelseif local v9=nil then print(v9)\nelseif local v10=nil then print(v10)\nelseif local v11=nil then print(v11)\nelseif local v12=nil then print(v12)\nelseif local v13=nil then print(v13)\nelseif local v14=nil then print(v14)\nelseif local v15=nil then print(v15)\nelseif local v16=nil then print(v16)\nelseif local v17=nil then print(v17)\nelseif local v18=nil then print(v18)\nelseif local v19=nil then print(v19)\nelseif local v20=nil then print(v20)\nelseif local v21=nil then print(v21)\nelseif local v22=nil then print(v22)\nelseif local v23=nil then print(v23)\nelseif local v24=nil then print(v24)\nelseif local v25=nil then print(v25)\nelseif local v26=nil then print(v26)\nelseif local v27=nil then print(v27)\nelseif local v28=nil then print(v28)\nelseif local v29=nil then print(v29)\nelseif local v30=nil then print(v30)\nelseif local v31=nil then print(v31)\nelseif local v32=nil then print(v32)\nelseif local v33=nil then print(v33)\nelseif local v34=nil then print(v34)\nelseif local v35=nil then print(v35)\nelseif local v36=nil then print(v36)\nelseif local v37=nil then print(v37)\nelseif local v38=nil then print(v38)\nelseif local v39=nil then print(v39)\nelseif local v40=nil then print(v40)\nelseif local v41=nil then print(v41)\nelseif local v42=nil then print(v42)\nelseif local v43=nil then print(v43)\nelseif local v44=nil then print(v44)\nelseif local v45=nil then print(v45)\nelseif local v46=nil then print(v46)\nelseif local v47=nil then print(v47)\nelseif local v48=nil then print(v48)\nelseif local v49=nil then print(v49)\nelseif local v50=nil then print(v50)\nelseif local v51=nil then print(v51)\nelseif local v52=nil then print(v52)\nelseif local v53=nil then print(v53)\nelseif local v54=nil then print(v54)\nelseif local v55=nil then print(v55)\nelseif local v56=nil then print(v56)\nelseif local v57=nil then print(v57)\nelseif local v58=nil then print(v58)\nelseif local v59=nil then print(v59)\nelseif local v60=nil then print(v60)\nelseif local v61=nil then print(v61)\nelseif local v62=nil then print(v62)\nelseif local v63=nil then print(v63)\nelse print(\"ok\") end",
+    "valid": true,
+    "disabled": false,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "missing-equals",
+    "source": "if local x then end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "const-missing-equals",
+    "source": "if const x then end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "multiple-bindings",
+    "source": "if local x,y=1 then end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "multiple-values",
+    "source": "if local x=1,2 then end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "missing-name",
+    "source": "if local =1 then end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "missing-value",
+    "source": "if local x= then end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "missing-type",
+    "source": "if local x: =1 then end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "missing-then",
+    "source": "if local x=1 print(x) end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "missing-end",
+    "source": "if local x=1 then print(x)",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "expression-missing-else",
+    "source": "local result=if local x=1 then x",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "while-binding",
+    "source": "while local x=1 do end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "not-binding",
+    "source": "if not local x=1 then end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "compound-bindings",
+    "source": "if local x=1; local y=2 then end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "const-function",
+    "source": "if const function x() end then end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "const-reassign",
+    "source": "if const x=1 then x=2 end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "const-compound",
+    "source": "if const x=1 then x+=1 end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "const-function-write",
+    "source": "if const x=1 then function x() end end",
+    "valid": false,
+    "disabled": false
+  },
+  {
+    "name": "const-closure-write",
+    "source": "local result=if const x=1 then function() x=2 end else nil",
+    "valid": false,
+    "disabled": false
+  }
+]

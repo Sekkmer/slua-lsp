@@ -1,0 +1,261 @@
+[
+  {
+    "name": "empty",
+    "source": "class Point end",
+    "valid": true
+  },
+  {
+    "name": "fields",
+    "source": "class Point\npublic x: number\npublic y\nend",
+    "valid": true
+  },
+  {
+    "name": "same-line-untyped",
+    "source": "class Point public x public y end",
+    "valid": true
+  },
+  {
+    "name": "same-line-typed",
+    "source": "class Point public x: number public y: string end",
+    "valid": true
+  },
+  {
+    "name": "contextual-public-type",
+    "source": "type public = number\nclass Point\npublic x: public\nend",
+    "valid": true
+  },
+  {
+    "name": "comments",
+    "source": "class Point -- header\n-- comment\npublic x: number -- field\n--[[ block ]]\nfunction value(self) return self.x end\nend",
+    "valid": true
+  },
+  {
+    "name": "public-method",
+    "source": "export class Point\npublic function value(self, x: number): number return x end\nend",
+    "valid": true
+  },
+  {
+    "name": "annotated-non-self",
+    "source": "class Point\nfunction value(item: Point) return item end\nend",
+    "valid": true
+  },
+  {
+    "name": "later-self-annotation",
+    "source": "class Point\nfunction value(item, self: Point) return item, self end\nend",
+    "valid": true
+  },
+  {
+    "name": "following-declaration",
+    "source": "class Point\npublic x\nend\nlocal after = 42\nprint(after)",
+    "valid": true
+  },
+  {
+    "name": "allowed-__init",
+    "source": "class Point\nfunction __init(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__call",
+    "source": "class Point\nfunction __call(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__concat",
+    "source": "class Point\nfunction __concat(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__unm",
+    "source": "class Point\nfunction __unm(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__add",
+    "source": "class Point\nfunction __add(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__sub",
+    "source": "class Point\nfunction __sub(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__mul",
+    "source": "class Point\nfunction __mul(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__div",
+    "source": "class Point\nfunction __div(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__mod",
+    "source": "class Point\nfunction __mod(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__pow",
+    "source": "class Point\nfunction __pow(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__tostring",
+    "source": "class Point\nfunction __tostring(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__eq",
+    "source": "class Point\nfunction __eq(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__lt",
+    "source": "class Point\nfunction __lt(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__le",
+    "source": "class Point\nfunction __le(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__iter",
+    "source": "class Point\nfunction __iter(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__len",
+    "source": "class Point\nfunction __len(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "allowed-__idiv",
+    "source": "class Point\nfunction __idiv(self) end\nend",
+    "valid": true
+  },
+  {
+    "name": "duplicate-field",
+    "source": "class Point\npublic x: number\npublic x: number\nend",
+    "valid": false,
+    "message": "Duplicate class member"
+  },
+  {
+    "name": "duplicate-method",
+    "source": "class Point\nfunction x(self) end\nfunction x(self) end\nend",
+    "valid": false,
+    "message": "Duplicate class member"
+  },
+  {
+    "name": "field-method-collision",
+    "source": "class Point\npublic x\nfunction x(self) end\nend",
+    "valid": false,
+    "message": "Duplicate class member"
+  },
+  {
+    "name": "method-field-collision",
+    "source": "class Point\nfunction x(self) end\npublic x\nend",
+    "valid": false,
+    "message": "Duplicate class member"
+  },
+  {
+    "name": "reserved-property",
+    "source": "class Point\npublic __index: number\nend",
+    "valid": false,
+    "message": "properties cannot start"
+  },
+  {
+    "name": "unknown-reserved-method",
+    "source": "class Point\nfunction __future(self) end\nend",
+    "valid": false,
+    "message": "reserved"
+  },
+  {
+    "name": "disallowed-__index",
+    "source": "class Point\nfunction __index(self) end\nend",
+    "valid": false,
+    "message": "cannot define"
+  },
+  {
+    "name": "disallowed-__newindex",
+    "source": "class Point\nfunction __newindex(self) end\nend",
+    "valid": false,
+    "message": "cannot define"
+  },
+  {
+    "name": "disallowed-__mode",
+    "source": "class Point\nfunction __mode(self) end\nend",
+    "valid": false,
+    "message": "cannot define"
+  },
+  {
+    "name": "disallowed-__metatable",
+    "source": "class Point\nfunction __metatable(self) end\nend",
+    "valid": false,
+    "message": "cannot define"
+  },
+  {
+    "name": "disallowed-__type",
+    "source": "class Point\nfunction __type(self) end\nend",
+    "valid": false,
+    "message": "cannot define"
+  },
+  {
+    "name": "unterminated",
+    "source": "class Point\npublic x: number",
+    "valid": false,
+    "message": "Expected 'end'"
+  },
+  {
+    "name": "self-annotation",
+    "source": "class Point\nfunction run(self: Point) end\nend",
+    "valid": false,
+    "message": "'self' parameter cannot have a type annotation"
+  },
+  {
+    "name": "arbitrary-body",
+    "source": "class Point\nprint(42)\nend",
+    "valid": false,
+    "message": "Only class properties and functions"
+  },
+  {
+    "name": "initializer",
+    "source": "class Point\npublic x = 42\nend",
+    "valid": false,
+    "message": "Only class properties and functions"
+  },
+  {
+    "name": "empty-field-type",
+    "source": "class Point\npublic x:\nend",
+    "valid": false,
+    "message": "Expected class property type"
+  },
+  {
+    "name": "qualified-method",
+    "source": "class Point\nfunction Point.value(self) end\nend",
+    "valid": false,
+    "message": "Expected an unqualified class method name"
+  },
+  {
+    "name": "colon-method",
+    "source": "class Point\nfunction Point:value() end\nend",
+    "valid": false,
+    "message": "Expected an unqualified class method name"
+  },
+  {
+    "name": "bad-method-body",
+    "source": "class Point\nfunction value(self)\nlocal =\nend\nend",
+    "valid": false
+  },
+  {
+    "name": "nested",
+    "source": "do\nclass Point end\nend",
+    "valid": false
+  },
+  {
+    "name": "duplicate-class",
+    "source": "class Point end\nclass Point end",
+    "valid": false,
+    "message": "already been declared"
+  }
+]

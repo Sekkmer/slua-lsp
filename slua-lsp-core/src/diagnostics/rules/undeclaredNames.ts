@@ -1,3 +1,5 @@
+import { annotationTypeNames } from '../../parser/annotationReferences.js';
+import { conditionalBinding } from '../../typing/conditionalBindings.js';
 import type { CoreDiagnostic, Range } from '../types.js';
 
 import type { SluaRegistry } from '../../slua/registry.js';
@@ -69,6 +71,10 @@ type ErrorStatementNode = AstNode & { type: 'ErrorStatement'; message?: string }
 
 type TypeAliasNode = AstNode & { type: 'TypeAlias'; name: unknown; definition: unknown };
 
+type ClassFieldNode = AstNode & { type: 'ClassField'; name: unknown; typeAnnotation?: string };
+
+type ClassDeclarationNode = AstNode & { type: 'ClassDeclaration'; name: unknown; fields: unknown[]; methods: unknown[]; superClass?: unknown };
+
 function isRecord(v: unknown): v is Record<string, unknown> {
 	return typeof v === 'object' && v !== null;
 }
@@ -102,7 +108,7 @@ function isFunctionDeclaration(v: unknown): v is FunctionDeclarationNode {
 	return isAstNode(v) && v.type === 'FunctionDeclaration' && typeof (v as Record<string, unknown>).isLocal === 'boolean' && Array.isArray((v as Record<string, unknown>).body);
 }
 
-function _isFunctionNode(v: unknown): v is FunctionNode {
+function isFunctionNode(v: unknown): v is FunctionNode {
 	return isAstNode(v) && v.type === 'Function' && Array.isArray((v as Record<string, unknown>).parameters) && Array.isArray((v as Record<string, unknown>).body);
 }
 
@@ -166,6 +172,14 @@ function isTypeAlias(v: unknown): v is TypeAliasNode {
 	return isAstNode(v) && v.type === 'TypeAlias' && 'name' in (v as Record<string, unknown>) && 'definition' in (v as Record<string, unknown>);
 }
 
+function isClassDeclaration(v: unknown): v is ClassDeclarationNode {
+	return isAstNode(v) && v.type === 'ClassDeclaration' && Array.isArray((v as Record<string, unknown>).fields) && Array.isArray((v as Record<string, unknown>).methods);
+}
+
+function isClassField(v: unknown): v is ClassFieldNode {
+	return isAstNode(v) && v.type === 'ClassField' && 'name' in (v as Record<string, unknown>);
+}
+
 function rangeFromNode(node: AstNode): Range {
 	const loc = node.location;
 	if (!loc) return { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } };
@@ -226,6 +240,8 @@ const BUILTIN_TYPE_NAMES = new Set<string>([
 	'nil',
 	'any',
 	'unknown',
+	'never',
+	'buffer',
 	'table',
 	// slua custom-ish
 	'uuid',
@@ -323,17 +339,14 @@ class ScopeStack {
 		return false;
 	}
 
-	get depth(): number {
-		return this.scopes.length;
-	}
 }
 
 function isKnownGlobalName(name: string, registry: SluaRegistry | undefined): boolean {
 	if (LUA_BUILTIN_GLOBALS.has(name)) return true;
 	if (!registry) return false;
-	if (registry.getGlobal(name)) return true;
+	if (registry.getGlobal(name) || registry.getGlobalValue(name)) return true;
 	if (registry.getModule(name)) return true;
-	if (registry.getObjectType(name)) return true;
+	if (registry.getObjectType(name) && !registry.getObjectType(name)?.instanceOnly) return true;
 	return false;
 }
 
@@ -378,8 +391,9 @@ function checkTypeAnnotation(
 	if (!annotation) return;
 	// Inline table annotations contain field names/modifiers (e.g. `readonly x`) that
 	// aren't type identifiers. Skip naive token-scanning for these to avoid noise.
-	if (annotation.includes('{') || annotation.includes('}')) return;
-	const tokens = scanIdentifiers(annotation);
+	const classified = annotationTypeNames(owner);
+	if (!classified && (annotation.includes('{') || annotation.includes('}') || /\btypeof\s*\(/.test(annotation))) return;
+	const tokens = classified ?? scanIdentifiers(annotation);
 	if (tokens.length === 0) return;
 	const seen = new Set<string>();
 	for (const t of tokens) {
@@ -424,6 +438,7 @@ export function ruleUndeclaredNames(ast: unknown, registry?: SluaRegistry): Core
 
 	const diags: CoreDiagnostic[] = [];
 	const scopes = new ScopeStack();
+	let functionDepth = 0;
 	const parseErrorAffectedLines = collectParseErrorAffectedLines(ast);
 
 	// Collect declared type aliases at top-level (and any exported types).
@@ -434,9 +449,16 @@ export function ruleUndeclaredNames(ast: unknown, registry?: SluaRegistry): Core
 			declaredTypes.add(stmt.name.name);
 			collectGenericTypeNames(stmt.definition, declaredTypes);
 		}
+		if (isClassDeclaration(stmt) && isIdentifier(stmt.name)) {
+			declaredTypes.add(stmt.name.name);
+			declaredTypes.add('class');
+			declaredTypes.add('object');
+		}
 	}
 
 	function warnUndeclared(id: IdentifierNode): void {
+		if (registry?.sourceMacroUses.has(id)) return;
+		if (registry?.sourceRequireCallees.has(id)) return;
 		if (id.location && parseErrorAffectedLines.has(Math.max(0, id.location.start.line - 1))) return;
 		if (scopes.has(id.name)) return;
 		if (isKnownGlobalName(id.name, registry)) return;
@@ -449,11 +471,13 @@ export function ruleUndeclaredNames(ast: unknown, registry?: SluaRegistry): Core
 	}
 
 	function warnAccidentalGlobalWrite(id: IdentifierNode): void {
+		if (registry?.sourceMacroUses.has(id)) return;
 		if (id.location && parseErrorAffectedLines.has(Math.max(0, id.location.start.line - 1))) return;
-		// Only warn for writes inside a function scope (depth>1).
-		if (scopes.depth <= 1) return;
 		if (scopes.has(id.name)) return;
 		if (isKnownGlobalName(id.name, registry)) return;
+		// Root execution and its lexical blocks may intentionally initialize a
+		// global. Register it after all RHS reads; block depth is not function depth.
+		if (functionDepth === 0) { scopes.declareGlobal(id.name); return; }
 		diags.push({
 			code: 'accidental-global-write',
 			severity: 'warning',
@@ -464,6 +488,24 @@ export function ruleUndeclaredNames(ast: unknown, registry?: SluaRegistry): Core
 		scopes.declareGlobal(id.name);
 	}
 
+	function visitFunction(node: FunctionNode | FunctionDeclarationNode): void {
+		const previousTypes = new Set(declaredTypes);
+		const generics = (node as Record<string, unknown>).typeParameters;
+		if (Array.isArray(generics)) for (const parameter of generics) {
+			if (typeof parameter === 'string') declaredTypes.add(parameter.replace(/\.\.\.$/, ''));
+		}
+		scopes.push(); functionDepth++;
+		try {
+			declareFunctionParams(node.parameters);
+			checkTypeAnnotation(node, node.returnTypeAnnotation, registry, declaredTypes, diags);
+			visitStatements(node.body);
+		} finally {
+			functionDepth--; scopes.pop();
+			declaredTypes.clear();
+			for (const name of previousTypes) declaredTypes.add(name);
+		}
+	}
+
 	function visitExpression(expr: unknown): void {
 		if (!expr) return;
 		if (Array.isArray(expr)) {
@@ -471,6 +513,19 @@ export function ruleUndeclaredNames(ast: unknown, registry?: SluaRegistry): Core
 			return;
 		}
 		if (!isAstNode(expr)) return;
+
+		if (isFunctionNode(expr)) { visitFunction(expr); return; }
+		if (expr.type === 'IfExpression') {
+			const node = expr as Record<string, unknown>;
+			visitExpression(node.test);
+			scopes.push();
+			const binding = conditionalBinding(expr);
+			if (binding) { scopes.declare(binding.name); checkTypeAnnotation(binding, binding.typeAnnotation, registry, declaredTypes, diags); }
+			visitExpression(node.consequent);
+			scopes.pop();
+			visitExpression(node.alternate);
+			return;
+		}
 
 		if (isIdentifier(expr)) {
 			warnUndeclared(expr);
@@ -515,16 +570,16 @@ export function ruleUndeclaredNames(ast: unknown, registry?: SluaRegistry): Core
 			if (isMemberExpression(callee) && isIdentifier(callee.object) && isIdentifier(callee.property)) {
 				const receiver = callee.object.name;
 				const member = callee.property.name;
-				if ((receiver === 'll' || receiver === 'llcompat') && REMOVED_LL_API_NAMES.has(member)) {
+				if (receiver === 'll' && REMOVED_LL_API_NAMES.has(member)) {
 					// Intentionally removed from SLua runtime; handled by dedicated rule(s).
 					// Avoid duplicating with a generic unknown-member error.
 					// Still visit children to catch undeclared receiver, args, etc.
 				}
 				const reg = registry ?? defaultRegistry;
 				const mod = reg.getModule(receiver);
-				if (mod && (registry || FALLBACK_MODULE_MEMBER_CHECK.has(receiver))) {
+				if (mod && !scopes.has(receiver) && (registry || FALLBACK_MODULE_MEMBER_CHECK.has(receiver))) {
 					const ok = Boolean(mod.functions[member] || mod.values[member]);
-					if (!ok && !((receiver === 'll' || receiver === 'llcompat') && REMOVED_LL_API_NAMES.has(member))) {
+					if (!ok && !(receiver === 'll' && REMOVED_LL_API_NAMES.has(member))) {
 						diags.push({
 							code: 'unknown-member',
 							severity: 'error',
@@ -538,10 +593,10 @@ export function ruleUndeclaredNames(ast: unknown, registry?: SluaRegistry): Core
 				const receiver = callee.object.name;
 				const reg = registry ?? defaultRegistry;
 				const mod = reg.getModule(receiver);
-				if (mod && (registry || FALLBACK_MODULE_MEMBER_CHECK.has(receiver))) {
+				if (mod && !scopes.has(receiver) && (registry || FALLBACK_MODULE_MEMBER_CHECK.has(receiver))) {
 					const idx = callee.index;
 					const member = isAstNode(idx) && idx.type === 'String' && typeof (idx as Record<string, unknown>).value === 'string' ? ((idx as Record<string, unknown>).value as string) : null;
-					if (member && !mod.functions[member] && !mod.values[member] && !((receiver === 'll' || receiver === 'llcompat') && REMOVED_LL_API_NAMES.has(member))) {
+					if (member && !mod.functions[member] && !mod.values[member] && !(receiver === 'll' && REMOVED_LL_API_NAMES.has(member))) {
 						diags.push({
 							code: 'unknown-member',
 							severity: 'error',
@@ -580,6 +635,22 @@ export function ruleUndeclaredNames(ast: unknown, registry?: SluaRegistry): Core
 				continue;
 			}
 
+			if (isClassDeclaration(stmt)) {
+				if (isIdentifier(stmt.name)) {
+					declaredTypes.add(stmt.name.name);
+					scopes.declareGlobal(stmt.name.name);
+				}
+				visitExpression(stmt.superClass);
+				for (const field of stmt.fields) {
+					if (isClassField(field)) checkTypeAnnotation(field, field.typeAnnotation, registry, declaredTypes, diags);
+				}
+				for (const method of stmt.methods) {
+					if (!isFunctionDeclaration(method)) continue;
+					visitFunction(method);
+				}
+				continue;
+			}
+
 			if (isLocalStatement(stmt)) {
 				// Evaluate RHS first (Lua: RHS evaluated before LHS assignment).
 				for (const initExpr of stmt.init ?? []) visitExpression(initExpr);
@@ -601,12 +672,7 @@ export function ruleUndeclaredNames(ast: unknown, registry?: SluaRegistry): Core
 					}
 				}
 
-				// Enter function scope.
-				scopes.push();
-				declareFunctionParams(stmt.parameters);
-				checkTypeAnnotation(stmt, stmt.returnTypeAnnotation, registry, declaredTypes, diags);
-				visitStatements(stmt.body);
-				scopes.pop();
+				visitFunction(stmt);
 				continue;
 			}
 
@@ -650,6 +716,8 @@ export function ruleUndeclaredNames(ast: unknown, registry?: SluaRegistry): Core
 			if (isIfStatement(stmt)) {
 				visitExpression(stmt.test);
 				scopes.push();
+				const binding = conditionalBinding(stmt);
+				if (binding) { scopes.declare(binding.name); checkTypeAnnotation(binding, binding.typeAnnotation, registry, declaredTypes, diags); }
 				visitStatements(stmt.consequent);
 				scopes.pop();
 				const alt = stmt.alternate;
@@ -701,13 +769,8 @@ export function ruleUndeclaredNames(ast: unknown, registry?: SluaRegistry): Core
 		}
 	}
 
-	// Seed global scope.
-	for (const g of LUA_BUILTIN_GLOBALS) scopes.declareGlobal(g);
-	if (registry) {
-		for (const k of registry.modules.keys()) scopes.declareGlobal(k);
-		for (const k of registry.objectTypes.keys()) scopes.declareGlobal(k);
-		for (const k of registry.globals.keys()) scopes.declareGlobal(k);
-	}
+	// Builtins are recognized by isKnownGlobalName; scopes contain user bindings
+	// so native member checks can distinguish a local shadow from its global.
 	for (const t of SLUA_KNOWN_TYPES) {
 		// Types are checked separately; but allow type names to be used as identifiers too in some scripts.
 		// (We don't declare them as values.)

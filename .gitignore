@@ -15,3 +15,24 @@ coverage/
 
 # Upstream SLua source (cloned for inspection)
 /slua/
+
+# Local fixtures, research snapshots, build/test logs and release evidence
+/.local/
+
+# Python preparation helpers
+__pycache__/
+*.pyc
+
+# Managed resource scratch and Node compile caches
+/target/
+
+# Local instructions, private configuration and captured output
+AGENT.md
+AGENTS.md
+/.agents/
+/.claude/
+/.codex/
+/.github/prompts/
+.env
+.env.*
+*.log

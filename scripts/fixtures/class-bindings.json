@@ -1,0 +1,396 @@
+[
+  {
+    "name": "constructor-binding",
+    "source": "class Box end\nlocal item=Box {}\nassert(item~=nil)",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "assign-constructor",
+    "source": "class Box end\nBox=nil",
+    "codes": [
+      "parse-error"
+    ],
+    "parseValid": false,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "assign-captured-constructor",
+    "source": "class Box end\nlocal function update() Box=nil end\nupdate()",
+    "codes": [
+      "parse-error"
+    ],
+    "parseValid": false,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "compound-constructor",
+    "source": "class Box end\nBox+=1",
+    "codes": [
+      "parse-error"
+    ],
+    "parseValid": false,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "multiple-assignment",
+    "source": "class Box end\nlocal other\nBox,other=nil,1",
+    "codes": [
+      "parse-error"
+    ],
+    "parseValid": false,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "nonlocal-function-replacement",
+    "source": "class Box end\nfunction Box() end",
+    "codes": [
+      "parse-error"
+    ],
+    "parseValid": false,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "directive-cannot-hide-parser",
+    "source": "class Box end\n-- slua-lsp:disable all\nBox=nil",
+    "codes": [
+      "parse-error"
+    ],
+    "parseValid": false,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "outer-after-shadow",
+    "source": "class Box end\ndo local Box=1\nBox=2\nprint(Box) end\nBox=nil",
+    "codes": [
+      "parse-error"
+    ],
+    "parseValid": false,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "two-constructor-targets",
+    "source": "class Box end\nclass Other end\nBox,Other=nil,nil",
+    "codes": [
+      "parse-error",
+      "parse-error"
+    ],
+    "parseValid": false,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "mutable-constructor-alias",
+    "source": "class Box end\nlocal Make=Box\nMake=nil\nassert(Make==nil)",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "shadow-local",
+    "source": "class Box end\nlocal Box=1\nBox=2\nassert(Box==2)",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "shadow-parameter",
+    "source": "class Box end\nlocal function value(Box: number) Box=2\nreturn Box end\nassert(value(1)==2)",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "shadow-block",
+    "source": "class Box end\ndo local Box=1\nBox=2\nassert(Box==2) end\nassert(Box{}~=nil)",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "shadow-closure",
+    "source": "class Box end\nlocal function value() local Box=1\nBox=2\nreturn Box end\nassert(value()==2)",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "initializer-old-class-new-mutable-binding",
+    "source": "class Box end\nlocal Box=Box\nBox=nil\nassert(Box==nil)",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "class-after-ordinary-value",
+    "source": "local Box=42\nclass Box end\nassert(Box{}~=nil)",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "mutable-instance-field",
+    "source": "class Box\npublic x: number\nend\nlocal item=Box{x=1}\nitem.x=2\nassert(item.x==2)",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "member-write-not-binding-write",
+    "source": "class Box\nfunction value(): number return 1 end\nend\nBox.value=function() return 2 end",
+    "codes": [
+      "class-readonly-member"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "alias-before-class",
+    "source": "type Box=number\nclass Box end",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "class-before-alias",
+    "source": "class Box end\ntype Box=number",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "duplicate-alias",
+    "source": "type Value=number\ntype Value=string",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "triple-alias",
+    "source": "type Value=number\ntype Value=string\ntype Value=boolean",
+    "codes": [
+      "duplicate-type-definition",
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "generic-alias-class",
+    "source": "type Box<T> = {value:T}\nclass Box end",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "exported-alias-class",
+    "source": "export type Box=number\nclass Box end",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "class-exported-alias",
+    "source": "class Box end\nexport type Box=number",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "value-type-namespaces-independent",
+    "source": "type Box=number\nlocal Box=42\nassert(Box==42)",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "forward-class-type-reference",
+    "source": "type Alias=Box\nclass Box end\nlocal item=Box{}\nassert(item~=nil)",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "different-class-type-alias",
+    "source": "class Box end\ntype Alias=Box\nlocal item=Box{}\nassert(item~=nil)",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "directive-semantic-type-collision",
+    "source": "class Box end\n-- slua-lsp:disable-next-line duplicate-type-definition\ntype Box=number",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "builtin-type-alias-any",
+    "source": "type any=string\nclass Box end",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "builtin-type-alias-unknown",
+    "source": "type unknown=string\nclass Box end",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "builtin-type-alias-never",
+    "source": "type never=string\nclass Box end",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "builtin-type-alias-number",
+    "source": "type number=string\nclass Box end",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "builtin-type-alias-integer",
+    "source": "type integer=string\nclass Box end",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "builtin-type-alias-string",
+    "source": "type string=string\nclass Box end",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "builtin-type-alias-boolean",
+    "source": "type boolean=string\nclass Box end",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "builtin-type-alias-thread",
+    "source": "type thread=string\nclass Box end",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "builtin-type-alias-buffer",
+    "source": "type buffer=string\nclass Box end",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "builtin-type-alias-object",
+    "source": "type object=string\nclass Box end",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "builtin-type-alias-class",
+    "source": "type class=string\nclass Box end",
+    "codes": [
+      "duplicate-type-definition"
+    ],
+    "parseValid": true,
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "ordinary-alias-object",
+    "source": "type object=number\nlocal value: object=42\nassert(value==42)",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": true,
+    "runtime": true,
+    "classProfile": false
+  },
+  {
+    "name": "ordinary-alias-class",
+    "source": "type class=number\nlocal value: class=42\nassert(value==42)",
+    "codes": [],
+    "parseValid": true,
+    "nativeValid": true,
+    "runtime": true,
+    "classProfile": false
+  }
+]

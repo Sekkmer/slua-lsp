@@ -62,7 +62,7 @@ describe('declared return mismatch', () => {
 	test('warns when an if-expression return branch mismatches the declaration', () => {
 		const text = `
 			local function f(): integer
-				return if true then integer(1) else "bad"
+				return if true then integer.maxsigned else "bad"
 			end
 		`;
 		const diags = analyzeText(text, { registry });

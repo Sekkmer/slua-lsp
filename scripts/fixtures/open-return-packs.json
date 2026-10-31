@@ -1,0 +1,116 @@
+[
+  {
+    "name": "find-one-capture",
+    "source": "local a,b,c=string.find(\"a12\", \"(%d+)\"); assert(a==2 and b==3 and c==\"12\")",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "find-typed-capture",
+    "source": "local a:number?,b:number?,c:string=string.find(\"a12\", \"(%d+)\"); assert(c==\"12\"); print(a,b)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "find-two-captures",
+    "source": "local a,b,c,d=string.find(\"a12\", \"(%a)(%d+)\"); assert(a==1 and b==3 and c==\"a\" and d==\"12\")",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "find-not-found",
+    "source": "local a,b,c=string.find(\"abc\", \"z\"); assert(a==nil and b==nil and c==nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "find-no-captures",
+    "source": "local a,b,c=string.find(\"abc\", \"a\"); assert(a==1 and b==1 and c==nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "find-position-capture",
+    "source": "local a,b,c=string.find(\"abc\", \"()b\"); assert(a==2 and b==2 and c==2)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "unpack-two",
+    "source": "local value,nextByte=string.unpack(\"<I2\",string.pack(\"<I2\",42)); assert(value==42 and nextByte==3)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "unpack-four",
+    "source": "local a,b,c,nextByte=string.unpack(\"BBB\",\"abc\"); assert(a==97 and b==98 and c==99 and nextByte==4)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "unpack-empty",
+    "source": "local nextByte=string.unpack(\"\",\"\"); assert(nextByte==1)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "unpack-typed",
+    "source": "local value:number,nextByte:number=string.unpack(\"B\",\"a\"); assert(value==97 and nextByte==2)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "find-alias",
+    "source": "local find=string.find; local a,b,c=find(\"a12\", \"(%d+)\"); assert(a==2 and b==3 and c==\"12\")",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "unpack-field",
+    "source": "local object={read=string.unpack}; local value,nextByte=object.read(\"B\",\"a\"); assert(value==97 and nextByte==2)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "find-wrapper",
+    "source": "local function find() return string.find(\"a12\", \"(%d+)\") end; local a,b,c=find(); assert(a==2 and b==3 and c==\"12\")",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "unpack-wrapper",
+    "source": "local function read() return string.unpack(\"B\",\"a\") end; local a:number,b:number=read(); assert(a==97 and b==2)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "grouped-find",
+    "source": "local a,b=(string.find(\"abc\",\"a\")); assert(a==1 and b==nil)",
+    "codes": [
+      "assignment-return-count-mismatch"
+    ],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "nonfinal-unpack",
+    "source": "local a,b,c=string.unpack(\"BB\",\"ab\"),9; assert(a==97 and b==9 and c==nil)",
+    "codes": [
+      "assignment-return-count-mismatch"
+    ],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "native-open-argument",
+    "source": "local value=lljson.encode(string.unpack(\"\", \"\")); assert(value==\"1\")",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "native-excess-prefix",
+    "source": "lljson.encode(42, {}, string.unpack(\"\", \"\"))",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "runtimeAccepted": false
+  }
+]

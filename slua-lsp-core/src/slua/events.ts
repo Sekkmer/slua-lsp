@@ -1,5 +1,6 @@
 import type { SluaType } from './types.js';
-import { slua, sluaTypeFromLslType } from './types.js';
+import { slua } from './types.js';
+import { sluaParameterType } from './definitionTypes.js';
 
 export type SluaEventParam = {
 	name: string;
@@ -40,6 +41,11 @@ export const defaultSluaEventOverrides: SluaEventOverrides = {
 		tooltip: 'SLua override: detected list (runtime-probed DetectedEvent[]).',
 		source: 'override'
 	},
+	// Current native MULTI_EVENT_NAMES also wraps these events, not just touches/collisions.
+	sensor: { name: 'sensor', params: [{ name: 'detected', type: slua.array(slua.detectedEvent()) }], tooltip: 'Read-only detected entries, valid only during event dispatch.', source: 'override' },
+	on_damage: { name: 'on_damage', params: [{ name: 'detected', type: slua.array(slua.detectedEvent()) }], tooltip: 'Detected damage entries; canAdjustDamage is true during this dispatch.', source: 'override' },
+	final_damage: { name: 'final_damage', params: [{ name: 'detected', type: slua.array(slua.detectedEvent()) }], tooltip: 'Final damage entries; canAdjustDamage is false.', source: 'override' },
+
 	// Runtime probe shows touch/touch_end match touch_start (DetectedEvent[]).
 	touch: {
 		name: 'touch',
@@ -99,7 +105,7 @@ export function buildSluaEventSignaturesFromLslDefinitions(
 	if (!eventsSection) return out;
 
 	for (const [eventName, spec] of Object.entries(eventsSection)) {
-		if (!isRecord(spec)) continue;
+		if (!isRecord(spec) || spec['slua-removed'] === true) continue;
 		const args = getArgumentsArray(spec);
 		const params: SluaEventParam[] = [];
 
@@ -111,7 +117,7 @@ export function buildSluaEventSignaturesFromLslDefinitions(
 			if (!isRecord(paramSpec)) continue;
 			params.push({
 				name: String(paramName),
-				type: sluaTypeFromLslType(getStringProp(paramSpec, 'type'))
+				type: sluaParameterType(paramSpec, true)
 			});
 		}
 
@@ -124,7 +130,9 @@ export function buildSluaEventSignaturesFromLslDefinitions(
 	}
 
 	for (const [eventName, sig] of Object.entries(overrides)) {
-		if (sig) out[eventName] = sig;
+		const spec = eventsSection[eventName];
+		// An adaptation must not resurrect an event explicitly removed upstream.
+		if (sig && !(isRecord(spec) && spec['slua-removed'] === true)) out[eventName] = sig;
 	}
 
 	return out;

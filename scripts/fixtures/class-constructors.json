@@ -1,0 +1,300 @@
+[
+  {
+    "name": "default-number",
+    "source": "class Box\npublic x: number\nend\nlocal item=Box {x=42}\nassert(item.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "default-wrong-field",
+    "source": "class Box\npublic x: number\nend\nlocal item=Box {x=\"wrong\"}\nprint(item.x)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "default-missing-field",
+    "source": "class Box\npublic x: number\nend\nlocal item=Box {}\nprint(item.x)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "default-optional-field",
+    "source": "class Box\npublic x: number?\nend\nlocal item=Box {}\nassert(item.x==nil)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "default-extra-field",
+    "source": "class Box\npublic x: number\nend\nlocal item=Box {x=42,other=\"extra\"}\nassert(item.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "default-no-argument",
+    "source": "class Box\npublic x: number\nend\nlocal item=Box()\nprint(item)",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "default-extra-argument",
+    "source": "class Box\npublic x: number\nend\nlocal item=Box({x=42},{x=43})\nprint(item)",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "default-scalar",
+    "source": "class Box\npublic x: number\nend\nlocal item=Box(42)\nprint(item)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "default-computed-field",
+    "source": "class Box\npublic x: number\nend\nlocal item=Box {[\"x\"]=\"wrong\"}\nprint(item.x)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "default-known-table-field",
+    "source": "class Box\npublic x: number\nend\nlocal values={x=\"wrong\"}\nlocal item=Box(values)\nprint(item.x)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "default-alias-field",
+    "source": "class Box\npublic x: number\nend\nlocal Make=Box\nlocal item=Make {x=\"wrong\"}\nprint(item.x)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "number-constructor",
+    "source": "class Box\npublic x: number\nfunction __init(self, x: number)\nself.x=x\nend\nend\nlocal item=Box(42)\nassert(item.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "wrong-constructor-type",
+    "source": "class Box\npublic x: number\nfunction __init(self, x: number)\nself.x=x\nend\nend\nlocal item=Box(\"wrong\")\nassert(item.x==42)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "missing-constructor-argument",
+    "source": "class Box\npublic x: number\nfunction __init(self, x: number)\nself.x=x\nend\nend\nlocal item=Box()\nassert(item.x==42)",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "extra-constructor-argument",
+    "source": "class Box\npublic x: number\nfunction __init(self, x: number)\nself.x=x\nend\nend\nlocal item=Box(42,43)\nassert(item.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "zero-constructor",
+    "source": "class Box\npublic x: number\nfunction __init(self)\nself.x=42\nend\nend\nlocal item=Box()\nassert(item.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "zero-extra-constructor",
+    "source": "class Box\npublic x: number\nfunction __init(self)\nself.x=42\nend\nend\nlocal item=Box(42)\nassert(item.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "optional-constructor-omitted",
+    "source": "class Box\npublic x: number\nfunction __init(self, x: number?)\nself.x=x or 42\nend\nend\nlocal item=Box()\nassert(item.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "optional-constructor-nil",
+    "source": "class Box\npublic x: number\nfunction __init(self, x: number?)\nself.x=x or 42\nend\nend\nlocal item=Box(nil)\nassert(item.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "optional-constructor-value",
+    "source": "class Box\npublic x: number\nfunction __init(self, x: number?)\nself.x=x or 42\nend\nend\nlocal item=Box(42)\nassert(item.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "optional-constructor-wrong",
+    "source": "class Box\npublic x: number\nfunction __init(self, x: number?)\nself.x=x or 42\nend\nend\nlocal item=Box(\"wrong\")\nassert(item.x==42)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "variadic-constructor",
+    "source": "class Box\npublic values: {number}\nfunction __init(self, ...: number)\nself.values={...}\nend\nend\nlocal item=Box(1,2,3)\nassert(#item.values==3 and item.values[3]==3)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "variadic-constructor-wrong",
+    "source": "class Box\npublic values: {number}\nfunction __init(self, ...: number)\nself.values={...}\nend\nend\nlocal item=Box(1,2,\"wrong\")\nprint(item)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "mixed-variadic-constructor",
+    "source": "class Box\npublic x: number\npublic values: {number}\nfunction __init(self, x: number, ...: number)\nself.x=x\nself.values={...}\nend\nend\nlocal item=Box(42,1,2)\nassert(item.x==42 and #item.values==2)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "mixed-variadic-constructor-wrong",
+    "source": "class Box\npublic x: number\npublic values: {number}\nfunction __init(self, x: number, ...: number)\nself.x=x\nself.values={...}\nend\nend\nlocal item=Box(42,1,\"wrong\")\nprint(item)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "constructor-ignores-init-results",
+    "source": "class Box\npublic x: number\nfunction __init(self, x: number): string\nself.x=x\nreturn \"discarded\"\nend\nend\nlocal item=Box(42)\nassert(item.x==42)",
+    "codes": [
+      "class-constructor-return-annotation"
+    ],
+    "nativeValid": false,
+    "runtime": true
+  },
+  {
+    "name": "constructor-alias",
+    "source": "class Box\npublic x: number\nfunction __init(self, x: number)\nself.x=x\nend\nend\nlocal Make=Box\nlocal item=Make(42)\nassert(item.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "constructor-alias-wrong",
+    "source": "class Box\npublic x: number\nfunction __init(self, x: number)\nself.x=x\nend\nend\nlocal Make=Box\nlocal item=Make(\"wrong\")\nassert(item.x==42)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "stored-constructor",
+    "source": "class Box\npublic x: number\nfunction __init(self, x: number)\nself.x=x\nend\nend\nlocal tools={make=Box}\nlocal item=tools.make(42)\nassert(item.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "stored-constructor-wrong",
+    "source": "class Box\npublic x: number\nfunction __init(self, x: number)\nself.x=x\nend\nend\nlocal tools={make=Box}\nlocal item=tools.make(\"wrong\")\nassert(item.x==42)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "shadowed-constructor",
+    "source": "class Box\npublic x: number\nfunction __init(self, x: number)\nself.x=x\nend\nend\nlocal Box=function(text: string): number return #text end\nlocal item=Box(\"ok\")\nassert(item==2)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "init-missing-self",
+    "source": "class Box\nfunction __init() end\nend",
+    "codes": [
+      "class-constructor-signature"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "init-wrong-first-name",
+    "source": "class Box\nfunction __init(value: number) end\nend",
+    "codes": [
+      "class-constructor-signature"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "directive-field",
+    "source": "class Box\npublic x: number\nend\n-- slua-lsp:disable-next-line call-argument-type-mismatch\nlocal item=Box {x=\"wrong\"}\nprint(item.x)",
+    "codes": [],
+    "nativeValid": false,
+    "runtime": false,
+    "nativeNote": "LSP-only suppression does not suppress the native analyzer."
+  },
+  {
+    "name": "factory-before-init",
+    "source": "class Box\npublic x: number\nfunction new(x: number): Box return Box(x) end\nfunction __init(self, x: number)\nself.x=x\nend\nend\nlocal item=Box.new(42)\nassert(item.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "init-empty-return-annotation",
+    "source": "class Box\npublic x: number\nfunction __init(self): ()\nself.x=42\nend\nend\nlocal item=Box()\nassert(item.x==42)",
+    "codes": [
+      "class-constructor-return-annotation"
+    ],
+    "nativeValid": false,
+    "runtime": true
+  },
+  {
+    "name": "init-empty-return",
+    "source": "class Box\nfunction __init(self)\nreturn\nend\nend\nlocal item=Box()\nprint(item~=nil)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  }
+]

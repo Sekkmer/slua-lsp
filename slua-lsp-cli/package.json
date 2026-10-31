@@ -1,6 +1,6 @@
 {
 	"name": "slua-lsp-cli",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"private": true,
 	"type": "module",
 	"bin": {
@@ -20,5 +20,8 @@
 	},
 	"dependencies": {
 		"slua-lsp-core": "workspace:*"
+	},
+	"engines": {
+		"node": "^22.0.0 || ^24.0.0"
 	}
 }

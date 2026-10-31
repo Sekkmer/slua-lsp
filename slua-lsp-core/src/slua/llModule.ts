@@ -1,5 +1,6 @@
 import type { SluaType } from './types.js';
 import { sluaTypeFromLslType } from './types.js';
+import { sluaParameterType, sluaReturnType } from './definitionTypes.js';
 import { REMOVED_LL_API_NAMES } from './removedApis.js';
 
 export type LlParam = {
@@ -19,6 +20,8 @@ export type LlFunction = {
 	params: LlParam[];
 	tooltip: string;
 	deprecated: boolean;
+	/** Omitted from upstream public documentation; runtime absence is not implied. */
+	private: boolean;
 	/** Additional script sleep time (seconds) imposed by the LSL VM after the call. */
 	sleepSeconds: number | null;
 	/** Sleep time (seconds) in the legacy mono runtime (if provided by defs). */
@@ -31,6 +34,7 @@ export type LlFunction = {
 
 export type LlConstant = {
 	name: string;
+	private: boolean;
 	type: SluaType;
 	value: unknown;
 	tooltip: string;
@@ -78,7 +82,24 @@ function toLlMethodName(lslFunctionName: string): string | null {
 	return stripped;
 }
 
-export function buildLlModuleFromLslDefinitions(defs: unknown): LlModule {
+function functionTooltip(spec: Record<string, unknown>, methodName: string): string {
+	const tooltip = getStringProp(spec, 'tooltip') ?? '';
+	// The pinned definitions have current PassMode metadata alongside an older
+	// boolean-only description. Correct that known wording without replacing
+	// custom documentation or changing the parameter's numeric contract.
+	const kind = methodName === 'PassCollisions' ? 'collision' : methodName === 'PassTouches' ? 'touch' : undefined;
+	const args = getArgumentsArray(spec);
+	const first = args[0];
+	const param = isRecord(first) ? first.pass : undefined;
+	const oldTooltip = `Sets the pass-${kind === 'collision' ? 'collisions' : 'touches'} attribute. If pass is TRUE, ${kind} events are passed from child prims to the root; if FALSE (default), they only trigger events in the affected child prim.`;
+	if (kind && isRecord(param) && param['enum-semantics'] === 'PassMode'
+		&& tooltip === oldTooltip) {
+		return `Controls whether ${kind} events detected on this prim pass to the root prim. PASS_ALWAYS (1) always passes them; PASS_NEVER (2) never passes them. The default PASS_IF_NOT_HANDLED (0) passes them only when no script in this prim handles the event. Has no known effect when called from the root prim.`;
+	}
+	return tooltip;
+}
+
+export function buildLlModuleFromLslDefinitions(defs: unknown, compatibility = false): LlModule {
 	if (!isRecord(defs)) return { functions: {}, constants: {} };
 
 	const constantsSectionValue = defs.constants;
@@ -86,9 +107,10 @@ export function buildLlModuleFromLslDefinitions(defs: unknown): LlModule {
 	const constants: Record<string, LlConstant> = {};
 	if (constantsSection) {
 		for (const [name, spec] of Object.entries(constantsSection)) {
-			if (!isRecord(spec)) continue;
+			if (!isRecord(spec) || spec['slua-removed'] === true) continue;
 			constants[name] = {
 				name,
+				private: spec.private === true,
 				type: sluaTypeFromLslType(getStringProp(spec, 'type')),
 				value: spec.value,
 				tooltip: getStringProp(spec, 'tooltip') ?? ''
@@ -104,8 +126,9 @@ export function buildLlModuleFromLslDefinitions(defs: unknown): LlModule {
 	for (const [lslName, spec] of Object.entries(funcsSection)) {
 		const methodName = toLlMethodName(lslName);
 		if (!methodName) continue;
-		if (REMOVED_LL_API_NAMES.has(methodName)) continue;
 		if (!isRecord(spec)) continue;
+		// Upstream removes these from ll but retains the compatibility declarations.
+		if (!compatibility && (REMOVED_LL_API_NAMES.has(methodName) || spec['slua-removed'] === true)) continue;
 
 		const args = getArgumentsArray(spec);
 		const params: LlParam[] = [];
@@ -120,7 +143,7 @@ export function buildLlModuleFromLslDefinitions(defs: unknown): LlModule {
 			const lslType = getStringProp(paramSpec, 'type');
 			params.push({
 				name: normalizeParamName(String(paramName)),
-				type: sluaTypeFromLslType(lslType),
+				type: sluaParameterType(paramSpec),
 				lslType,
 				tooltip: getStringProp(paramSpec, 'tooltip') ?? ''
 			});
@@ -130,11 +153,12 @@ export function buildLlModuleFromLslDefinitions(defs: unknown): LlModule {
 		functions[methodName] = {
 			lslName,
 			name: methodName,
-			returnType: sluaTypeFromLslType(returnLslType),
+			returnType: sluaReturnType(spec, compatibility),
 			returnLslType,
 			params,
-			tooltip: getStringProp(spec, 'tooltip') ?? '',
+			tooltip: functionTooltip(spec, methodName),
 			deprecated: getBooleanProp(spec, 'deprecated'),
+			private: spec.private === true,
 			sleepSeconds: getNumberProp(spec, 'sleep'),
 			monoSleepSeconds: getNumberProp(spec, 'mono-sleep'),
 			godMode: getBooleanProp(spec, 'god-mode'),

@@ -1,7 +1,10 @@
+import { visitLexicalCalls, type LexicalCallVisitor } from './callArgumentTypes.js';
+import { resolveBuiltinExpression } from '../../slua/resolveBuiltin.js';
+import { buildSluaRegistryFromLslDefinitions, type SluaRegistry } from '../../slua/registry.js';
 import type { CoreDiagnostic } from '../types.js';
 
 import type { SluaEventSignature } from '../../slua/events.js';
-import type { SluaType } from '../../slua/types.js';
+import { slua, sluaTypeFromLuauAnnotationText, sluaTypeIsAssignable, sluaTypeToString } from '../../slua/types.js';
 
 type AstNode = { type: string; location?: { start: { line: number; column: number }; end: { line: number; column: number } } };
 
@@ -11,12 +14,7 @@ type MemberExpressionNode = AstNode & {
 	type: 'MemberExpression';
 	object: unknown;
 	property: unknown;
-};
-
-type CallExpressionNode = AstNode & {
-	type: 'CallExpression';
-	callee: unknown;
-	arguments: unknown[];
+	indexer?: '.' | ':';
 };
 
 type FunctionNode = AstNode & {
@@ -40,10 +38,6 @@ function isIdentifier(value: unknown): value is IdentifierNode {
 
 function isMemberExpression(value: unknown): value is MemberExpressionNode {
 	return isAstNode(value) && value.type === 'MemberExpression' && 'object' in value && 'property' in value;
-}
-
-function isCallExpression(value: unknown): value is CallExpressionNode {
-	return isAstNode(value) && value.type === 'CallExpression' && Array.isArray((value as Record<string, unknown>).arguments) && 'callee' in value;
 }
 
 function isFunctionNode(value: unknown): value is FunctionNode {
@@ -70,80 +64,25 @@ function rangeFromNode(node: AstNode): CoreDiagnostic['range'] {
 }
 
 function isValidSluaEventName(eventName: string, eventSigs: Record<string, SluaEventSignature>): boolean {
-	// SLua runtime differs from LSL: some legacy events are not exposed via LLEvents.
-	if (eventName === 'state_entry') return false;
-	if (eventName === 'timer') return false;
 	return Boolean(eventSigs[eventName]);
 }
 
-function normalizeAnnotationText(text: string): string {
-	// Keep this conservative: trim and collapse whitespace.
-	return text.trim().replace(/\s+/g, ' ');
+export function ruleLLEventsCalls(ast: unknown, eventSigs: Record<string, SluaEventSignature>, registry: SluaRegistry = buildSluaRegistryFromLslDefinitions(null)): CoreDiagnostic[] {
+	const checker = createLLEventsCallChecker(eventSigs, registry);
+	visitLexicalCalls(ast, registry, checker.visit);
+	return checker.diagnostics;
 }
 
-function acceptedTypeAnnotations(expected: SluaType): string[] {
-	// Best-effort mapping from our modeled types to common Luau annotation spellings.
-	if (expected.kind === 'primitive') return [expected.name];
-	if (expected.kind === 'custom') {
-		switch (expected.name) {
-			case 'integer':
-				// Some runtimes treat integer as number in Luau types.
-				return ['integer', 'number'];
-			case 'uuid':
-				// LSL calls this 'key' but the runtime exposes uuid().
-				return ['uuid', 'key'];
-			case 'vector':
-				return ['vector'];
-			case 'rotation':
-				return ['rotation', 'quaternion'];
-			default:
-				return [];
-		}
-	}
-	if (expected.kind === 'table') return ['table'];
-	if (expected.kind === 'array') return []; // could be T[] etc; skip for now
-	if (expected.kind === 'function') return []; // skip
-	return [];
-}
-
-function getCallTarget(call: CallExpressionNode): { receiver: string; method: string } | null {
-	if (!isMemberExpression(call.callee)) return null;
-	const { object, property } = call.callee;
-	if (!isIdentifier(object) || !isIdentifier(property)) return null;
-	return { receiver: object.name, method: property.name };
-}
-
-function visitAll(root: unknown, fn: (node: AstNode) => void): void {
-	const seen = new WeakSet<object>();
-	function visit(value: unknown): void {
-		if (!value) return;
-		if (Array.isArray(value)) {
-			for (const item of value) visit(item);
-			return;
-		}
-		if (!isAstNode(value)) return;
-		if (seen.has(value as object)) return;
-		seen.add(value as object);
-		fn(value);
-		for (const child of Object.values(value as Record<string, unknown>)) {
-			if (child === value.location) continue;
-			visit(child);
-		}
-	}
-	visit(root);
-}
-
-export function ruleLLEventsCalls(ast: unknown, eventSigs: Record<string, SluaEventSignature>): CoreDiagnostic[] {
+/** Pure call checks can join the engine's existing lexical walk. */
+export function createLLEventsCallChecker(eventSigs: Record<string, SluaEventSignature>, registry: SluaRegistry): { diagnostics: CoreDiagnostic[]; visit: LexicalCallVisitor } {
 	const diags: CoreDiagnostic[] = [];
-
-	visitAll(ast, (node) => {
-		if (!isCallExpression(node)) return;
-		const target = getCallTarget(node);
-		if (!target) return;
-		if (target.receiver !== 'LLEvents') return;
-		if (target.method !== 'on' && target.method !== 'once' && target.method !== 'off') return;
-
-		const args = node.arguments;
+	const checkCall: LexicalCallVisitor = (node, locals) => {
+		if (!isMemberExpression(node.callee) || !isIdentifier(node.callee.property)) return;
+		const receiver = resolveBuiltinExpression(node.callee.object, registry, (name) => locals.get(name))?.type;
+		if (receiver?.kind !== 'table' || receiver.metatable !== 'LLEvents') return;
+		const target = { method: node.callee.property.name };
+		if (!['on', 'once', 'off'].includes(target.method)) return;
+		const args = node.callee.indexer === ':' ? node.arguments : node.arguments.slice(1);
 		const first = args[0];
 		if (!isStringNode(first)) return; // best-effort only
 		const eventName = first.value;
@@ -177,40 +116,27 @@ export function ruleLLEventsCalls(ast: unknown, eventSigs: Record<string, SluaEv
 
 		const sig = eventSigs[eventName];
 		const expectedParams = sig?.params ?? [];
-		const expectedCount = expectedParams.length;
-		const actualCount = callback.parameters.length;
 
-		// For now, be strict: stable events like listen should match exactly.
-		if (actualCount !== expectedCount) {
-			diags.push({
-				code: 'callback-arity-mismatch',
-				severity: 'error',
-				message: `Callback for event '${eventName}' must declare exactly ${expectedCount} params, but declares ${actualCount}.`,
-				range: rangeFromNode(callback)
-			});
-			return;
-		}
-
-		for (let i = 0; i < expectedParams.length; i++) {
-			const expected = expectedParams[i];
+		for (let i = 0; i < callback.parameters.length; i++) {
+			const expected = expectedParams[i] ?? { type: slua.nil() };
 			const actualParam = callback.parameters[i];
 			if (!isIdentifier(actualParam)) continue;
 			const written = actualParam.typeAnnotation;
 			if (!written) continue; // only validate when written
 
-			const norm = normalizeAnnotationText(written);
-			const accepted = acceptedTypeAnnotations(expected.type).map(normalizeAnnotationText);
-			if (accepted.length === 0) continue;
-			if (!accepted.includes(norm)) {
+			const declared = sluaTypeFromLuauAnnotationText(written);
+			if (declared.kind === 'primitive' && declared.name === 'unknown') continue;
+			if (declared.kind === 'table' && expected.type.kind === 'array') continue;
+			if (!sluaTypeIsAssignable(declared, expected.type)) {
 				diags.push({
 					code: 'callback-param-type-mismatch',
 					severity: 'error',
-					message: `Param ${i + 1} for event '${eventName}' should be ${accepted.join(' | ')}, but is '${norm}'.`,
+					message: `Param ${i + 1} for event '${eventName}' should be ${sluaTypeToString(expected.type)}, but is '${written}'.`,
 					range: rangeFromNode(actualParam)
 				});
 			}
 		}
-	});
+	};
 
-	return diags;
+	return { diagnostics: diags, visit: checkCall };
 }

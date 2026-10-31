@@ -13,8 +13,8 @@ describe('ll module (from YAML)', () => {
 		expect(say.lslName).toBe('llSay');
 
 		// llSay(integer channel, string msg)
-		expect(say.params.map((p) => p.name)).toEqual(['channel', 'text']);
-		expect(say.params[0]?.type).toEqual({ kind: 'custom', name: 'integer' });
+		expect(say.params.map((p) => p.name)).toEqual(['channel', 'msg']);
+		expect(say.params[0]?.type).toEqual({ kind: 'primitive', name: 'number' });
 		expect(say.params[1]?.type).toEqual({ kind: 'primitive', name: 'string' });
 	});
 
@@ -24,7 +24,7 @@ describe('ll module (from YAML)', () => {
 
 		const active = ll.constants.ACTIVE;
 		expect(active).toBeTruthy();
-		expect(active.type).toEqual({ kind: 'custom', name: 'integer' });
+		expect(active.type).toEqual({ kind: 'primitive', name: 'number' });
 		expect(active.value).toBeDefined();
 	});
 });

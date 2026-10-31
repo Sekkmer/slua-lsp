@@ -27,19 +27,19 @@
 			"patterns": [
 				{
 					"name": "support.type.luau",
-					"match": "\\b(LLEvents|LLTimers)\\b"
+					"match": "\\b(DetectedEvent|LLEvents|LLTimers)\\b"
 				},
 				{
 					"name": "support.module.luau",
-					"match": "\\b(bit32|buffer|coroutine|debug|llbase64|lljson|math|os|rotation|string|table|utf8|uuid|vector)\\b"
+					"match": "\\b(bit32|buffer|class|coroutine|debug|integer|llbase64|lljson|llprim|llprim\\.ParamSetter|math|os|quaternion|rotation|string|table|utf8|uuid|vector)\\b"
 				},
 				{
 					"name": "support.function.luau",
-					"match": "\\b(assert|dangerouslyexecuterequiredmodule|error|gcinfo|getfenv|getmetatable|integer|ipairs|newproxy|next|number|pairs|pcall|print|quaternion|rawequal|rawget|rawlen|rawset|rotation|select|setfenv|setmetatable|tonumber|toquaternion|torotation|tostring|touuid|tovector|type|typeof|unpack|uuid|vector|xpcall)\\b"
+					"match": "\\b(assert|dangerouslyexecuterequiredmodule|error|gcinfo|getfenv|getmetatable|ipairs|newproxy|next|pairs|pcall|print|quaternion|rawequal|rawget|rawlen|rawset|rotation|select|setfenv|setmetatable|tonumber|toquaternion|torotation|tostring|touuid|tovector|type|typeof|unpack|uuid|vector|xpcall)\\b"
 				},
 				{
 					"name": "meta.member.luau",
-					"match": "\\b(LLEvents|LLTimers)\\s*([:.])\\s*(eventNames|every|listeners|off|on|once)\\b",
+					"match": "\\b(DetectedEvent|LLEvents|LLTimers)\\s*([:.])\\s*(adjustDamage|eventNames|every|getDamage|getGrab|getGroup|getKey|getLinkNumber|getName|getOwner|getPos|getRezzer|getRot|getTouchBinormal|getTouchFace|getTouchNormal|getTouchPos|getTouchST|getTouchUV|getType|getVel|handlers|off|on|once)\\b",
 					"captures": {
 						"1": {
 							"name": "support.type.luau"
@@ -54,7 +54,7 @@
 				},
 				{
 					"name": "meta.member.luau",
-					"match": "\\b(bit32|buffer|coroutine|debug|llbase64|lljson|math|os|rotation|string|table|utf8|uuid|vector)\\s*\\.\\s*([A-Za-z_][A-Za-z0-9_]*)\\b",
+					"match": "\\b(bit32|buffer|class|coroutine|debug|integer|llbase64|lljson|llprim|llprim\\.ParamSetter|math|os|quaternion|rotation|string|table|utf8|uuid|vector)\\s*\\.\\s*([A-Za-z_][A-Za-z0-9_]*)\\b",
 					"captures": {
 						"1": {
 							"name": "support.module.luau"

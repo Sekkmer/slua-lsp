@@ -4,13 +4,16 @@ import type { SluaEventSignature } from './events.js';
 import { buildSluaEventSignaturesFromLslDefinitions } from './events.js';
 import type { SluaType } from './types.js';
 import { slua } from './types.js';
-import { augmentMetatableMembersFromModules } from './metatables.js';
+import { augmentMetatableMembersFromModules, defaultMetatableRegistry } from './metatables.js';
 import { buildBuiltinsFunctionSignature, loadBuiltinsYaml } from './builtins.js';
+import type { CoreDiagnostic } from '../diagnostics/types.js';
 
 export type SluaSource = 'default' | 'yaml' | 'override';
 
 export type SluaValueDef = {
 	name: string;
+	/** Private upstream entry retained for explicit lookup, omitted from suggestions. */
+	private?: boolean;
 	type: SluaType;
 	readonly: boolean;
 	docs: string;
@@ -27,6 +30,8 @@ export type SluaParamDef = {
 
 export type SluaFunctionDef = {
 	name: string;
+	/** Private upstream entry retained for explicit lookup, omitted from suggestions. */
+	private?: boolean;
 	/** Parameter names/types when available (e.g. from YAML). */
 	params?: SluaParamDef[];
 	signature: SluaType;
@@ -51,6 +56,8 @@ export type SluaMethodDef = {
 
 export type SluaObjectTypeDef = {
 	name: string;
+	/** Nominal instance type, not a global runtime singleton. */
+	instanceOnly?: boolean;
 	methods: Record<string, SluaMethodDef>;
 	properties: Record<string, SluaValueDef>;
 	source: SluaSource;
@@ -74,11 +81,28 @@ export class SluaRegistry {
 	modules = new Map<string, SluaModuleDef>();
 	objectTypes = new Map<string, SluaObjectTypeDef>();
 	globals = new Map<string, SluaFunctionDef>();
+	globalValues = new Map<string, SluaValueDef>();
+	/** Per-project expression facts; base registries leave both collections empty. */
+	expressionTypes = new WeakMap<object, SluaType>();
+	sourceRequireCallees = new WeakSet<object>();
+	/** Exact AST ownership and snapshot hashes for source navigation. */
+	sourceNodeFiles = new WeakMap<object, string>();
+	sourceFileHashes = new Map<string, string>();
+	/** Explicit file-scoped source context; absent in the ordinary runtime registry. */
+	sourceMacroUses = new WeakSet<object>();
+	sourceMacroInvalidUses = new WeakSet<object>();
+	sourceMacroDiagnostics: CoreDiagnostic[] = [];
+	/** Original registry behind a temporary file-context overlay. */
+	sourceContextBase?: SluaRegistry;
 	/** Event signatures from YAML (+ overrides). Used for LLEvents callback inference. */
 	eventSignatures: Record<string, SluaEventSignature> = {};
 
 	getModule(name: string): SluaModuleDef | undefined {
 		return this.modules.get(name);
+	}
+
+	getGlobalValue(name: string): SluaValueDef | undefined {
+		return this.globalValues.get(name);
 	}
 
 	getObjectType(name: string): SluaObjectTypeDef | undefined {
@@ -107,6 +131,7 @@ function llModuleToRegistryModule(name: string, ll: LlModule): SluaModuleDef {
 			signature: slua.fn(fn.params.map((p) => p.type), fn.returnType),
 			docs: (fn.tooltip ?? '') + returnHint,
 			deprecated: fn.deprecated,
+			private: fn.private,
 			source: 'yaml',
 			meta: {
 				lslName: fn.lslName,
@@ -121,6 +146,7 @@ function llModuleToRegistryModule(name: string, ll: LlModule): SluaModuleDef {
 	for (const [constName, c] of Object.entries(ll.constants)) {
 		values[constName] = {
 			name: constName,
+			private: c.private,
 			type: c.type,
 			readonly: true,
 			docs: c.tooltip,
@@ -140,7 +166,9 @@ function llModuleToRegistryModule(name: string, ll: LlModule): SluaModuleDef {
 
 function buildDefaultObjectTypes(_eventSigs: Record<string, SluaEventSignature>): Record<string, SluaObjectTypeDef> {
 	const genericEventHandler = slua.fn([slua.unknown()], slua.nil());
-	const genericTimerHandler = slua.fn([], slua.nil());
+	const recurringTimerHandler = slua.fn([slua.number(), slua.number()], slua.unknown());
+	const onceTimerHandler = slua.fn([slua.number(), slua.nil()], slua.unknown());
+	const genericTimerHandler = slua.union([slua.fn([slua.number(), slua.union([slua.number(), slua.nil()])], slua.unknown()), slua.table()]);
 
 	const LLEvents: SluaObjectTypeDef = {
 		name: 'LLEvents',
@@ -173,15 +201,15 @@ function buildDefaultObjectTypes(_eventSigs: Record<string, SluaEventSignature>)
 				name: 'eventNames',
 				requiresColonCall: true,
 				signature: slua.fn([], slua.array(slua.string())),
-				docs: 'Return available event names.',
+				docs: 'Return event names with currently registered handlers.',
 				source: 'default'
 			},
-			listeners: {
-				name: 'listeners',
+			handlers: {
+				name: 'handlers',
 				requiresColonCall: true,
 				signature: slua.fn([slua.string()], slua.array(genericEventHandler)),
 				docs:
-					'Return listeners for an event name. Note: the internal timer wrapper ("timer" event) is intentionally not directly callable/unregisterable; it may appear as a guard function.',
+					'Return handlers for an event name. Note: the internal timer wrapper ("timer" event) is intentionally not directly callable/unregisterable; it may appear as a guard function.',
 				source: 'default'
 			}
 		},
@@ -195,15 +223,15 @@ function buildDefaultObjectTypes(_eventSigs: Record<string, SluaEventSignature>)
 			every: {
 				name: 'every',
 				requiresColonCall: true,
-				signature: slua.fn([slua.number(), genericTimerHandler], genericTimerHandler),
-				docs: 'Run callback every N seconds (N must be >= 0). Returns a handler token (usually the same function) that can be passed to LLTimers:off(...).',
+				signature: slua.fn([slua.number(), slua.union([recurringTimerHandler, slua.table()])], genericTimerHandler),
+				docs: 'Run callback(scheduled_time: number, interval: number) every N seconds (N must be >= 0); callback returns are ignored. Callable tables are supported. Returns a handler token (usually the same function) that can be passed to LLTimers:off(...).',
 				source: 'default'
 			},
 			once: {
 				name: 'once',
 				requiresColonCall: true,
-				signature: slua.fn([slua.number(), genericTimerHandler], genericTimerHandler),
-				docs: 'Run callback once after N seconds (N must be >= 0). Returns a handler token for LLTimers:off(...).',
+				signature: slua.fn([slua.number(), slua.union([onceTimerHandler, slua.table()])], genericTimerHandler),
+				docs: 'Run callback(scheduled_time: number, interval: nil) once after N seconds (N must be >= 0); callback returns are ignored. Callable tables are supported. Returns a handler token for LLTimers:off(...).',
 				source: 'default'
 			},
 			off: {
@@ -257,12 +285,11 @@ function buildDefaultGlobals(): Record<string, SluaFunctionDef> {
 		vector: f('vector', slua.fn([slua.number(), slua.number(), slua.number()], slua.vector())),
 		rotation: f('rotation', slua.fn([slua.number(), slua.number(), slua.number(), slua.number()], slua.rotation())),
 		quaternion: f('quaternion', slua.fn([slua.number(), slua.number(), slua.number(), slua.number()], slua.rotation())),
-		uuid: f('uuid', slua.fn([slua.string()], slua.uuid())),
-		touuid: f('touuid', slua.fn([slua.string()], slua.uuid())),
-		integer: f('integer', slua.fn([slua.number()], slua.integer())),
-		tovector: f('tovector', slua.fn([slua.string()], slua.vector())),
-		toquaternion: f('toquaternion', slua.fn([slua.string()], slua.rotation())),
-		torotation: f('torotation', slua.fn([slua.string()], slua.rotation())),
+		uuid: f('uuid', slua.fn([slua.union([slua.string(), slua.buffer(), slua.uuid()])], slua.uuid())),
+		touuid: f('touuid', slua.fn([slua.union([slua.string(), slua.buffer(), slua.uuid(), slua.nil()])], slua.union([slua.uuid(), slua.nil()]), undefined, { min: 0, max: 1 })),
+		tovector: f('tovector', slua.fn([slua.union([slua.string(), slua.vector(), slua.nil()])], slua.union([slua.vector(), slua.nil()]), undefined, { min: 1, max: 1 })),
+		toquaternion: f('toquaternion', slua.fn([slua.union([slua.string(), slua.rotation(), slua.nil()])], slua.union([slua.rotation(), slua.nil()]), undefined, { min: 1, max: 1 })),
+		torotation: f('torotation', slua.fn([slua.union([slua.string(), slua.rotation(), slua.nil()])], slua.union([slua.rotation(), slua.nil()]), undefined, { min: 1, max: 1 })),
 		typeof: f('typeof', slua.fn([slua.unknown()], slua.string()))
 	};
 }
@@ -328,16 +355,18 @@ function buildDefaultModules(): Record<string, SluaModuleDef> {
 			name: 'lljson',
 			source: 'default',
 			functions: {
-				encode: fn('encode', slua.fn([slua.table()], slua.string())),
-				decode: fn('decode', slua.fn([slua.string()], slua.table())),
-				slencode: fn('slencode', slua.fn([slua.table()], slua.string())),
-				sldecode: fn('sldecode', slua.fn([slua.string()], slua.table()))
+				encode: fn('encode', slua.fn([slua.unknown(), slua.table()], slua.string(), undefined, { min: 1, max: 2 })),
+				decode: fn('decode', slua.fn([slua.string(), slua.union([slua.table(), slua.anyFunction()])], slua.unknown(), undefined, { min: 1, max: 2 })),
+				slencode: fn('slencode', slua.fn([slua.unknown(), slua.table()], slua.string(), undefined, { min: 1, max: 2 })),
+				sldecode: fn('sldecode', slua.fn([slua.string(), slua.union([slua.table(), slua.anyFunction()])], slua.unknown(), undefined, { min: 1, max: 2 }))
 			},
 			values: {
 				null: value('null', slua.unknown(), true),
-				empty_array: value('empty_array', slua.unknown(), true),
+				remove: value('remove', slua.unknown(), true),
+				empty_array: value('empty_array', slua.table(), true),
+				empty_object: value('empty_object', slua.table(), true),
 				array_mt: value('array_mt', slua.table(), true),
-				empty_array_mt: value('empty_array_mt', slua.table(), true)
+				object_mt: value('object_mt', slua.table(), true)
 			}
 		},
 		llbase64: {
@@ -362,6 +391,7 @@ function buildDefaultModules(): Record<string, SluaModuleDef> {
 				dot: fn('dot', slua.fn([slua.vector(), slua.vector()], slua.number())),
 				floor: fn('floor', slua.fn([slua.vector()], slua.vector())),
 				magnitude: fn('magnitude', slua.fn([slua.vector()], slua.number())),
+				lerp: fn('lerp', slua.fn([slua.vector(), slua.vector(), slua.number()], slua.vector())),
 				max: fn('max', slua.fn([slua.vector(), slua.vector()], slua.vector())),
 				min: fn('min', slua.fn([slua.vector(), slua.vector()], slua.vector())),
 				normalize: fn('normalize', slua.fn([slua.vector()], slua.vector())),
@@ -488,6 +518,20 @@ function buildDefaultModules(): Record<string, SluaModuleDef> {
 	};
 }
 
+/** Keep loaded getter contracts local to this registry, including custom YAML. */
+function buildDetectedEventType(ll?: LlModule): SluaObjectTypeDef {
+	const result: SluaObjectTypeDef = { name: 'DetectedEvent', instanceOnly: true, methods: {}, properties: {}, source: 'default' };
+	for (const member of Object.values(defaultMetatableRegistry.getMembers('DetectedEvent') ?? {})) {
+		if (member.kind === 'property') result.properties[member.name] = { name: member.name, type: member.type, docs: member.docs ?? '', readonly: true, deprecated: false, source: 'default' };
+		else result.methods[member.name] = { name: member.name, signature: member.type, docs: member.docs ?? '', requiresColonCall: member.requiresColonCall ?? true, source: 'default' };
+	}
+	for (const [name, method] of Object.entries(result.methods)) {
+		const source = ll?.functions[name === 'adjustDamage' ? 'AdjustDamage' : `Detected${name.slice(3)}`];
+		if (source) result.methods[name] = { ...method, signature: slua.fn(source.params.slice(1).map((p) => p.type), source.returnType), docs: `${source.tooltip}\n\nValid only during event dispatch.${name === 'adjustDamage' ? ' Requires canAdjustDamage; changes pending host damage.' : ''}`, source: 'yaml' };
+	}
+	return result;
+}
+
 export function buildSluaRegistryFromLslDefinitions(defs: unknown | null): SluaRegistry {
 	const registry = new SluaRegistry();
 	const sigs = defs ? buildSluaEventSignaturesFromLslDefinitions(defs) : {};
@@ -506,9 +550,15 @@ export function buildSluaRegistryFromLslDefinitions(defs: unknown | null): SluaR
 	// YAML-driven ll/llcompat module exports (functions + constants).
 	if (defs) {
 		const ll = buildLlModuleFromLslDefinitions(defs);
-		registry.modules.set('ll', llModuleToRegistryModule('ll', ll));
-		registry.modules.set('llcompat', llModuleToRegistryModule('llcompat', ll));
+		const ordinary = llModuleToRegistryModule('ll', ll);
+		registry.modules.set('ll', ordinary);
+		// Official declarations expose these constants as globals too.
+		for (const [name, value] of Object.entries(ordinary.values)) registry.globalValues.set(name, value);
+		registry.modules.set('llcompat', llModuleToRegistryModule('llcompat', buildLlModuleFromLslDefinitions(defs, true)));
+		registry.objectTypes.set('DetectedEvent', buildDetectedEventType(ll));
 	}
+
+	if (!registry.objectTypes.has('DetectedEvent')) registry.objectTypes.set('DetectedEvent', buildDetectedEventType());
 
 	// Best-effort: enrich metatable member completion from available modules.
 	augmentMetatableMembersFromModules(registry.modules);

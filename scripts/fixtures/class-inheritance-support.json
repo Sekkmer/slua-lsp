@@ -1,0 +1,644 @@
+{
+  "schema": 1,
+  "nativeFixture": "class-inheritance.json",
+  "scope": "Explicit reviewed candidate diagnostics; preserve separate pinned native strict/runtime outcomes. Dynamic ancestry stays opaque; known constructor/property/runtime-backed checks can differ from native strict. Malformed recovery requires a parse error, not identical error cascades.",
+  "cases": [
+    {
+      "name": "open-empty",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "closed-child",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "own-and-inherited-fields",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "inherited-static",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "inherited-explicit-self",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "inherited-field-write",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "inherited-wrong-field-write",
+      "parseValid": true,
+      "codes": [
+        "assignment-type-mismatch"
+      ]
+    },
+    {
+      "name": "inherited-wrong-constructor-field",
+      "parseValid": true,
+      "codes": [
+        "call-argument-type-mismatch"
+      ]
+    },
+    {
+      "name": "inherited-missing-constructor-field",
+      "parseValid": true,
+      "codes": [
+        "call-argument-type-mismatch"
+      ]
+    },
+    {
+      "name": "inherited-method-readonly",
+      "parseValid": true,
+      "codes": [
+        "class-readonly-member"
+      ]
+    },
+    {
+      "name": "inherited-static-readonly",
+      "parseValid": true,
+      "codes": [
+        "class-readonly-member"
+      ]
+    },
+    {
+      "name": "inherited-method-on-class",
+      "parseValid": false
+    },
+    {
+      "name": "override-method",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "override-static",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "override-inherited-field-method",
+      "parseValid": true,
+      "codes": [
+        "class-field-override"
+      ]
+    },
+    {
+      "name": "override-inherited-field-property",
+      "parseValid": true,
+      "codes": [
+        "class-field-override"
+      ]
+    },
+    {
+      "name": "override-inherited-method-property",
+      "parseValid": true,
+      "codes": [
+        "class-field-override"
+      ]
+    },
+    {
+      "name": "grandchild",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "grandchild-field-override",
+      "parseValid": true,
+      "codes": [
+        "class-field-override"
+      ]
+    },
+    {
+      "name": "closed-parent",
+      "parseValid": true,
+      "codes": [
+        "class-closed-base"
+      ]
+    },
+    {
+      "name": "closed-middle",
+      "parseValid": true,
+      "codes": [
+        "class-closed-base"
+      ]
+    },
+    {
+      "name": "open-middle",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "base-annotation",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "derived-annotation-reject",
+      "parseValid": true,
+      "codes": [
+        "assignment-type-mismatch"
+      ]
+    },
+    {
+      "name": "constructor-types-not-subtypes",
+      "parseValid": true,
+      "codes": [
+        "assignment-type-mismatch"
+      ]
+    },
+    {
+      "name": "sibling-not-subtype",
+      "parseValid": true,
+      "codes": [
+        "assignment-type-mismatch"
+      ]
+    },
+    {
+      "name": "known-class-alias",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "dotted-parent",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "bracket-parent",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "dynamic-bracket-parent",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "computed-bracket-parent",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "multi-dot-parent",
+      "parseValid": false
+    },
+    {
+      "name": "dot-bracket-parent",
+      "parseValid": false
+    },
+    {
+      "name": "call-parent",
+      "parseValid": false
+    },
+    {
+      "name": "parenthesized-parent",
+      "parseValid": false
+    },
+    {
+      "name": "nonclass-parent",
+      "parseValid": true,
+      "codes": [
+        "class-invalid-base"
+      ]
+    },
+    {
+      "name": "instance-parent",
+      "parseValid": true,
+      "codes": [
+        "class-invalid-base"
+      ]
+    },
+    {
+      "name": "missing-parent",
+      "parseValid": true,
+      "codes": [
+        "undeclared-name"
+      ]
+    },
+    {
+      "name": "self-cycle",
+      "parseValid": true,
+      "codes": [
+        "class-inheritance-cycle"
+      ]
+    },
+    {
+      "name": "forward-parent",
+      "parseValid": true,
+      "codes": [
+        "undeclared-name"
+      ]
+    },
+    {
+      "name": "three-way-cycle",
+      "parseValid": true,
+      "codes": [
+        "undeclared-name",
+        "undeclared-name"
+      ]
+    },
+    {
+      "name": "custom-parent-missing-child-init",
+      "parseValid": true,
+      "codes": [
+        "class-constructor-required"
+      ]
+    },
+    {
+      "name": "custom-parent-explicit-child-init",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "custom-child-inherited-field-write",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "custom-child-default-parent-init",
+      "parseValid": true,
+      "codes": [
+        "class-unknown-member"
+      ]
+    },
+    {
+      "name": "child-missing-grandparent-init",
+      "parseValid": true,
+      "codes": [
+        "class-constructor-required"
+      ]
+    },
+    {
+      "name": "custom-parent-child-default-no-call",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "no-implicit-parent-constructor",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "child-initializer-different-arity",
+      "parseValid": true,
+      "codes": [
+        "class-method-override"
+      ]
+    },
+    {
+      "name": "override-compatible-variance",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "override-parameter-narrowing",
+      "parseValid": true,
+      "codes": [
+        "class-method-override"
+      ]
+    },
+    {
+      "name": "override-return-widening",
+      "parseValid": true,
+      "codes": [
+        "class-method-override"
+      ]
+    },
+    {
+      "name": "override-static-instance-transition",
+      "parseValid": true,
+      "codes": [
+        "class-method-override"
+      ]
+    },
+    {
+      "name": "override-__eq",
+      "parseValid": true,
+      "codes": [
+        "class-method-override"
+      ]
+    },
+    {
+      "name": "override-__lt",
+      "parseValid": true,
+      "codes": [
+        "class-method-override"
+      ]
+    },
+    {
+      "name": "override-__le",
+      "parseValid": true,
+      "codes": [
+        "class-method-override"
+      ]
+    },
+    {
+      "name": "override-__add",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "override-__tostring",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "nested-open",
+      "parseValid": false
+    },
+    {
+      "name": "nested-derived",
+      "parseValid": false
+    },
+    {
+      "name": "export-open",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "export-child",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "export-open-child",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "export-open-module-return",
+      "parseValid": false
+    },
+    {
+      "name": "open-as-name",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "extends-as-name",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "open-class-name",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "extends-class-name",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "commented-header",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "missing-extends-base",
+      "parseValid": false
+    },
+    {
+      "name": "empty-bracket-parent",
+      "parseValid": false
+    },
+    {
+      "name": "inheritance-disabled-control",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "static-class-isolated",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "static-instance-isolated",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "method-class-isolated",
+      "parseValid": true,
+      "codes": [
+        "class-unknown-member"
+      ]
+    },
+    {
+      "name": "wrong-inherited-field-runtime",
+      "parseValid": true,
+      "codes": [
+        "call-argument-type-mismatch"
+      ]
+    },
+    {
+      "name": "missing-inherited-field-runtime",
+      "parseValid": true,
+      "codes": [
+        "call-argument-type-mismatch"
+      ]
+    },
+    {
+      "name": "subtype-function-parameter",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "subtype-function-return",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "subtype-reverse-parameter",
+      "parseValid": true,
+      "codes": [
+        "call-argument-type-mismatch"
+      ]
+    },
+    {
+      "name": "typed-add-override",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "typed-__eq-override",
+      "parseValid": true,
+      "codes": [
+        "class-method-override"
+      ]
+    },
+    {
+      "name": "typed-__lt-override",
+      "parseValid": true,
+      "codes": [
+        "class-method-override"
+      ]
+    },
+    {
+      "name": "typed-__le-override",
+      "parseValid": true,
+      "codes": [
+        "class-method-override"
+      ]
+    },
+    {
+      "name": "own-default-init-call",
+      "parseValid": true,
+      "codes": [
+        "class-unknown-member"
+      ]
+    },
+    {
+      "name": "grandparent-user-init-requires-child",
+      "parseValid": true,
+      "codes": [
+        "class-constructor-required"
+      ]
+    },
+    {
+      "name": "child-custom-init-reads-inherited-uninitialized",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "official-class_is_not_subtype_of_superclass",
+      "parseValid": true,
+      "codes": [
+        "assignment-type-mismatch"
+      ]
+    },
+    {
+      "name": "official-compatible_method_override_is_allowed",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "official-extend_class_instance",
+      "parseValid": true,
+      "codes": [
+        "class-invalid-base"
+      ]
+    },
+    {
+      "name": "official-extend_undefined_class",
+      "parseValid": true,
+      "codes": [
+        "undeclared-name"
+      ]
+    },
+    {
+      "name": "official-extend_undefined_class_from_nonexistent_module",
+      "parseValid": true,
+      "codes": [
+        "undeclared-name"
+      ]
+    },
+    {
+      "name": "official-extends_non_class_is_an_error",
+      "parseValid": true,
+      "codes": [
+        "class-invalid-base"
+      ]
+    },
+    {
+      "name": "official-extends_non_open_class_is_an_error",
+      "parseValid": true,
+      "codes": [
+        "class-closed-base"
+      ]
+    },
+    {
+      "name": "official-incompatible_method_override_is_an_error",
+      "parseValid": true,
+      "codes": [
+        "class-method-override",
+        "class-method-override"
+      ]
+    },
+    {
+      "name": "official-incompatible_static_method_override_is_an_error",
+      "parseValid": true,
+      "codes": [
+        "class-method-override",
+        "class-method-override",
+        "class-method-override"
+      ]
+    },
+    {
+      "name": "official-overriding_eq_when_superclass_defines_it_is_an_error",
+      "parseValid": true,
+      "codes": [
+        "class-method-override"
+      ]
+    },
+    {
+      "name": "official-overriding_props_is_illegal",
+      "parseValid": true,
+      "codes": [
+        "class-field-override",
+        "class-field-override",
+        "class-field-override"
+      ]
+    },
+    {
+      "name": "official-sqrt_cyclically_inherits_sqrt",
+      "parseValid": true,
+      "codes": [
+        "class-inheritance-cycle"
+      ]
+    },
+    {
+      "name": "official-subclass_instance_is_subtype_of_superclass",
+      "parseValid": true,
+      "codes": []
+    },
+    {
+      "name": "official-superclass_instance_is_not_subtype_of_subclass",
+      "parseValid": true,
+      "codes": [
+        "assignment-type-mismatch"
+      ]
+    },
+    {
+      "name": "official-three_step_cyclic_inheritance",
+      "parseValid": true,
+      "codes": [
+        "undeclared-name",
+        "undeclared-name"
+      ]
+    }
+  ],
+  "additional": [
+    {
+      "name": "tuple-return-valid",
+      "source": "open class Base\nfunction get(self): (number,string) return 1,\"yes\" end\nend\nclass Child extends Base\nfunction get(self): (number,string) return 2,\"yes\" end\nend\nlocal x,y=Child{}:get()\nassert(x==2 and y==\"yes\")",
+      "codes": [],
+      "expectedNative": {
+        "syntax": 0,
+        "compile": 0,
+        "strict": 0,
+        "execution": 0
+      }
+    },
+    {
+      "name": "tuple-return-refused",
+      "source": "open class Base\nfunction get(self): (number,string) return 1,\"yes\" end\nend\nclass Child extends Base\nfunction get(self): (number,boolean) return 2,true end\nend\nlocal x,y=Child{}:get()\nassert(x==2 and y==true)",
+      "codes": [
+        "class-method-override"
+      ],
+      "expectedNative": {
+        "syntax": 0,
+        "compile": 0,
+        "strict": 1,
+        "execution": 0
+      }
+    }
+  ]
+}

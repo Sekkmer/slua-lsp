@@ -1,3 +1,6 @@
+import { visitLexicalCalls, type LexicalCallVisitor } from './callArgumentTypes.js';
+import { inferCallArguments } from '../../typing/inferLocals.js';
+import { resolveBuiltinExpression, selectBuiltinCallSignature } from '../../slua/resolveBuiltin.js';
 import type { CoreDiagnostic, Range } from '../types.js';
 
 import type { SluaRegistry } from '../../slua/registry.js';
@@ -164,32 +167,20 @@ function extractFunctionSignatures(sig: SluaType): SluaType[] {
 
 function resolveCallSignature(
 	callee: unknown,
-	registry: SluaRegistry
+	registry: SluaRegistry,
+	locals: Map<string, SluaType>,
+	args: unknown[]
 ): { signatures: SluaType[]; displayName: string } | null {
-	const key = exprNameKey(callee) ?? 'function';
-	if (isIdentifier(callee)) {
-		const g = registry.getGlobal(callee.name);
-		if (g) return { signatures: extractFunctionSignatures(g.signature), displayName: key };
+	const resolved = resolveBuiltinExpression(callee, registry, (name) => locals.get(name));
+	if (!resolved) return null;
+	// A callable module has a separate constructor signature.
+	const signature = resolved.type.kind === 'table' && resolved.type.module
+		? registry.getGlobal(resolved.type.module)?.signature : resolved.type;
+	if (signature?.kind === 'union') {
+		const selected = selectBuiltinCallSignature(signature, args, registry, (name) => locals.get(name));
+		return selected ? { signatures: [selected], displayName: resolved.displayName ?? exprNameKey(callee) ?? 'function' } : null;
 	}
-
-	if (isMemberExpression(callee) && isIdentifier(callee.object) && isIdentifier(callee.property)) {
-		const receiver = callee.object.name;
-		const prop = callee.property.name;
-
-		const mod = registry.getModule(receiver);
-		if (mod) {
-			const fn = mod.functions[prop];
-			if (fn) return { signatures: extractFunctionSignatures(fn.signature), displayName: key };
-		}
-
-		const obj = registry.getObjectType(receiver);
-		if (obj) {
-			const method = obj.methods[prop];
-			if (method) return { signatures: extractFunctionSignatures(method.signature), displayName: key };
-		}
-	}
-
-	return null;
+	return signature ? { signatures: extractFunctionSignatures(signature), displayName: resolved.displayName ?? exprNameKey(callee) ?? 'function' } : null;
 }
 
 function inferSimpleReturnCount(fn: FunctionDeclarationNode | FunctionNode): number | null {
@@ -265,7 +256,7 @@ function collectLocalFunctionReturnCounts(ast: ProgramNode): Map<string, number 
 
 function inferExpressionValueCount(expr: unknown, fnReturns: Map<string, number | null>): number | null {
 	if (!isAstNode(expr)) return 1;
-	if (isNumberNode(expr) || isBooleanNode(expr) || isStringLiteralNode(expr) || isTableNode(expr) || isNilNode(expr)) return 1;
+	if (isNumberNode(expr) || expr.type === 'Integer' || isBooleanNode(expr) || isStringLiteralNode(expr) || isTableNode(expr) || isNilNode(expr)) return 1;
 	if (isIdentifier(expr)) return 1;
 	if (isCallExpression(expr)) {
 		if (isIdentifier(expr.callee)) {
@@ -279,40 +270,20 @@ function inferExpressionValueCount(expr: unknown, fnReturns: Map<string, number 
 }
 
 export function ruleCallArgumentCountMismatch(ast: unknown, registry: SluaRegistry): CoreDiagnostic[] {
-	if (!isProgram(ast)) return [];
+	const checker = createCallArgumentCountChecker(ast, registry);
+	visitLexicalCalls(ast, registry, checker.visit);
+	return checker.diagnostics;
+}
+
+/** Reuse the engine's binding walk rather than inferring every initializer again. */
+export function createCallArgumentCountChecker(ast: unknown, registry: SluaRegistry): { diagnostics: CoreDiagnostic[]; visit: LexicalCallVisitor } {
+	if (!isProgram(ast)) return { diagnostics: [], visit: () => {} };
 	const diags: CoreDiagnostic[] = [];
 	const fnReturns = collectLocalFunctionReturnCounts(ast);
 
 	function visit(node: unknown): void {
 		if (!isAstNode(node)) return;
-		if (isCallExpression(node)) {
-			const resolved = resolveCallSignature(node.callee, registry);
-			if (resolved && resolved.signatures.length > 0) {
-				const argExprs = node.arguments;
-				let produced = argExprs.length;
-				let lastCount: number | null = null;
-				if (argExprs.length > 0) {
-					const last = argExprs[argExprs.length - 1];
-					const count = inferExpressionValueCount(last, fnReturns);
-					lastCount = count;
-					if (typeof count === 'number') produced = (argExprs.length - 1) + count;
-				}
 
-				const minRequired = Math.min(...resolved.signatures.map((s) => (s.kind === 'function' ? s.params.length : 0)));
-				if (produced < minRequired) {
-					const display = resolved.displayName;
-					diags.push({
-						code: 'call-argument-count-mismatch',
-						severity: 'warning',
-						message:
-							lastCount === 0
-								? `Last argument to ${display} expands to 0 values, but the call requires at least ${minRequired} argument(s).`
-								: `Call to ${display} supplies ${produced} argument(s), but at least ${minRequired} are required.`,
-						range: rangeFromNode(node)
-					});
-				}
-			}
-		}
 
 		if (isTableNode(node) && Array.isArray(node.fields)) {
 			for (const field of node.fields) {
@@ -371,6 +342,58 @@ export function ruleCallArgumentCountMismatch(ast: unknown, registry: SluaRegist
 		}
 	}
 
+	const checkCall: LexicalCallVisitor = (node, locals) => {
+		if (isCallExpression(node)) {
+			const resolved = resolveCallSignature(node.callee, registry, locals, node.arguments);
+			if (resolved && resolved.signatures.length > 0) {
+				const native = resolved.signatures.filter((s) => s.kind === 'function' && s.arity);
+				if (native.length === resolved.signatures.length) {
+					const args = inferCallArguments(node.arguments, registry, locals);
+					const accepted = native.some((sig) => sig.kind === 'function' && sig.arity && args.minimum <= sig.arity.max && (args.open || args.values.length >= sig.arity.min));
+					if (!accepted) diags.push({ code: 'call-argument-count-mismatch', severity: 'warning', range: rangeFromNode(node),
+						message: `Call to ${resolved.displayName} supplies ${args.open ? `at least ${args.minimum}` : args.minimum === args.values.length ? args.values.length : `${args.minimum}-${args.values.length}`} argument(s); expected ${native.map((sig) => sig.kind === 'function' ? `${sig.arity!.min}-${sig.arity!.max}` : '').join(' or ')}.` });
+					return;
+				}
+				const argExprs = node.arguments;
+				let produced = argExprs.length;
+				let lastCount: number | null = null;
+				if (argExprs.length > 0) {
+					const last = argExprs[argExprs.length - 1];
+					const count = inferExpressionValueCount(last, fnReturns);
+					lastCount = count;
+					if (typeof count === 'number') produced = (argExprs.length - 1) + count;
+				}
+
+				const minRequired = Math.min(...resolved.signatures.map(requiredParameterCount));
+				if (produced < minRequired && !(lastCount === null && isCallExpression(argExprs.at(-1)))) {
+					const display = resolved.displayName;
+					diags.push({
+						code: 'call-argument-count-mismatch',
+						severity: 'warning',
+						message:
+							lastCount === 0
+								? `Last argument to ${display} expands to 0 values, but the call requires at least ${minRequired} argument(s).`
+								: `Call to ${display} supplies ${produced} argument(s), but at least ${minRequired} are required.`,
+						range: rangeFromNode(node)
+					});
+				}
+			}
+		}
+	};
+
 	visit(ast);
-	return diags;
+	return { diagnostics: diags, visit: checkCall };
+}
+
+function requiredParameterCount(signature: SluaType): number {
+	if (signature.kind !== 'function') return 0;
+	let count = signature.params.length;
+	while (count > 0) {
+		const last = signature.params[count - 1]!;
+		const optional = (last.kind === 'primitive' && last.name === 'nil') ||
+			(last.kind === 'union' && last.items.some((item) => item.kind === 'primitive' && item.name === 'nil'));
+		if (!optional) break;
+		count--;
+	}
+	return count;
 }

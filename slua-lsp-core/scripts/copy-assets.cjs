@@ -18,3 +18,6 @@ if (!fs.existsSync(srcBuiltins)) {
 
 copyFileSync(srcBuiltins, outBuiltins);
 console.log('[copy-assets] copied', path.relative(root, srcBuiltins), '->', path.relative(root, outBuiltins));
+
+const defsSource = path.join(root, '..', 'third_party', 'lsl-definitions', 'lsl_definitions.yaml');
+copyFileSync(defsSource, path.join(root, 'out', 'lsl', 'lsl_definitions.yaml'));

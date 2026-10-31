@@ -1,0 +1,341 @@
+[
+  {
+    "name": "read-before",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nconsume(self.x)\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "read-after",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nself.x=42\nconsume(self.x)\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "pass-before",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nconsume(self)\nself.x=42\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "pass-after",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nself.x=42\nconsume(self)\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "nested-field-before",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: {y: number}\nfunction __init(self)\nconsume(self.x.y)\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "partial-order",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\npublic y: number\nfunction __init(self)\nself.x=42\nconsume(self.x,self.y)\nself.y=43\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "closure-before",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nlocal function later() return self.x end\nself.x=42\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "closure-after",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nself.x=42\nlocal function later() return self.x end\nconsume(later())\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "shadow-closure",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nlocal function later(self: {x: number}) return self.x end\nself.x=42\nconsume(later({x=1}))\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "shadow-local",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nself.x=42\nlocal self={x=1}\nconsume(self.x)\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "shadow-before",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nlocal self={x=1}\nconsume(self.x)\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "shadow-block",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\ndo local self={x=1}\nconsume(self.x) end\nself.x=42\nconsume(self.x)\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "shadow-local-initializer",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nlocal self=self\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "optional-fields",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number?\npublic y: any\npublic z: unknown\npublic w\nfunction __init(self)\nconsume(self.x,self.y,self.z,self.w,self)\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "optional-with-required",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\npublic y: number?\npublic z: any\npublic w: unknown\nfunction __init(self)\nconsume(self.x,self.y,self.z,self.w)\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "empty-class",
+    "source": "local function consume(...: any) end\nclass Box\n\nfunction __init(self)\nconsume(self)\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "string-key-before",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nconsume(self[\"x\"])\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "string-key-after",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nself[\"x\"]=42\nconsume(self.x)\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "rhs-before-lhs",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nself.x=self.x\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "all-rhs-before-lhs",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\npublic y: number\nfunction __init(self)\nself.x,self.y=42,self.x\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "parallel-initialization",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\npublic y: number\nfunction __init(self)\nself.x,self.y=42,43\nconsume(self.x,self.y,self)\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "compound-is-read",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nself.x+=1\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "conditional-assignment",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self, flag: boolean)\nif flag then self.x=42 else self.x=43 end\nconsume(self.x)\nend\n\nend\nBox(true)",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "do-assignment",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\ndo self.x=42 end\nconsume(self.x)\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "conditional-expression",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self, flag: boolean)\nself.x=if flag then 42 else 43\nconsume(self.x)\nend\n\nend\nBox(true)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "unread-uninitialized-field",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nconsume(42)\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "repeat-field-only-once",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nconsume(self.x,self.x)\nconsume(self.x)\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "distinct-fields",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\npublic y: number\nfunction __init(self)\nconsume(self.x,self.y,self.x,self.y)\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access",
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "field-and-instance",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nconsume(self.x,self)\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access",
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "repeat-instance-only-once",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nconsume(self)\nconsume(self)\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "method-call-before",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nself:increment()\nend\nfunction increment(self) self.x+=1 end\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "method-call-after",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nself.x=42\nself:increment()\nend\nfunction increment(self) self.x+=1 end\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "method-reference-before",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nconsume(self.increment)\nend\nfunction increment(self) self.x+=1 end\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "method-string-before",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nconsume(self[\"increment\"])\nend\nfunction increment(self) self.x+=1 end\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "cast-known-native-loophole",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nconsume(self :: Box)\nconsume((self :: Box).x)\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true,
+    "scopeNote": "Native explicitly permits casting the exact constructor self before initialization; preserved as a native boundary."
+  },
+  {
+    "name": "grouped-self-is-instance",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nconsume((self).x)\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "capture-instance-before",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\nlocal later=function() return self end\nself.x=42\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "typed-optional-function",
+    "source": "local function consume(...: any) end\nclass Box\npublic callback: (() -> number)?\nfunction __init(self)\nconsume(self.callback,self)\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "typed-required-function",
+    "source": "local function consume(...: any) end\nclass Box\npublic callback: () -> number\nfunction __init(self)\nconsume(self.callback)\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "typed-required-array",
+    "source": "local function consume(...: any) end\nclass Box\npublic values: {number}\nfunction __init(self)\nconsume(self.values)\nend\n\nend\nBox()",
+    "codes": [
+      "class-uninitialized-access"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "directive-field",
+    "source": "local function consume(...: any) end\nclass Box\npublic x: number\nfunction __init(self)\n-- slua-lsp:disable-next-line class-uninitialized-access\nconsume(self.x)\nend\n\nend\nBox()",
+    "codes": [],
+    "nativeValid": false,
+    "runtime": false,
+    "scopeNote": "LSP directives do not suppress native strict analysis."
+  }
+]

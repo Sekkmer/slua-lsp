@@ -14,36 +14,44 @@ globals:
     returns: string
     docs: "tostring(value): converts to string"
   tonumber:
-    params: [unknown, number]
-    returns: number
-    docs: "tonumber(value [, base])"
+    params: [unknown, "number | nil"]
+    returns: "number | nil"
+    docs: "tonumber(value [, base]): invalid input returns nil."
   assert:
-    params: [unknown, string]
+    params: [unknown, "string | nil"]
     returns: unknown
     docs: "assert(value [, message])"
   error:
-    params: [unknown, number]
+    params: [unknown, "number | nil"]
     returns: nil
     docs: "error(message [, level])"
   pcall:
     params: [function]
+    variadic: unknown
     returns:
-      tuple: [boolean, unknown]
-    docs: "pcall(fn, ...): protected call"
+      tuple: [boolean]
+      variadic: unknown
+      minimum: 1
+    docs: "pcall(fn, ...): protected call. Returns boolean status followed by all results or an error object. Successful calls may return only the status; callback/result-pack types are not inferred."
   xpcall:
     params: [function, function]
+    variadic: unknown
     returns:
-      tuple: [boolean, unknown]
-    docs: "xpcall(fn, errHandler, ...): protected call with error handler"
+      tuple: [boolean]
+      variadic: unknown
+      minimum: 1
+    docs: "xpcall(fn, errHandler, ...): protected call with error handler. Returns boolean status followed by all results or an error object. Successful calls may return only the status; callback/result-pack types are not inferred."
   print:
-    params: [unknown]
+    params: []
+    variadic: unknown
     returns: nil
     docs: "print(...): writes values to output"
   next:
-    params: [table, unknown]
+    params: [table, "unknown | nil"]
     returns:
       tuple: [unknown, unknown]
-    docs: "next(table [, index])"
+      minimum: 1
+    docs: "next(table [, index]): key and value, or nil when traversal ends. One or two results."
   pairs:
     params: [table]
     returns:
@@ -55,13 +63,14 @@ globals:
       tuple: [function, table, unknown]
     docs: "ipairs(table): array iterator"
   unpack:
-    params: [table, number, number]
-    returns: unknown
-    docs: "unpack(table [, i [, j]])"
+    params: [table, "number | nil", "number | nil"]
+    returns: {tuple: [], variadic: unknown, minimum: 0}
+    docs: "unpack(table [, i [, j]]): zero or more table values. Element types and range-dependent counts remain unknown."
   select:
-    params: [unknown, unknown]
-    returns: unknown
-    docs: "select(index, ...): index can be '#'."
+    params: ["string | number"]
+    variadic: unknown
+    returns: {tuple: [], variadic: unknown, minimum: 0}
+    docs: "select(index, ...): '#' returns the argument count; a numeric index returns the remaining values, possibly none. Index-dependent result types/counts remain unknown."
   rawget:
     params: [table, unknown]
     returns: unknown
@@ -83,11 +92,11 @@ globals:
     returns: number
     docs: "gcinfo(): returns memory usage in KBytes"
   newproxy:
-    params: [boolean]
+    params: ["boolean | nil"]
     returns: unknown
     docs: "newproxy([withMetatable])"
   getfenv:
-    params: [unknown]
+    params: ["unknown | nil"]
     returns: table
     docs: "getfenv([f]): get function or thread environment"
   setfenv:
@@ -99,7 +108,7 @@ globals:
     returns: table
     docs: "getmetatable(value)"
   setmetatable:
-    params: [table, table]
+    params: [table, "table | nil"]
     returns: table
     docs: "setmetatable(table, metatable)"
   dangerouslyexecuterequiredmodule:
@@ -118,43 +127,166 @@ globals:
     params: [number, number, number, number]
     returns: rotation
   uuid:
-    params: [string]
+    params: ["string | buffer | uuid"]
     returns: uuid
+    docs: "uuid(value): string, at least 16 buffer bytes, or an existing UUID. Empty string is the null UUID. Invalid strings, short buffers and nil throw. Alias of uuid.create."
   touuid:
-    params: [string]
-    returns: uuid
-  integer:
-    params: [number]
-    returns: integer
-  number:
-    params: [unknown]
-    returns: number
+    params: ["string | buffer | uuid | nil"]
+    arity: { min: 0, max: 1 }
+    returns: "uuid | nil"
+    docs: "touuid(value): convert a string, buffer or UUID; invalid strings, short buffers, nil and omission return nil. Empty string is the null UUID."
   tovector:
-    params: [string]
-    returns: vector
+    params: ["string | vector | nil"]
+    arity: { min: 1, max: 1 }
+    returns: "vector | nil"
+    docs: "tovector(value): parse a vector string or retain a vector. Invalid strings and nil return nil. A supplied argument is required."
   toquaternion:
-    params: [string]
-    returns: rotation
+    params: ["string | rotation | nil"]
+    arity: { min: 1, max: 1 }
+    returns: "rotation | nil"
+    docs: "toquaternion(value): parse a quaternion string or retain a quaternion. Invalid strings and nil return nil. A supplied argument is required."
   torotation:
-    params: [string]
-    returns: rotation
+    params: ["string | rotation | nil"]
+    arity: { min: 1, max: 1 }
+    returns: "rotation | nil"
+    docs: "torotation(value): alias of toquaternion; invalid strings and nil return nil. A supplied argument is required."
   typeof:
     params: [unknown]
     returns: string
     docs: "typeof(value): Luau typeof (engine-defined)"
 
 modules:
+  class:
+    functions:
+      isinstance:
+        params: [unknown, {nativeClass: constructor}]
+        arity: { min: 2, max: 2 }
+        returns: boolean
+        docs: "class.isinstance(value, class): test a native class instance. Nonobjects return false; the second argument must be a class. Both arguments must be supplied. Experimental class runtime flag required; no production host availability or flow refinement is implied."
+      classof:
+        intrinsic: classof
+        params: [unknown]
+        arity: { min: 1, max: 1 }
+        returns: {union: [{nativeClass: constructor}, nil]}
+        docs: "class.classof(value): return an instance's class, or nil for a nonobject. The argument must be supplied, including when nil. Known source instances retain their constructor identity. Experimental class runtime flag required; no production host availability is implied."
+  llprim:
+    values:
+      ParamSetter: {"type": {"module": "llprim.ParamSetter"}, "readonly": true, "docs": "Read-only builder metatable. new() constructs a local rule list; apply() changes world state."}
+  llprim.ParamSetter:
+    functions:
+      new: {"params": [], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Create an empty local parameter rule list. Construction does not apply changes. Do not call apply until changes are intended."}
+      targetLink: {"params": ["table", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 34. Returns the same local rule list; does not apply changes."}
+      physicsMaterial: {"params": ["table", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 2. Returns the same local rule list; does not apply changes."}
+      physical: {"params": ["table", {"union": ["boolean", "number"]}], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 3. Returns the same local rule list; does not apply changes."}
+      temporary: {"params": ["table", {"union": ["boolean", "number"]}], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 4. Returns the same local rule list; does not apply changes."}
+      phantom: {"params": ["table", {"union": ["boolean", "number"]}], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 5. Returns the same local rule list; does not apply changes."}
+      pos: {"params": ["table", "vector"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 6. Returns the same local rule list; does not apply changes."}
+      size: {"params": ["table", "vector"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 7. Returns the same local rule list; does not apply changes."}
+      rot: {"params": ["table", "rotation"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 8. Returns the same local rule list; does not apply changes."}
+      primTypeBox: {"params": ["table", "number", "vector", "number", "vector", "vector", "vector"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 9 with variant 0. Returns the same local rule list; does not apply changes."}
+      primTypeCylinder: {"params": ["table", "number", "vector", "number", "vector", "vector", "vector"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 9 with variant 1. Returns the same local rule list; does not apply changes."}
+      primTypePrism: {"params": ["table", "number", "vector", "number", "vector", "vector", "vector"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 9 with variant 2. Returns the same local rule list; does not apply changes."}
+      primTypeSphere: {"params": ["table", "number", "vector", "number", "vector", "vector"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 9 with variant 3. Returns the same local rule list; does not apply changes."}
+      primTypeTorus: {"params": ["table", "number", "vector", "number", "vector", "vector", "vector", "vector", "vector", "number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 9 with variant 4. Returns the same local rule list; does not apply changes."}
+      primTypeTube: {"params": ["table", "number", "vector", "number", "vector", "vector", "vector", "vector", "vector", "number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 9 with variant 5. Returns the same local rule list; does not apply changes."}
+      primTypeRing: {"params": ["table", "number", "vector", "number", "vector", "vector", "vector", "vector", "vector", "number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 9 with variant 6. Returns the same local rule list; does not apply changes."}
+      primTypeSculpt: {"params": ["table", {"union": ["string", "uuid"]}, "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 9 with variant 7. Returns the same local rule list; does not apply changes."}
+      texture: {"params": ["table", "number", {"union": ["string", "uuid"]}, "vector", "vector", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 17. Returns the same local rule list; does not apply changes."}
+      color: {"params": ["table", "number", "vector", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 18. Returns the same local rule list; does not apply changes."}
+      shinyBump: {"params": ["table", "number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 19. Returns the same local rule list; does not apply changes."}
+      fullbright: {"params": ["table", "number", {"union": ["boolean", "number"]}], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 20. Returns the same local rule list; does not apply changes."}
+      flexible: {"params": ["table", {"union": ["boolean", "number"]}, "number", "number", "number", "number", "number", "vector"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 21. Returns the same local rule list; does not apply changes."}
+      texgen: {"params": ["table", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 22. Returns the same local rule list; does not apply changes."}
+      pointLight: {"params": ["table", {"union": ["boolean", "number"]}, "vector", "number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 23. Returns the same local rule list; does not apply changes."}
+      glow: {"params": ["table", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 25. Returns the same local rule list; does not apply changes."}
+      text: {"params": ["table", "string", "vector", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 26. Returns the same local rule list; does not apply changes."}
+      name: {"params": ["table", "string"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 27. Returns the same local rule list; does not apply changes."}
+      description: {"params": ["table", "string"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 28. Returns the same local rule list; does not apply changes."}
+      rotLocal: {"params": ["table", "rotation"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 29. Returns the same local rule list; does not apply changes."}
+      physicsShapeType: {"params": ["table", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 30. Returns the same local rule list; does not apply changes."}
+      omega: {"params": ["table", "vector", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 32. Returns the same local rule list; does not apply changes."}
+      posLocal: {"params": ["table", "vector"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 33. Returns the same local rule list; does not apply changes."}
+      slice: {"params": ["table", "vector"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 35. Returns the same local rule list; does not apply changes."}
+      specular: {"params": ["table", "number", {"union": ["string", "uuid"]}, "vector", "vector", "number", "vector", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 36. Returns the same local rule list; does not apply changes."}
+      normal: {"params": ["table", "number", {"union": ["string", "uuid"]}, "vector", "vector", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 37. Returns the same local rule list; does not apply changes."}
+      alphaMode: {"params": ["table", "number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 38. Returns the same local rule list; does not apply changes."}
+      allowUnsit: {"params": ["table", {"union": ["boolean", "number"]}], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 39. Returns the same local rule list; does not apply changes."}
+      scriptedSitOnly: {"params": ["table", {"union": ["boolean", "number"]}], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 40. Returns the same local rule list; does not apply changes."}
+      sitTarget: {"params": ["table", {"union": ["boolean", "number"]}, "vector", "rotation"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 41. Returns the same local rule list; does not apply changes."}
+      projector: {"params": ["table", "string", "number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 42. Returns the same local rule list; does not apply changes."}
+      clickAction: {"params": ["table", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 43. Returns the same local rule list; does not apply changes."}
+      reflectionProbe: {"params": ["table", {"union": ["boolean", "number"]}, "number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 44. Returns the same local rule list; does not apply changes."}
+      gltfNormal: {"params": ["table", "number", {"union": [{"union": ["string", "uuid"]}, {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 45. Returns the same local rule list; does not apply changes."}
+      gltfEmissive: {"params": ["table", "number", {"union": [{"union": ["string", "uuid"]}, {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 46. Returns the same local rule list; does not apply changes."}
+      gltfMetallicRoughness: {"params": ["table", "number", {"union": [{"union": ["string", "uuid"]}, {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 47. Returns the same local rule list; does not apply changes."}
+      gltfBaseColor: {"params": ["table", "number", {"union": [{"union": ["string", "uuid"]}, {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}, {"union": [{"union": ["boolean", "number"]}, {"literal": ""}]}], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 48. Returns the same local rule list; does not apply changes."}
+      renderMaterial: {"params": ["table", "number", {"union": ["string", "uuid"]}], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 49. Returns the same local rule list; does not apply changes."}
+      sitFlags: {"params": ["table", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 50. Returns the same local rule list; does not apply changes."}
+      damage: {"params": ["table", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 51. Returns the same local rule list; does not apply changes."}
+      health: {"params": ["table", "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 52. Returns the same local rule list; does not apply changes."}
+      collisionSound: {"params": ["table", {"union": ["string", "uuid"]}, "number"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append PRIM rule 53. Returns the same local rule list; does not apply changes."}
+      extend: {"params": ["table", "table"], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Append another table of rules and return the same local rule list."}
+      apply: {"params": ["table", "number | nil"], "returns": "nil", "docs": "Apply rules through ll.SetLinkPrimitiveParamsFast; target defaults to LINK_THIS. Changes world state. Runtime qualification deliberately excludes this operation."}
+
+  # Current SLua-required 64-bit integer library. This table is not callable.
+  integer:
+    functions:
+      create: { params: [number], returns: "integer | nil", docs: "Create a 64-bit integer from an exactly integral, in-range number; otherwise nil." }
+      fromstring: { params: [string, "number | nil"], returns: "integer | nil", docs: "Parse a signed 64-bit integer in base 2..36 (default 10); invalid text returns nil." }
+      tonumber: { params: [integer], returns: number, docs: "Convert a 64-bit integer to a number; large values can lose precision." }
+      neg: { params: [integer], returns: integer }
+      bnot: { params: [integer], returns: integer }
+      countrz: { params: [integer], returns: integer }
+      countlz: { params: [integer], returns: integer }
+      bswap: { params: [integer], returns: integer }
+      add: { params: [integer, integer], returns: integer }
+      sub: { params: [integer, integer], returns: integer }
+      mul: { params: [integer, integer], returns: integer }
+      div: { params: [integer, integer], returns: integer }
+      rem: { params: [integer, integer], returns: integer }
+      idiv: { params: [integer, integer], returns: integer }
+      udiv: { params: [integer, integer], returns: integer }
+      urem: { params: [integer, integer], returns: integer }
+      mod: { params: [integer, integer], returns: integer }
+      lshift: { params: [integer, integer], returns: integer }
+      rshift: { params: [integer, integer], returns: integer }
+      arshift: { params: [integer, integer], returns: integer }
+      lrotate: { params: [integer, integer], returns: integer }
+      rrotate: { params: [integer, integer], returns: integer }
+      lt: { params: [integer, integer], returns: boolean }
+      le: { params: [integer, integer], returns: boolean }
+      ult: { params: [integer, integer], returns: boolean }
+      ule: { params: [integer, integer], returns: boolean }
+      gt: { params: [integer, integer], returns: boolean }
+      ge: { params: [integer, integer], returns: boolean }
+      ugt: { params: [integer, integer], returns: boolean }
+      uge: { params: [integer, integer], returns: boolean }
+      min: { params: [integer], returns: integer, variadic: integer }
+      max: { params: [integer], returns: integer, variadic: integer }
+      band: { params: [], returns: integer, variadic: integer }
+      bor: { params: [], returns: integer, variadic: integer }
+      bxor: { params: [], returns: integer, variadic: integer }
+      btest: { params: [], returns: boolean, variadic: integer }
+      extract: { params: [integer, integer, "integer | nil"], returns: integer }
+      replace: { params: [integer, integer, integer, "integer | nil"], returns: integer }
+      clamp: { params: [integer, integer, integer], returns: integer }
+    values:
+      maxsigned: { type: integer, readonly: true, docs: "Maximum signed 64-bit integer (9223372036854775807)." }
+      minsigned: { type: integer, readonly: true, docs: "Minimum signed 64-bit integer (-9223372036854775808)." }
+
   lljson:
     functions:
-      encode: { params: [table], returns: string }
-      decode: { params: [string], returns: table }
-      slencode: { params: [table], returns: string }
-      sldecode: { params: [string], returns: table }
+      encode: { params: [unknown, table], arity: { min: 1, max: 2 }, returns: string, docs: "Encode a JSON value, with an optional options table; explicit nil is rejected." }
+      decode: { params: [string, "table | function"], arity: { min: 1, max: 2 }, returns: unknown, docs: "Decode any JSON value, with an optional options table or reviver function; explicit nil is rejected." }
+      slencode: { params: [unknown, table], arity: { min: 1, max: 2 }, returns: string }
+      sldecode: { params: [string, "table | function"], arity: { min: 1, max: 2 }, returns: unknown }
     values:
       null: { type: unknown, readonly: true }
-      empty_array: { type: unknown, readonly: true }
+      remove: { type: unknown, readonly: true, docs: "Sentinel for omitting a value from a JSON replacer or reviver." }
+      empty_array: { type: table, readonly: true }
+      empty_object: { type: table, readonly: true }
       array_mt: { type: table, readonly: true }
-      empty_array_mt: { type: table, readonly: true }
+      object_mt: { type: table, readonly: true }
 
   llbase64:
     functions:
@@ -173,6 +305,7 @@ modules:
       dot: { params: [vector, vector], returns: number }
       floor: { params: [vector], returns: vector }
       magnitude: { params: [vector], returns: number }
+      lerp: { params: [vector, vector, number], returns: vector }
       max: { params: [vector, vector], returns: vector }
       min: { params: [vector, vector], returns: vector }
       normalize: { params: [vector], returns: vector }
@@ -181,7 +314,7 @@ modules:
       zero: { type: vector, readonly: true }
       one: { type: vector, readonly: true }
 
-  rotation:
+  rotation: &rotationModule
     functions:
       create: { params: [number, number, number, number], returns: rotation }
       conjugate: { params: [rotation], returns: rotation }
@@ -195,51 +328,55 @@ modules:
     values:
       identity: { type: rotation, readonly: true }
 
+  quaternion: *rotationModule
+
   uuid:
     functions:
-      create: { params: [string], returns: uuid }
+      create: { params: ["string | buffer | uuid"], returns: uuid, docs: "Construct a UUID from a string, buffer of at least 16 bytes, or an existing UUID. Empty string is the null UUID. Invalid strings, short buffers and nil throw." }
 
-  # Lua stdlib (best-effort)
+  # October SLua native stdlib; generic/variable return packs remain conservative.
   string:
     functions:
-      byte: { params: [string, number, number], returns: number, docs: "string.byte(s [, i [, j]])" }
-      char: { params: [number], returns: string, docs: "string.char(...): bytes to string" }
+      byte: { params: [string, "number | nil", "number | nil"], returns: {tuple: [], variadic: number, minimum: 0}, docs: "string.byte(s [, i [, j]]): zero or more numeric byte values; bounds default to 1 and i. An absent result becomes nil in a value context. Literal range-dependent counts are not inferred." }
+      char: { params: [], variadic: number, returns: string, docs: "string.char(...): zero or more numeric bytes to string" }
       len: { params: [string], returns: number }
-      sub: { params: [string, number, number], returns: string }
+      sub: { params: [string, number, "number | nil"], returns: string, docs: "string.sub(s, start [, finish]): finish defaults to -1." }
       lower: { params: [string], returns: string }
       upper: { params: [string], returns: string }
       reverse: { params: [string], returns: string }
       rep: { params: [string, number], returns: string }
-      find: { params: [string, string], returns: (number, number) }
-      match: { params: [string, string], returns: string }
-      gsub: { params: [string, string, string], returns: (string, number) }
-      format: { params: [string], returns: string, docs: "string.format(fmt, ...)" }
+      find: { params: [string, string, "number | nil", "boolean | nil"], returns: {tuple: ["number | nil", "number | nil"], variadic: unknown, minimum: 1}, docs: "First-match byte bounds followed by an open capture pack; nil when absent. Lua patterns, not PCRE. Capture-dependent types/counts remain unknown." }
+      match: { params: [string, string, "number | nil"], returns: {tuple: [], variadic: unknown, minimum: 1}, docs: "First-match substring or all captures, including numeric position captures; nil when absent. Lua patterns, not PCRE. Capture-dependent types/counts remain unknown." }
+      gsub: { params: [string, string, "string | table | function", "number | nil"], returns: {tuple: [string, number]} }
+      format: { params: [string], variadic: unknown, returns: string, docs: "string.format(fmt, ...); format-specific argument constraints are not modeled." }
       gmatch: { params: [string, string], returns: function, docs: "string.gmatch(s, pattern)" }
-      split: { params: [string, string], returns: table, docs: "string.split(s, sep)" }
-      pack: { params: [string], returns: string, docs: "string.pack(fmt, ...)" }
+      split: { params: [string, "string | nil"], returns: {array: string}, docs: "string.split(s [, sep]): separator defaults to a comma." }
+      pack: { params: [string], variadic: unknown, returns: string, docs: "string.pack(fmt, ...)" }
       packsize: { params: [string], returns: number, docs: "string.packsize(fmt)" }
-      unpack: { params: [string, string, number], returns: (unknown, number), docs: "string.unpack(fmt, s [, pos])" }
+      unpack: { params: [string, string, "number | nil"], returns: {tuple: [], variadic: unknown, minimum: 1}, docs: "Format-dependent values plus next byte position. An open return pack; format-dependent value types/counts are not inferred." }
 
   table:
     functions:
       insert: { params: [table, unknown], returns: nil }
-      remove: { params: [table, number], returns: unknown }
-      sort: { params: [table], returns: nil }
-      concat: { params: [table], returns: string }
+      append: { params: [table], variadic: unknown, returns: nil, docs: "SLua table.append(destination, ...): append each value in place; returns no values." }
+      extend: { params: [table, table], returns: table, docs: "SLua table.extend(destination, source): append the source array and return destination." }
+      remove: { params: [table, "number | nil"], returns: unknown }
+      sort: { params: [table, "function | nil"], returns: nil }
+      concat: { params: [table, "string | nil", "number | nil", "number | nil"], returns: string }
       foreach: { params: [table, function], returns: unknown, docs: "table.foreach(t, f)" }
       foreachi: { params: [table, function], returns: unknown, docs: "table.foreachi(t, f)" }
       getn: { params: [table], returns: number, docs: "table.getn(t)" }
       maxn: { params: [table], returns: number, docs: "table.maxn(t)" }
-      pack: { params: [unknown], returns: table, docs: "table.pack(...)" }
-      unpack: { params: [table, number, number], returns: unknown, docs: "table.unpack(t [, i [, j]])" }
-      move: { params: [table, number, number, number, table], returns: table, docs: "table.move(a, f, e, t [, dest])" }
-      create: { params: [number, unknown], returns: table, docs: "table.create(n, value)" }
-      find: { params: [table, unknown, number], returns: number, docs: "table.find(t, value [, init])" }
+      pack: { params: [], variadic: unknown, returns: table, docs: "table.pack(...)" }
+      unpack: { params: [table, "number | nil", "number | nil"], returns: {tuple: [], variadic: unknown, minimum: 0}, docs: "table.unpack(t [, i [, j]]): zero or more table values. Element types and range-dependent counts remain unknown." }
+      move: { params: [table, number, number, number, "table | nil"], returns: table, docs: "table.move(a, f, e, t [, dest])" }
+      create: { params: [number, "unknown | nil"], returns: table, docs: "table.create(n, value)" }
+      find: { params: [table, unknown, "number | nil"], returns: "number | nil", docs: "table.find(t, value [, init])" }
       clear: { params: [table], returns: nil, docs: "table.clear(t)" }
       freeze: { params: [table], returns: table, docs: "table.freeze(t)" }
       isfrozen: { params: [table], returns: boolean, docs: "table.isfrozen(t)" }
       clone: { params: [table], returns: table, docs: "table.clone(t)" }
-      shrink: { params: [table, boolean], returns: table, docs: "table.shrink(t [, reorder])" }
+      shrink: { params: [table, "boolean | nil"], returns: table, docs: "table.shrink(t [, reorder])" }
 
   math:
     functions:
@@ -255,23 +392,23 @@ modules:
       exp: { params: [number], returns: number, docs: "math.exp(x)" }
       floor: { params: [number], returns: number, docs: "math.floor(x)" }
       fmod: { params: [number, number], returns: number, docs: "math.fmod(x, y)" }
-      frexp: { params: [number], returns: (number, number), docs: "math.frexp(x) -> mantissa, exp" }
+      frexp: { params: [number], returns: {tuple: [number, number]}, docs: "math.frexp(x) -> mantissa, exp" }
       ldexp: { params: [number, number], returns: number, docs: "math.ldexp(m, exp)" }
-      log: { params: [number, number], returns: number, docs: "math.log(x [, base])" }
+      log: { params: [number, "number | nil"], returns: number, docs: "math.log(x [, base])" }
       log10: { params: [number], returns: number, docs: "math.log10(x)" }
-      max: { params: [number, number], returns: number, docs: "math.max(x, y, ...)" }
-      min: { params: [number, number], returns: number, docs: "math.min(x, y, ...)" }
-      modf: { params: [number], returns: (number, number), docs: "math.modf(x) -> int, frac" }
+      max: { params: [number], variadic: number, returns: number, docs: "math.max(x, ...): at least one number." }
+      min: { params: [number], variadic: number, returns: number, docs: "math.min(x, ...): at least one number." }
+      modf: { params: [number], returns: {tuple: [number, number]}, docs: "math.modf(x) -> int, frac" }
       pow: { params: [number, number], returns: number, docs: "math.pow(x, y)" }
       rad: { params: [number], returns: number, docs: "math.rad(deg)" }
-      random: { params: [number, number], returns: number, docs: "math.random([m [, n]])" }
+      random: { params: ["number | nil", "number | nil"], returns: number, docs: "math.random([m [, n]])" }
       randomseed: { params: [number], returns: nil, docs: "math.randomseed(seed)" }
       sin: { params: [number], returns: number, docs: "math.sin(x)" }
       sinh: { params: [number], returns: number, docs: "math.sinh(x)" }
       sqrt: { params: [number], returns: number, docs: "math.sqrt(x)" }
       tan: { params: [number], returns: number, docs: "math.tan(x)" }
       tanh: { params: [number], returns: number, docs: "math.tanh(x)" }
-      noise: { params: [number, number, number], returns: number, docs: "math.noise(x, y, z)" }
+      noise: { params: [number, "number | nil", "number | nil"], returns: number, docs: "math.noise(x, y, z)" }
       clamp: { params: [number, number, number], returns: number, docs: "math.clamp(x, min, max)" }
       sign: { params: [number], returns: number, docs: "math.sign(x)" }
       round: { params: [number], returns: number, docs: "math.round(x)" }
@@ -283,20 +420,25 @@ modules:
     values:
       pi: { type: number, readonly: true, docs: "math.pi" }
       huge: { type: number, readonly: true, docs: "math.huge" }
+      nan: { type: number, readonly: true, docs: "math.nan" }
+      e: { type: number, readonly: true, docs: "math.e" }
+      phi: { type: number, readonly: true, docs: "math.phi" }
+      sqrt2: { type: number, readonly: true, docs: "math.sqrt2" }
+      tau: { type: number, readonly: true, docs: "math.tau" }
 
   os:
     functions:
-      time: { params: [], returns: number, docs: "os.time([table])" }
+      time: { params: ["table | nil"], returns: number, docs: "os.time([table])" }
       clock: { params: [], returns: number, docs: "os.clock()" }
       difftime: { params: [number, number], returns: number, docs: "os.difftime(t2, t1)" }
-      date: { params: [string, number], returns: "string | table", docs: "os.date([format [, time]])" }
+      date: { params: ["string | nil", "number | nil"], returns: "string | table", docs: "os.date([format [, time]])" }
 
   utf8:
     functions:
-      len: { params: [string, number, number], returns: number, docs: "utf8.len(s [, i [, j]])" }
-      codepoint: { params: [string, number, number], returns: number, docs: "utf8.codepoint(s [, i [, j]])" }
-      char: { params: [number], returns: string, docs: "utf8.char(...)" }
-      offset: { params: [string, number, number], returns: number, docs: "utf8.offset(s, n [, i])" }
+      len: { params: [string, "number | nil", "number | nil"], returns: {tuple: ["number | nil", "number | nil"], minimum: 1}, docs: "utf8.len: one result (length) on success; two (nil and invalid-byte position) on failure." }
+      codepoint: { params: [string, "number | nil", "number | nil"], returns: {tuple: [], variadic: number, minimum: 0}, docs: "utf8.codepoint(s [, i [, j]]): numeric codepoints whose starting byte offsets are in the range; zero results for an empty interval. Invalid UTF-8 or bounds throw. Range-dependent counts are not inferred." }
+      char: { params: [], variadic: number, returns: string, docs: "utf8.char(...): zero or more numeric codepoints." }
+      offset: { params: [string, number, "number | nil"], returns: "number | nil", docs: "utf8.offset(s, n [, i])" }
       codes: { params: [string], returns: function, docs: "utf8.codes(s)" }
     values:
       charpattern: { type: string, readonly: true, docs: "utf8 character pattern" }
@@ -306,71 +448,86 @@ modules:
       create: { params: [number], returns: buffer, docs: "buffer.create(size)" }
       fromstring: { params: [string], returns: buffer, docs: "buffer.fromstring(s)" }
       tostring: { params: [buffer], returns: string, docs: "buffer.tostring(buf)" }
-      readi8: { params: [buffer, number], returns: integer, docs: "buffer.readi8(buf, offset)" }
-      readu8: { params: [buffer, number], returns: integer, docs: "buffer.readu8(buf, offset)" }
-      readi16: { params: [buffer, number], returns: integer, docs: "buffer.readi16(buf, offset)" }
-      readu16: { params: [buffer, number], returns: integer, docs: "buffer.readu16(buf, offset)" }
-      readi32: { params: [buffer, number], returns: integer, docs: "buffer.readi32(buf, offset)" }
-      readu32: { params: [buffer, number], returns: integer, docs: "buffer.readu32(buf, offset)" }
+      readi8: { params: [buffer, number], returns: number, docs: "buffer.readi8(buf, offset)" }
+      readu8: { params: [buffer, number], returns: number, docs: "buffer.readu8(buf, offset)" }
+      readi16: { params: [buffer, number], returns: number, docs: "buffer.readi16(buf, offset)" }
+      readu16: { params: [buffer, number], returns: number, docs: "buffer.readu16(buf, offset)" }
+      readi32: { params: [buffer, number], returns: number, docs: "buffer.readi32(buf, offset)" }
+      readu32: { params: [buffer, number], returns: number, docs: "buffer.readu32(buf, offset)" }
       readf32: { params: [buffer, number], returns: number, docs: "buffer.readf32(buf, offset)" }
       readf64: { params: [buffer, number], returns: number, docs: "buffer.readf64(buf, offset)" }
-      writei8: { params: [buffer, number, integer], returns: nil, docs: "buffer.writei8(buf, offset, value)" }
-      writeu8: { params: [buffer, number, integer], returns: nil, docs: "buffer.writeu8(buf, offset, value)" }
-      writei16: { params: [buffer, number, integer], returns: nil, docs: "buffer.writei16(buf, offset, value)" }
-      writeu16: { params: [buffer, number, integer], returns: nil, docs: "buffer.writeu16(buf, offset, value)" }
-      writei32: { params: [buffer, number, integer], returns: nil, docs: "buffer.writei32(buf, offset, value)" }
-      writeu32: { params: [buffer, number, integer], returns: nil, docs: "buffer.writeu32(buf, offset, value)" }
+      writei8: { params: [buffer, number, number], returns: nil, docs: "buffer.writei8(buf, offset, value)" }
+      writeu8: { params: [buffer, number, number], returns: nil, docs: "buffer.writeu8(buf, offset, value)" }
+      writei16: { params: [buffer, number, number], returns: nil, docs: "buffer.writei16(buf, offset, value)" }
+      writeu16: { params: [buffer, number, number], returns: nil, docs: "buffer.writeu16(buf, offset, value)" }
+      writei32: { params: [buffer, number, number], returns: nil, docs: "buffer.writei32(buf, offset, value)" }
+      writeu32: { params: [buffer, number, number], returns: nil, docs: "buffer.writeu32(buf, offset, value)" }
       writef32: { params: [buffer, number, number], returns: nil, docs: "buffer.writef32(buf, offset, value)" }
       writef64: { params: [buffer, number, number], returns: nil, docs: "buffer.writef64(buf, offset, value)" }
       readstring: { params: [buffer, number, number], returns: string, docs: "buffer.readstring(buf, offset, count)" }
-      writestring: { params: [buffer, number, string, number], returns: nil, docs: "buffer.writestring(buf, offset, s [, count])" }
+      writestring: { params: [buffer, number, string, "number | nil"], returns: nil, docs: "buffer.writestring(buf, offset, s [, count])" }
       len: { params: [buffer], returns: number, docs: "buffer.len(buf)" }
-      copy: { params: [buffer, number, buffer, number, number], returns: nil, docs: "buffer.copy(dst, dstOffset, src, srcOffset, count)" }
-      fill: { params: [buffer, number, integer, number], returns: nil, docs: "buffer.fill(buf, offset, value [, count])" }
-      readbits: { params: [buffer, number, number], returns: integer, docs: "buffer.readbits(buf, bitOffset, bitCount)" }
-      writebits: { params: [buffer, number, number, integer], returns: nil, docs: "buffer.writebits(buf, bitOffset, bitCount, value)" }
+      copy: { params: [buffer, number, buffer, "number | nil", "number | nil"], returns: nil, docs: "buffer.copy(dst, dstOffset, src, srcOffset, count)" }
+      fill: { params: [buffer, number, number, "number | nil"], returns: nil, docs: "buffer.fill(buf, offset, value [, count])" }
+      readinteger: { params: [buffer, number], returns: integer, docs: "SLua 64-bit signed read; available in the qualified integer-library profile." }
+      writeinteger: { params: [buffer, number, integer], returns: nil, docs: "SLua 64-bit signed write; ordinary buffer.writei8/16/32 use numbers." }
+      readbits: { params: [buffer, number, number], returns: number, docs: "buffer.readbits(buf, bitOffset, bitCount)" }
+      writebits: { params: [buffer, number, number, number], returns: nil, docs: "buffer.writebits(buf, bitOffset, bitCount, value)" }
 
   debug:
     functions:
-      info: { params: [unknown, string], returns: unknown, docs: "debug.info(f|level, options)" }
-      traceback: { params: [thread, string, number], returns: string, docs: "debug.traceback([thread], [message], [level])" }
+      info:
+        docs: "debug.info(functionOrLevel, options) or debug.info(thread, level, options): option-dependent open results, possibly none. SLua may hide native C function objects. Option/value evaluation and host-owned thread access are not inferred."
+        overloads:
+          - {params: ["function | number", string], arity: {min: 2, max: 2}, returns: {tuple: [], variadic: unknown, minimum: 0}}
+          - {params: [thread, number, string], arity: {min: 3, max: 3}, returns: {tuple: [], variadic: unknown, minimum: 0}}
+      traceback:
+        docs: "debug.traceback([message [, level]]) or debug.traceback(thread [, message [, level]]). The host may refuse access to its own threads."
+        overloads:
+          - {params: ["string | nil", "number | nil"], arity: {min: 0, max: 2}, returns: string}
+          - {params: [thread, "string | nil", "number | nil"], arity: {min: 1, max: 3}, returns: string}
 
   coroutine:
     functions:
       create: { params: [function], returns: thread, docs: "coroutine.create(fn)" }
       resume:
         params: [thread]
+        variadic: unknown
         returns:
-          tuple: [boolean, unknown]
-        docs: "coroutine.resume(co, ...)"
-      yield: { params: [unknown], returns: unknown, docs: "coroutine.yield(...)" }
+          tuple: [boolean]
+          variadic: unknown
+          minimum: 1
+        docs: "coroutine.resume(co, ...). Returns boolean status followed by all results or an error object. Successful calls may return only the status; callback/result-pack types are not inferred."
+      yield: { params: [], variadic: unknown, returns: {tuple: [], variadic: unknown, minimum: 0}, docs: "coroutine.yield(...): yield supplied values; after resumption returns all resume arguments, possibly none." }
       status: { params: [thread], returns: string, docs: "coroutine.status(co)" }
       running:
         params: []
-        returns:
-          tuple: ["thread | nil", boolean]
-        docs: "Returns (thread, isMain). When on the main thread, thread is nil."
-      wrap: { params: [function], returns: function, docs: "coroutine.wrap(fn)" }
+        returns: "thread | nil"
+        docs: "Returns the current coroutine, or nil on the main thread. No isMain second return."
+      wrap: { params: [function], returns: {fn: {params: [], variadic: unknown, returns: {tuple: [], variadic: unknown, minimum: 0}}}, docs: "coroutine.wrap(fn): returns a callable forwarding arguments and all yielded/returned values. Errors propagate; no boolean status prefix. Callback-dependent types/counts are not inferred." }
       isyieldable: { params: [], returns: boolean, docs: "coroutine.isyieldable()" }
-      close: { params: [thread], returns: boolean, docs: "coroutine.close(co)" }
+      close: { params: [thread], returns: {tuple: [boolean, unknown], minimum: 1}, docs: "coroutine.close(co): true on success, false plus error on failure; second value is absent/nil on success." }
+      finally: { params: [thread, function], returns: nil, docs: "Register a finalizer receiving finished, error or cancelled plus result values; available in the qualified native profile. Detailed callback result packs are not modeled." }
 
   bit32:
     functions:
-      band: { params: [integer, integer], returns: integer }
-      bor: { params: [integer, integer], returns: integer }
-      bxor: { params: [integer, integer], returns: integer }
-      bnot: { params: [integer], returns: integer }
-      btest: { params: [integer, integer], returns: boolean }
-      lshift: { params: [integer, integer], returns: integer }
-      rshift: { params: [integer, integer], returns: integer }
-      arshift: { params: [integer, integer], returns: integer }
-      lrotate: { params: [integer, integer], returns: integer }
-      rrotate: { params: [integer, integer], returns: integer }
-      extract: { params: [integer, integer, integer], returns: integer }
-      replace: { params: [integer, integer, integer, integer], returns: integer }
-      countlz: { params: [integer], returns: integer }
-      countrz: { params: [integer], returns: integer }
-      byteswap: { params: [integer], returns: integer }
+      band: { params: [], variadic: number, returns: number }
+      bor: { params: [], variadic: number, returns: number }
+      bxor: { params: [], variadic: number, returns: number }
+      bnot: { params: [number], returns: number }
+      btest: { params: [], variadic: number, returns: boolean, docs: "Native bit32.btest accepts zero arguments (true); the pinned standard analyzer declaration requires one." }
+      lshift: { params: [number, number], returns: number }
+      rshift: { params: [number, number], returns: number }
+      arshift: { params: [number, number], returns: number }
+      lrotate: { params: [number, number], returns: number }
+      rrotate: { params: [number, number], returns: number }
+      extract: { params: [number, number, "number | nil"], returns: number }
+      replace: { params: [number, number, number, "number | nil"], returns: number }
+      countlz: { params: [number], returns: number }
+      countrz: { params: [number], returns: number }
+      byteswap: { params: [number], returns: number }
+      s32: { params: [number], returns: number, docs: "Normalize a number to the signed 32-bit range." }
+      smul: { params: [number, number], returns: number, docs: "Signed 32-bit multiplication without double-precision loss." }
 
 metatables:
   table:
@@ -510,3 +667,59 @@ metatables:
       z: { kind: property, type: number, docs: "Rotation Z component" }
       s: { kind: property, type: number, docs: "Rotation S component" }
 
+
+  llprim.ParamSetter:
+    members:
+      targetLink: {"kind": "method", "docs": "Append PRIM rule 34. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      physicsMaterial: {"kind": "method", "docs": "Append PRIM rule 2. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      physical: {"kind": "method", "docs": "Append PRIM rule 3. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": [{"union": ["boolean", "number"]}], "returns": {"metatable": "llprim.ParamSetter"}}
+      temporary: {"kind": "method", "docs": "Append PRIM rule 4. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": [{"union": ["boolean", "number"]}], "returns": {"metatable": "llprim.ParamSetter"}}
+      phantom: {"kind": "method", "docs": "Append PRIM rule 5. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": [{"union": ["boolean", "number"]}], "returns": {"metatable": "llprim.ParamSetter"}}
+      pos: {"kind": "method", "docs": "Append PRIM rule 6. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["vector"], "returns": {"metatable": "llprim.ParamSetter"}}
+      size: {"kind": "method", "docs": "Append PRIM rule 7. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["vector"], "returns": {"metatable": "llprim.ParamSetter"}}
+      rot: {"kind": "method", "docs": "Append PRIM rule 8. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["rotation"], "returns": {"metatable": "llprim.ParamSetter"}}
+      primTypeBox: {"kind": "method", "docs": "Append PRIM rule 9 with variant 0. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", "vector", "number", "vector", "vector", "vector"], "returns": {"metatable": "llprim.ParamSetter"}}
+      primTypeCylinder: {"kind": "method", "docs": "Append PRIM rule 9 with variant 1. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", "vector", "number", "vector", "vector", "vector"], "returns": {"metatable": "llprim.ParamSetter"}}
+      primTypePrism: {"kind": "method", "docs": "Append PRIM rule 9 with variant 2. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", "vector", "number", "vector", "vector", "vector"], "returns": {"metatable": "llprim.ParamSetter"}}
+      primTypeSphere: {"kind": "method", "docs": "Append PRIM rule 9 with variant 3. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", "vector", "number", "vector", "vector"], "returns": {"metatable": "llprim.ParamSetter"}}
+      primTypeTorus: {"kind": "method", "docs": "Append PRIM rule 9 with variant 4. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", "vector", "number", "vector", "vector", "vector", "vector", "vector", "number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      primTypeTube: {"kind": "method", "docs": "Append PRIM rule 9 with variant 5. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", "vector", "number", "vector", "vector", "vector", "vector", "vector", "number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      primTypeRing: {"kind": "method", "docs": "Append PRIM rule 9 with variant 6. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", "vector", "number", "vector", "vector", "vector", "vector", "vector", "number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      primTypeSculpt: {"kind": "method", "docs": "Append PRIM rule 9 with variant 7. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": [{"union": ["string", "uuid"]}, "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      texture: {"kind": "method", "docs": "Append PRIM rule 17. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", {"union": ["string", "uuid"]}, "vector", "vector", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      color: {"kind": "method", "docs": "Append PRIM rule 18. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", "vector", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      shinyBump: {"kind": "method", "docs": "Append PRIM rule 19. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      fullbright: {"kind": "method", "docs": "Append PRIM rule 20. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", {"union": ["boolean", "number"]}], "returns": {"metatable": "llprim.ParamSetter"}}
+      flexible: {"kind": "method", "docs": "Append PRIM rule 21. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": [{"union": ["boolean", "number"]}, "number", "number", "number", "number", "number", "vector"], "returns": {"metatable": "llprim.ParamSetter"}}
+      texgen: {"kind": "method", "docs": "Append PRIM rule 22. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      pointLight: {"kind": "method", "docs": "Append PRIM rule 23. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": [{"union": ["boolean", "number"]}, "vector", "number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      glow: {"kind": "method", "docs": "Append PRIM rule 25. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      text: {"kind": "method", "docs": "Append PRIM rule 26. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["string", "vector", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      name: {"kind": "method", "docs": "Append PRIM rule 27. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["string"], "returns": {"metatable": "llprim.ParamSetter"}}
+      description: {"kind": "method", "docs": "Append PRIM rule 28. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["string"], "returns": {"metatable": "llprim.ParamSetter"}}
+      rotLocal: {"kind": "method", "docs": "Append PRIM rule 29. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["rotation"], "returns": {"metatable": "llprim.ParamSetter"}}
+      physicsShapeType: {"kind": "method", "docs": "Append PRIM rule 30. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      omega: {"kind": "method", "docs": "Append PRIM rule 32. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["vector", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      posLocal: {"kind": "method", "docs": "Append PRIM rule 33. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["vector"], "returns": {"metatable": "llprim.ParamSetter"}}
+      slice: {"kind": "method", "docs": "Append PRIM rule 35. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["vector"], "returns": {"metatable": "llprim.ParamSetter"}}
+      specular: {"kind": "method", "docs": "Append PRIM rule 36. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", {"union": ["string", "uuid"]}, "vector", "vector", "number", "vector", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      normal: {"kind": "method", "docs": "Append PRIM rule 37. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", {"union": ["string", "uuid"]}, "vector", "vector", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      alphaMode: {"kind": "method", "docs": "Append PRIM rule 38. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      allowUnsit: {"kind": "method", "docs": "Append PRIM rule 39. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": [{"union": ["boolean", "number"]}], "returns": {"metatable": "llprim.ParamSetter"}}
+      scriptedSitOnly: {"kind": "method", "docs": "Append PRIM rule 40. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": [{"union": ["boolean", "number"]}], "returns": {"metatable": "llprim.ParamSetter"}}
+      sitTarget: {"kind": "method", "docs": "Append PRIM rule 41. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": [{"union": ["boolean", "number"]}, "vector", "rotation"], "returns": {"metatable": "llprim.ParamSetter"}}
+      projector: {"kind": "method", "docs": "Append PRIM rule 42. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["string", "number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      clickAction: {"kind": "method", "docs": "Append PRIM rule 43. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      reflectionProbe: {"kind": "method", "docs": "Append PRIM rule 44. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": [{"union": ["boolean", "number"]}, "number", "number", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      gltfNormal: {"kind": "method", "docs": "Append PRIM rule 45. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", {"union": [{"union": ["string", "uuid"]}, {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}], "returns": {"metatable": "llprim.ParamSetter"}}
+      gltfEmissive: {"kind": "method", "docs": "Append PRIM rule 46. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", {"union": [{"union": ["string", "uuid"]}, {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}], "returns": {"metatable": "llprim.ParamSetter"}}
+      gltfMetallicRoughness: {"kind": "method", "docs": "Append PRIM rule 47. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", {"union": [{"union": ["string", "uuid"]}, {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}], "returns": {"metatable": "llprim.ParamSetter"}}
+      gltfBaseColor: {"kind": "method", "docs": "Append PRIM rule 48. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", {"union": [{"union": ["string", "uuid"]}, {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}, {"union": ["vector", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}, {"union": ["number", {"literal": ""}]}, {"union": [{"union": ["boolean", "number"]}, {"literal": ""}]}], "returns": {"metatable": "llprim.ParamSetter"}}
+      renderMaterial: {"kind": "method", "docs": "Append PRIM rule 49. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", {"union": ["string", "uuid"]}], "returns": {"metatable": "llprim.ParamSetter"}}
+      sitFlags: {"kind": "method", "docs": "Append PRIM rule 50. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      damage: {"kind": "method", "docs": "Append PRIM rule 51. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number", "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      health: {"kind": "method", "docs": "Append PRIM rule 52. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": ["number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      collisionSound: {"kind": "method", "docs": "Append PRIM rule 53. Returns the same local rule list; does not apply changes.", "requiresColonCall": true, "params": [{"union": ["string", "uuid"]}, "number"], "returns": {"metatable": "llprim.ParamSetter"}}
+      extend: {"kind": "method", "docs": "Append another table of rules and return the same local rule list.", "requiresColonCall": true, "params": ["table"], "returns": {"metatable": "llprim.ParamSetter"}}
+      apply: {"kind": "method", "docs": "Apply rules through ll.SetLinkPrimitiveParamsFast; target defaults to LINK_THIS. Changes world state. Runtime qualification deliberately excludes this operation.", "requiresColonCall": true, "params": ["number | nil"], "returns": "nil"}
+      new: {"kind": "method", "params": [], "returns": {"metatable": "llprim.ParamSetter"}, "docs": "Construct another empty local rule list.", "requiresColonCall": false}

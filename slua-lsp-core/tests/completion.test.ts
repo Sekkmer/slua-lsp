@@ -177,6 +177,45 @@ describe('getCompletions', () => {
 			expect(labels).toContain('len');
 		});
 
+		it('offers Luau class fields and methods for class instances', () => {
+			const code = [
+				'class Point',
+				'\tpublic x: number',
+				'\tpublic y: number',
+				'\tfunction new(x: number, y: number)',
+				'\t\treturn Point { x = x, y = y }',
+				'\tend',
+				'\tfunction magnitude(self): number',
+				'\t\treturn self.x',
+				'\tend',
+				'end',
+				'local p = Point.new(1, 2)',
+				'p.',
+				'p:',
+				''
+			].join('\n');
+			const parsed = parseSlua(code);
+			const registry = buildSluaRegistryFromLslDefinitions(null);
+			const lines = code.split(/\r?\n/);
+
+			const dotLine = lines.findIndex((l) => l.trim() === 'p.');
+			const dotCompletions = getCompletions(parsed.ast, { line: dotLine, character: 2 }, registry, {
+				sourceText: code,
+				triggerCharacter: '.'
+			});
+			const dotLabels = dotCompletions.map((c) => c.label);
+			expect(dotLabels).toContain('x');
+			expect(dotLabels).toContain('y');
+
+			const colonLine = lines.findIndex((l) => l.trim() === 'p:');
+			const colonCompletions = getCompletions(parsed.ast, { line: colonLine, character: 2 }, registry, {
+				sourceText: code,
+				triggerCharacter: ':'
+			});
+			const colonLabels = colonCompletions.map((c) => c.label);
+			expect(colonLabels).toContain('magnitude');
+		});
+
 		it('stdlib module completion: string.sub', () => {
 			const src = `
 				string.$
@@ -565,5 +604,23 @@ describe('getCompletions', () => {
 			
 			expect(completions).toBeDefined();
 		});
+	});
+});
+
+describe('partially typed member completion', () => {
+	it('retains a builtin receiver when explicit completion is invoked after a prefix', () => {
+		const sourceText = 'local v = vector(1, 2, 3)\nvector.cr';
+		const parsed = parseSlua(sourceText);
+		const registry = buildSluaRegistryFromLslDefinitions(null);
+		const items = getCompletions(parsed.ast, { line: 1, character: 9 }, registry, { sourceText, invoked: true });
+		expect(items.some((item) => item.label === 'cross')).toBe(true);
+	});
+
+	it('retains local table member suggestions after a prefix', () => {
+		const sourceText = 'local options = { speed = 3 }\nprint(options.sp)';
+		const parsed = parseSlua(sourceText);
+		const registry = buildSluaRegistryFromLslDefinitions(null);
+		const items = getCompletions(parsed.ast, { line: 1, character: 16 }, registry, { sourceText, invoked: true });
+		expect(items.some((item) => item.label === 'speed')).toBe(true);
 	});
 });

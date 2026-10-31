@@ -1,24 +1,14 @@
-import type { SluaRegistry, SluaFunctionDef, SluaMethodDef } from '../slua/registry.js';
+import type { SluaRegistry } from '../slua/registry.js';
 import type { SluaType } from '../slua/types.js';
 import { sluaTypeToString } from '../slua/types.js';
+import { getVisibleLocalTypes } from './completion.js';
+import { resolveBuiltinExpression, selectBuiltinCallSignature } from '../slua/resolveBuiltin.js';
 
 type Loc = { start: { line: number; column: number }; end: { line: number; column: number } };
 
 type AstNode = { type: string; location?: Loc };
 
 type ProgramNode = AstNode & { type: 'Program'; body: unknown[] };
-
-type IdentifierNode = AstNode & { type: 'Identifier'; name: string };
-
-type MemberExpressionNode = AstNode & {
-	type: 'MemberExpression';
-	object: unknown;
-	property: unknown;
-	/** Luau parser uses '.' or ':' */
-	indexer?: '.' | ':';
-	/** Legacy/older shape (kept for safety) */
-	colonCall?: boolean;
-};
 
 type CallExpressionNode = AstNode & { type: 'CallExpression'; callee: unknown; arguments: unknown[] };
 
@@ -49,14 +39,6 @@ function isAstNode(value: unknown): value is AstNode {
 
 function isProgram(value: unknown): value is ProgramNode {
 	return isAstNode(value) && value.type === 'Program' && Array.isArray((value as Record<string, unknown>).body);
-}
-
-function isIdentifier(value: unknown): value is IdentifierNode {
-	return isAstNode(value) && value.type === 'Identifier' && typeof (value as Record<string, unknown>).name === 'string';
-}
-
-function isMemberExpression(value: unknown): value is MemberExpressionNode {
-	return isAstNode(value) && value.type === 'MemberExpression';
 }
 
 function isCallExpression(value: unknown): value is CallExpressionNode {
@@ -113,7 +95,7 @@ function findInnermostCallAtPosition(program: ProgramNode, pos: { line: number; 
 }
 
 function prevNonWhitespaceChar(sourceText: string, pos: { line: number; character: number }): string | null {
-	const lines = sourceText.split(/\r?\n/);
+	const lines = sourceText.split(/\r\n|\r|\n/);
 	if (pos.line < 0 || pos.line >= lines.length) return null;
 	const lineText = lines[pos.line] ?? '';
 	let i = Math.min(pos.character - 1, lineText.length - 1);
@@ -125,52 +107,20 @@ function prevNonWhitespaceChar(sourceText: string, pos: { line: number; characte
 	return null;
 }
 
-function resolveCallSignature(
-	call: CallExpressionNode,
-	registry: SluaRegistry
-): { displayName: string; signature: SluaType; docs?: string; paramDocs?: { name: string; type: SluaType; docs?: string }[] } | null {
-	// 1) foo(...)
-	if (isIdentifier(call.callee)) {
-		const def = registry.getGlobal(call.callee.name);
-		if (!def) return null;
-		return {
-			displayName: def.name,
-			signature: def.signature,
-			docs: def.docs,
-			paramDocs: def.params?.map((p) => ({ name: p.name, type: p.type, docs: p.docs }))
-		};
+function resolveCallSignature(call: CallExpressionNode, registry: SluaRegistry, locals: Map<string, SluaType>): { displayName: string; signature: SluaType; docs?: string; paramDocs?: { name: string; type: SluaType; docs?: string }[] } | null {
+	const resolved = resolveBuiltinExpression(call.callee, registry, (name) => locals.get(name));
+	if (!resolved) return null;
+	let signature = resolved.type;
+	let definition = resolved.definition;
+	if (signature.kind === 'table' && signature.module) {
+		definition = registry.getGlobal(signature.module);
+		if (definition) signature = definition.signature;
 	}
-
-	// 2) receiver.method(...)
-	if (isMemberExpression(call.callee)) {
-		const { object, property } = call.callee;
-		if (!isIdentifier(object) || !isIdentifier(property)) return null;
-		const receiver = object.name;
-		const method = property.name;
-		const indexer = call.callee.indexer ?? (call.callee.colonCall ? ':' : '.');
-
-		// Prefer intrinsic object methods when receiver matches an objectType.
-		const objMethod: SluaMethodDef | undefined = registry.getObjectMethod(receiver, method);
-		if (objMethod) {
-			return {
-				displayName: `${receiver}${indexer}${method}`,
-				signature: objMethod.signature,
-				docs: objMethod.docs
-			};
-		}
-
-		const mod = registry.getModule(receiver);
-		const fn: SluaFunctionDef | undefined = mod?.functions?.[method];
-		if (!fn) return null;
-		return {
-			displayName: `${receiver}${indexer}${method}`,
-			signature: fn.signature,
-			docs: fn.docs,
-			paramDocs: fn.params?.map((p) => ({ name: p.name, type: p.type, docs: p.docs }))
-		};
-	}
-
-	return null;
+	const selected = selectBuiltinCallSignature(signature, call.arguments, registry, (name) => locals.get(name));
+	if (!selected) return null;
+	signature = selected;
+	return { displayName: resolved.displayName ?? 'function', signature, docs: definition?.docs,
+		paramDocs: definition && 'params' in definition ? definition.params?.map((p) => ({ name: p.name, type: p.type, docs: p.docs })) : undefined };
 }
 
 function buildSignatureInformation(resolved: {
@@ -182,14 +132,16 @@ function buildSignatureInformation(resolved: {
 	if (resolved.signature.kind !== 'function') return null;
 
 	const params = resolved.signature.params;
+	const minimum = resolved.signature.arity?.min;
 	const paramInfos: SignatureHelpParameter[] = params.map((t, i) => {
 		const meta = resolved.paramDocs?.[i];
 		const name = meta?.name ?? `arg${i + 1}`;
 		return {
-			label: `${name}: ${sluaTypeToString(t)}`,
+			label: `${name}${minimum !== undefined && i >= minimum ? '?' : ''}: ${sluaTypeToString(t)}`,
 			documentation: meta?.docs
 		};
 	});
+	if (resolved.signature.variadic) paramInfos.push({ label: `...: ${sluaTypeToString(resolved.signature.variadic)}` });
 
 	const label = `${resolved.displayName}(${paramInfos.map((p) => p.label).join(', ')}) -> ${sluaTypeToString(
 		resolved.signature.returns
@@ -255,7 +207,7 @@ export function getSignatureHelp(
 	const call = findInnermostCallAtPosition(ast, pos);
 	if (!call) return null;
 
-	const resolved = resolveCallSignature(call, registry);
+	const resolved = resolveCallSignature(call, registry, getVisibleLocalTypes(ast, pos, registry));
 	if (!resolved) return null;
 
 	const sig = buildSignatureInformation(resolved);

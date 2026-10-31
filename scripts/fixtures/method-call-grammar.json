@@ -1,0 +1,142 @@
+[
+  {
+    "name": "value",
+    "source": "local t={run=function(self, value) return self,value end}\nlocal method=t:run",
+    "valid": false
+  },
+  {
+    "name": "return",
+    "source": "local t={run=function(self, value) return self,value end}\nreturn t:run",
+    "valid": false
+  },
+  {
+    "name": "condition",
+    "source": "local t={run=function(self, value) return self,value end}\nif t:run then end",
+    "valid": false
+  },
+  {
+    "name": "comparison",
+    "source": "local t={run=function(self, value) return self,value end}\nif t:run ~= t:run then end",
+    "valid": false
+  },
+  {
+    "name": "dot-chain",
+    "source": "local t={run=function(self, value) return self,value end}\nt:run.field()",
+    "valid": false
+  },
+  {
+    "name": "index-chain",
+    "source": "local t={run=function(self, value) return self,value end}\nt:run[1]()",
+    "valid": false
+  },
+  {
+    "name": "parenthesized",
+    "source": "local t={run=function(self, value) return self,value end}\n(t:run)()",
+    "valid": false
+  },
+  {
+    "name": "assignment",
+    "source": "local t={run=function(self, value) return self,value end}\nt:run=1",
+    "valid": false
+  },
+  {
+    "name": "colon-chain",
+    "source": "local t={run=function(self, value) return self,value end}\nt:run:other()",
+    "valid": false
+  },
+  {
+    "name": "cast",
+    "source": "local t={run=function(self, value) return self,value end}\nlocal v=t:run::any",
+    "valid": false
+  },
+  {
+    "name": "comma",
+    "source": "local t={run=function(self, value) return self,value end}\nlocal a,b=t:run,1",
+    "valid": false
+  },
+  {
+    "name": "argument",
+    "source": "local t={run=function(self, value) return self,value end}\nprint(t:run)",
+    "valid": false
+  },
+  {
+    "name": "table-field",
+    "source": "local t={run=function(self, value) return self,value end}\nlocal v={t:run}",
+    "valid": false
+  },
+  {
+    "name": "semicolon",
+    "source": "local t={run=function(self, value) return self,value end}\nt:run; print(1)",
+    "valid": false
+  },
+  {
+    "name": "parentheses",
+    "source": "local t={run=function(self, value) return self,value end}\nt:run()",
+    "valid": true
+  },
+  {
+    "name": "string-shorthand",
+    "source": "local t={run=function(self, value) return self,value end}\nt:run 'text'",
+    "valid": true
+  },
+  {
+    "name": "long-string-shorthand",
+    "source": "local t={run=function(self, value) return self,value end}\nt:run [[text]]",
+    "valid": true
+  },
+  {
+    "name": "table-shorthand",
+    "source": "local t={run=function(self, value) return self,value end}\nt:run {value=1}",
+    "valid": true
+  },
+  {
+    "name": "comment-before-name",
+    "source": "local t={run=function(self, value) return self,value end}\nt: -- comment\nrun()",
+    "valid": true
+  },
+  {
+    "name": "comment-before-args",
+    "source": "local t={run=function(self, value) return self,value end}\nt:run -- comment\n()",
+    "valid": false
+  },
+  {
+    "name": "newline-before-args",
+    "source": "local t={run=function(self, value) return self,value end}\nt:run\n()",
+    "valid": false
+  },
+  {
+    "name": "multiline-table",
+    "source": "local t={run=function(self, value) return self,value end}\nt:run\n{value=1}",
+    "valid": true
+  },
+  {
+    "name": "multiline-string",
+    "source": "local t={run=function(self, value) return self,value end}\nt:run\n 'text'",
+    "valid": true
+  },
+  {
+    "name": "dot-value",
+    "source": "local t={run=function(self, value) return self,value end}\nlocal method=t.run",
+    "valid": true
+  },
+  {
+    "name": "dot-callee",
+    "source": "local t={run=function(self, value) return self,value end}\nt.run(t,1)",
+    "valid": true
+  },
+  {
+    "name": "method-declaration",
+    "source": "local t={run=function(self, value) return self,value end}\nfunction t:other(v) return v end",
+    "valid": true
+  },
+  {
+    "name": "chained-methods",
+    "source": "local t={run=function(self, value) return self,value end}\nt:run():run()",
+    "valid": true
+  },
+  {
+    "name": "call-result-field",
+    "source": "local t={run=function(self, value) return self,value end}\nlocal v=t:run().value",
+    "valid": true
+  }
+]

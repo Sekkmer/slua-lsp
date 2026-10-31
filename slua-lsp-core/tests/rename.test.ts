@@ -255,5 +255,24 @@ describe('rename', () => {
 			expect(edits.length).toBe(2);
 			expect(edits.every((edit) => edit.identifier.name === 'k')).toBe(true);
 		});
+
+		test('renames Luau class names', () => {
+			const code = [
+				'class Point',
+				'\tfunction new(x: number)',
+				'\t\treturn Point { x = x }',
+				'\tend',
+				'end',
+				'local p = Point.new(1)'
+			].join('\n') + '\n';
+			const parsed = parseSlua(code);
+			expect(parsed.ast).toBeTruthy();
+			const registry = buildSluaRegistryFromLslDefinitions(null);
+
+			const edits = getRenameEdits(parsed.ast, { line: 0, character: code.split(/\r?\n/)[0]!.indexOf('Point') }, 'Vector2', registry);
+			expect(edits.length).toBe(3);
+			expect(edits.every((edit) => edit.identifier.name === 'Point')).toBe(true);
+			expect(edits.every((edit) => edit.newName === 'Vector2')).toBe(true);
+		});
 	});
 });

@@ -119,4 +119,41 @@ describe('undeclared-names + unknown-type', () => {
 		const diags = analyzeText(code, { registry });
 		expect(diags.some((d) => d.code === 'undeclared-name')).toBe(false);
 	});
+
+	test('declares Luau class names and public field annotation types', () => {
+		const code = `
+			class Point
+				public x: number
+				function new(x: number)
+					return Point { x = x }
+				end
+			end
+			local p: Point = Point.new(1)
+			print(p)
+		`;
+		const diags = analyzeText(code, { registry });
+		expect(diags.some((d) => d.code === 'undeclared-name')).toBe(false);
+		expect(diags.some((d) => d.code === 'unknown-type')).toBe(false);
+	});
+	test('classifies typeof function annotations without treating value names or end as types', () => {
+		const source = 'class Box end\nlocal identity: typeof(function(value: Box): Box return value end) = function(value: Box): Box return value end\nassert(identity(Box{})~=nil)';
+		expect(analyzeText(source, { registry }).filter((d) => d.code === 'unknown-type')).toEqual([]);
+	});
+
+	test('retains unknown names inside typeof nested function annotations', () => {
+		const source = 'local identity: typeof(function(value: Missing): Missing return value end) = nil';
+		const warnings = analyzeText(source, { registry }).filter((d) => d.code === 'unknown-type');
+		expect(warnings).toHaveLength(1); expect(warnings[0]!.message).toBe('Unknown type \'Missing\'.');
+	});
+
+	test('keeps function type labels and generic binders out of unknown-type names', () => {
+		const source = 'local identity: <T>(label: T)->T = function<T>(value: T): T return value end';
+		expect(analyzeText(source, { registry }).filter((d) => d.code === 'unknown-type')).toEqual([]);
+	});
+
+	test('recognizes native buffer and never annotation names', () => {
+		const source = 'local function stop(value: buffer): never error(value) end';
+		expect(analyzeText(source, { registry }).filter((d) => d.code === 'unknown-type')).toEqual([]);
+	});
+
 });

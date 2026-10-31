@@ -1,0 +1,141 @@
+{
+  "target": "vscode",
+  "sourceMaps": [
+    "slua-lsp-client/out/extension.js.map",
+    "slua-lsp-client/server/out/index.js.map"
+  ],
+  "packages": [
+    {
+      "name": "balanced-match",
+      "version": "1.0.2",
+      "license": "MIT",
+      "licenses": [
+        {
+          "name": "LICENSE.md",
+          "sha256": "a1bd5deadb6a06dd74efa852c1b8b23f63b67f2214fbe9c8bd591da51da69268"
+        }
+      ]
+    },
+    {
+      "name": "brace-expansion",
+      "version": "2.0.2",
+      "license": "MIT",
+      "licenses": [
+        {
+          "name": "LICENSE",
+          "sha256": "68f12f6e2c33688699249c01d8f9623c534da20aa71989c57b061b7bc1676d14"
+        }
+      ]
+    },
+    {
+      "name": "js-yaml",
+      "version": "4.1.1",
+      "license": "MIT",
+      "licenses": [
+        {
+          "name": "LICENSE",
+          "sha256": "a07bc24468b9654ce76a547d47a2db282d07733b715db4c73a98bd63961f9550"
+        }
+      ]
+    },
+    {
+      "name": "jsonc-parser",
+      "version": "3.3.1",
+      "license": "MIT",
+      "licenses": [
+        {
+          "name": "LICENSE.md",
+          "sha256": "c3a24c02d678e5f0711623dcf3ab3f243b273c2633f638a1fa8e35fb7c7f8e4d"
+        }
+      ]
+    },
+    {
+      "name": "minimatch",
+      "version": "5.1.6",
+      "license": "ISC",
+      "licenses": [
+        {
+          "name": "LICENSE",
+          "sha256": "d11323827fa4edeaafc437cc5b91b6971b335f0127efeeb42bf5122fe8657e8f"
+        }
+      ]
+    },
+    {
+      "name": "semver",
+      "version": "7.7.3",
+      "license": "ISC",
+      "licenses": [
+        {
+          "name": "LICENSE",
+          "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b"
+        }
+      ]
+    },
+    {
+      "name": "vscode-jsonrpc",
+      "version": "8.2.0",
+      "license": "MIT",
+      "licenses": [
+        {
+          "name": "License.txt",
+          "sha256": "ec9ee83580841e8eb687aca9867f221503809ba6426c7f876ede17d91b9fcfd0"
+        }
+      ]
+    },
+    {
+      "name": "vscode-languageclient",
+      "version": "9.0.1",
+      "license": "MIT",
+      "licenses": [
+        {
+          "name": "License.txt",
+          "sha256": "ec9ee83580841e8eb687aca9867f221503809ba6426c7f876ede17d91b9fcfd0"
+        }
+      ]
+    },
+    {
+      "name": "vscode-languageserver",
+      "version": "9.0.1",
+      "license": "MIT",
+      "licenses": [
+        {
+          "name": "License.txt",
+          "sha256": "ec9ee83580841e8eb687aca9867f221503809ba6426c7f876ede17d91b9fcfd0"
+        }
+      ]
+    },
+    {
+      "name": "vscode-languageserver-protocol",
+      "version": "3.17.5",
+      "license": "MIT",
+      "licenses": [
+        {
+          "name": "License.txt",
+          "sha256": "ec9ee83580841e8eb687aca9867f221503809ba6426c7f876ede17d91b9fcfd0"
+        }
+      ]
+    },
+    {
+      "name": "vscode-languageserver-textdocument",
+      "version": "1.0.12",
+      "license": "MIT",
+      "licenses": [
+        {
+          "name": "License.txt",
+          "sha256": "ec9ee83580841e8eb687aca9867f221503809ba6426c7f876ede17d91b9fcfd0"
+        }
+      ]
+    },
+    {
+      "name": "vscode-languageserver-types",
+      "version": "3.17.5",
+      "license": "MIT",
+      "licenses": [
+        {
+          "name": "License.txt",
+          "sha256": "ec9ee83580841e8eb687aca9867f221503809ba6426c7f876ede17d91b9fcfd0"
+        }
+      ]
+    }
+  ]
+}

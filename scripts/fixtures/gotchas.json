@@ -1,0 +1,160 @@
+[
+  {
+    "name": "zero-condition",
+    "source": "if 0 then print(\"taken\") else print(\"wrong\") end",
+    "stdout": "taken\n",
+    "codes": [
+      "truthy-literal"
+    ]
+  },
+  {
+    "name": "empty-condition",
+    "source": "-- \ud83d\ude00\r\nif \"\" then print(\"taken\") else print(\"wrong\") end",
+    "stdout": "taken\n",
+    "codes": [
+      "truthy-literal"
+    ]
+  },
+  {
+    "name": "negative-zero",
+    "source": "if -0 then print(\"taken\") end",
+    "stdout": "taken\n",
+    "codes": [
+      "truthy-literal"
+    ]
+  },
+  {
+    "name": "zero-or",
+    "source": "print(0 or 42)",
+    "stdout": "0\n",
+    "codes": [
+      "truthy-literal"
+    ]
+  },
+  {
+    "name": "not-zero",
+    "source": "print(not 0)",
+    "stdout": "false\n",
+    "codes": [
+      "truthy-literal"
+    ]
+  },
+  {
+    "name": "nested-condition",
+    "source": "if true and \"\" then print(\"taken\") end",
+    "stdout": "taken\n",
+    "codes": [
+      "truthy-literal"
+    ]
+  },
+  {
+    "name": "explicit-comparison",
+    "source": "local value=0\nif value==0 then print(\"zero\") end",
+    "stdout": "zero\n",
+    "codes": []
+  },
+  {
+    "name": "variable-condition",
+    "source": "local value=0\nif value then print(\"taken\") end",
+    "stdout": "taken\n",
+    "codes": []
+  },
+  {
+    "name": "suppressed-zero",
+    "source": "-- slua-lsp:disable-next-line truthy-literal\nif 0 then print(\"taken\") end",
+    "stdout": "taken\n",
+    "codes": []
+  },
+  {
+    "name": "ipairs-record",
+    "source": "local count=0\nfor _,value in ipairs({name=42}) do count+=value end\nprint(count)",
+    "stdout": "0\n",
+    "codes": [
+      "ipairs-literal-hole"
+    ]
+  },
+  {
+    "name": "ipairs-start-gap",
+    "source": "local count=0\nfor _,value in ipairs({[2]=42}) do count+=value end\nprint(count)",
+    "stdout": "0\n",
+    "codes": [
+      "ipairs-literal-hole"
+    ]
+  },
+  {
+    "name": "ipairs-middle-gap",
+    "source": "local count=0\nfor _,value in ipairs({1,nil,42}) do count+=value end\nprint(count)",
+    "stdout": "1\n",
+    "codes": [
+      "ipairs-literal-hole"
+    ]
+  },
+  {
+    "name": "ipairs-nil-first",
+    "source": "local count=0\nfor _,value in ipairs({nil,42}) do count+=value end\nprint(count)",
+    "stdout": "0\n",
+    "codes": [
+      "ipairs-literal-hole"
+    ]
+  },
+  {
+    "name": "ipairs-array",
+    "source": "local count=0\nfor _,value in ipairs({1,2,3}) do count+=value end\nprint(count)",
+    "stdout": "6\n",
+    "codes": []
+  },
+  {
+    "name": "ipairs-array-metadata",
+    "source": "local count=0\nfor _,value in ipairs({1,2,name=42}) do count+=value end\nprint(count)",
+    "stdout": "3\n",
+    "codes": []
+  },
+  {
+    "name": "pairs-record",
+    "source": "local count=0\nfor _,value in pairs({name=42}) do count+=value end\nprint(count)",
+    "stdout": "42\n",
+    "codes": []
+  },
+  {
+    "name": "generalized-record",
+    "source": "local count=0\nfor _,value in {name=42} do count+=value end\nprint(count)",
+    "stdout": "42\n",
+    "codes": []
+  },
+  {
+    "name": "local-ipairs-replacement",
+    "source": "local ipairs=pairs\nlocal count=0\nfor _,value in ipairs({name=42}) do count+=value end\nprint(count)",
+    "stdout": "42\n",
+    "codes": []
+  },
+  {
+    "name": "suppressed-ipairs",
+    "source": "-- slua-lsp:disable-next-line ipairs-literal-hole\nfor k,v in ipairs({name=42}) do print(k,v) end",
+    "stdout": "",
+    "codes": []
+  },
+  {
+    "name": "metatable-delegation",
+    "source": "local writes=0\nlocal backing={value=42}\nlocal proxy=setmetatable({}, {__index=backing,__newindex=function(_,key,value) writes+=1 rawset(backing,key,value) end})\nproxy.value=43\nassert(backing.value==43 and writes==1)\nrawset(proxy,\"value\",44)\nproxy.value=45\nassert(proxy.value==45 and writes==1 and backing.value==43)\nprint(\"metatable-ok\")",
+    "stdout": "metatable-ok\n",
+    "codes": []
+  },
+  {
+    "name": "metatable-equality",
+    "source": "local meta={__eq=function(a,b) return a.id==b.id end}\nlocal a=setmetatable({id=7},meta)\nlocal b=setmetatable({id=7},meta)\nassert(a==b and not rawequal(a,b))\nprint(\"equal\")",
+    "stdout": "equal\n",
+    "codes": []
+  },
+  {
+    "name": "custom-iteration",
+    "source": "local proxy=setmetatable({}, {__iter=function() return next,{answer=42},nil end})\nlocal count=0\nfor _,value in proxy do count+=value end\nassert(count==42)\nprint(count)",
+    "stdout": "42\n",
+    "codes": []
+  },
+  {
+    "name": "contextual-continue",
+    "source": "local count=0\nfor _,value in {1,2,3} do if value==2 then continue end count+=value end\nprint(count)",
+    "stdout": "4\n",
+    "codes": []
+  }
+]

@@ -1,0 +1,14 @@
+.vscode/**
+src/**
+scripts/**
+node_modules/**
+**/*.tsbuildinfo
+**/*.vsix
+out/test/**
+third_party/**/.git/**
+third_party/**/.git
+third_party/**
+!third_party/lsl-definitions/lsl_definitions.yaml
+!third_party/lsl-definitions/LICENSE
+
+tsconfig.json

@@ -1,4 +1,6 @@
 import {
+	CodeActionKind,
+	type CodeAction,
 	createConnection,
 	ProposedFeatures,
 	TextDocuments,
@@ -21,11 +23,25 @@ import {
 } from 'vscode-languageserver/node';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
 
 import {
+	SLUA_LSP_VERSION,
+	getSourceModuleGraph,
+	preprocessSource,
+	normalizePreprocessorContext,
+	withSourceContext,
+	type PreprocessorContext,
+	readSourceModuleFile,
+	collectSourceRequires,
+	sourceModuleRangeContains,
+	sourceRequireCalls,
+	analyzeSourceProject,
+	parseSlua,
+	type SourceProjectAnalysis,
 	classifySemanticTokens,
 	loadLslDefinitionsFromYamlFile,
-	parseSlua,
 	SLUA_SEMANTIC_TOKEN_MODIFIERS,
 	SLUA_SEMANTIC_TOKEN_TYPES,
 	buildSluaRegistryFromLslDefinitions,
@@ -38,38 +54,132 @@ import {
 	isValidRenameIdentifier,
 	getCompletions,
 	getSignatureHelp,
+	getHover,
+	getDocumentSymbols,
+	type SourceSymbol,
+	getCodeActions,
+	analyzeTextWithDirectives,
 	isCallExpression,
-	isFunctionDeclarationNode,
 	isFunctionNode,
 	isIdentifier,
 	isMemberExpression,
-	isProgramNode,
 	isRecord,
 	isStringNode,
 	lspRangeFromLoc,
 	posInLoc,
 	type AstNode,
 	type IdentifierNode,
-	type SluaType,
 	type SluaEventSignature,
 	type CompletionItemKind
 } from 'slua-lsp-core';
 
 import { SERVER_NAME } from './constants.js';
 import { computeDiagnosticsForText } from './diagnostics.js';
+import { DocumentParseCache } from './documentParseCache.js';
+import { SourceFileWatchers } from './sourceFileWatchers.js';
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
+const parsedDocuments = new DocumentParseCache();
 
+let supportsDocumentChanges = false;
 let defsLoaded = false;
 let semanticLegend: SemanticTokensLegend | null = null;
-let defs: unknown | null = null;
 let registry: ReturnType<typeof buildSluaRegistryFromLslDefinitions> | null = null;
 let activeDefinitionsPath: string | undefined;
+let definitionReloadEpoch = 0;
+let sourceEpoch = 0;
+let preprocessorContext: PreprocessorContext | undefined;
+const contextRegistries = new WeakMap<object, { epoch: number; base: ReturnType<typeof buildSluaRegistryFromLslDefinitions>; value: ReturnType<typeof buildSluaRegistryFromLslDefinitions> }>();
+function contextRegistry(document: TextDocument) {
+	if (!registry || preprocessorContext === undefined || !document.uri.startsWith('file:')) return registry;
+	const ast = parsedDocuments.get(document).ast;
+	if (!ast || typeof ast !== 'object') return registry;
+	const previous = contextRegistries.get(ast);
+	if (previous?.epoch === sourceEpoch && previous.base === registry) return previous.value;
+	const value = withSourceContext(ast, fileURLToPath(document.uri), registry, preprocessorContext);
+	contextRegistries.set(ast, { epoch: sourceEpoch, base: registry, value });
+	return value;
+}
+const sourceRoots = new Set<string>();
+const sourceReads = new Map<string, Set<string>>();
+const sourceWatchers = new SourceFileWatchers(() => {
+	invalidateSourceProjects(); validateDependentDocuments('');
+}, (message) => connection.console.warn(message));
+connection.onShutdown(() => sourceWatchers.close());
+const sourceProjects = new Map<string, { version: number; epoch: number; base: ReturnType<typeof buildSluaRegistryFromLslDefinitions>; controller: AbortController;
+	promise: Promise<SourceProjectAnalysis | null>; completed: boolean }>();
+
+function invalidateSourceProjects(): void {
+	sourceEpoch++;
+	for (const entry of sourceProjects.values()) entry.controller.abort();
+	sourceProjects.clear();
+}
+
+async function projectForDocument(document: TextDocument): Promise<SourceProjectAnalysis | null> {
+	if (!registry || !document.uri.startsWith('file:') || !sourceRequireCalls(parsedDocuments.get(document).ast).length) return null;
+	const previous = sourceProjects.get(document.uri);
+	if (previous?.version === document.version && previous.epoch === sourceEpoch && previous.base === registry) return previous.promise;
+	const controller = new AbortController();
+	sourceWatchers.closeRoot(document.uri);
+	const reads = new Set<string>();
+	sourceReads.set(document.uri, reads);
+	const entry = { version: document.version, epoch: sourceEpoch, base: registry, controller, completed: false,
+		promise: Promise.resolve<SourceProjectAnalysis | null>(null) };
+	entry.promise = analyzeSourceProject(fileURLToPath(document.uri), registry, { context: preprocessorContext, entryText: document.getText(), signal: controller.signal,
+		onRead: (file) => { reads.add(file); sourceWatchers.observe(document.uri, file); },
+		readFile: async (file) => documents.get(pathToFileURL(file).href)?.getText() ?? await readSourceModuleFile(file),
+		parseFile: (file, text) => {
+			const open = documents.get(pathToFileURL(file).href);
+			return open?.getText() === text ? parsedDocuments.get(open) : parseSlua(text);
+		} }).catch((error) => {
+		if (!controller.signal.aborted) connection.console.error(`Source project analysis failed: ${String(error)}`);
+		return null;
+	}).finally(() => {
+		entry.completed = true;
+		for (const [uri, candidate] of sourceProjects) if (sourceProjects.size > 16 && candidate.completed && candidate !== entry) sourceProjects.delete(uri);
+	});
+	sourceProjects.set(document.uri, entry);
+	return entry.promise;
+}
+
+async function registryForDocument(document: TextDocument) {
+	for (let attempt = 0; attempt < 3; attempt++) {
+		const epoch = sourceEpoch;
+		const project = await projectForDocument(document);
+		if (documents.get(document.uri)?.version !== document.version) return registry;
+		if (epoch === sourceEpoch) return project?.registry ?? contextRegistry(document);
+	}
+	return registry;
+}
+
+function validateDependentDocuments(except: string): void {
+	for (const uri of sourceRoots) if (uri !== except) void validateTextDocument(uri);
+}
 
 type ServerInitializationOptions = {
 	definitionsPath?: unknown;
+	preprocessorContext?: unknown;
 };
+
+function setPreprocessorContext(value: unknown) {
+	try {
+		const next = value === null ? undefined : normalizePreprocessorContext(value);
+		if (JSON.stringify(next) !== JSON.stringify(preprocessorContext)) {
+			preprocessorContext = next;
+			invalidateSourceProjects();
+			for (const doc of documents.all()) void validateTextDocument(doc.uri);
+		}
+		return { accepted: true, enabled: next !== undefined, contextSha256: next === undefined ? null : createHash('sha256').update(JSON.stringify(next)).digest('hex') };
+	} catch (error) {
+		connection.console.warn(`Rejected preprocessor context; retaining current context: ${String(error)}`);
+		return { accepted: false, error: (error as Error).message };
+	}
+}
+connection.onRequest('slua/setPreprocessorContext', (params: { context?: unknown }) => {
+	if (!params || typeof params !== 'object' || !Object.hasOwn(params, 'context')) return { accepted: false, error: 'An explicit context object or null is required' };
+	return setPreprocessorContext(params.context);
+});
 
 function getDefinitionsPathFromSettings(settings: unknown): string | undefined {
 	if (!settings || typeof settings !== 'object') return undefined;
@@ -81,27 +191,42 @@ function getDefinitionsPathFromSettings(settings: unknown): string | undefined {
 	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
-async function reloadDefinitions(definitionsPath?: string): Promise<void> {
+async function reloadDefinitions(definitionsPath?: string): Promise<boolean> {
+	const epoch = ++definitionReloadEpoch;
 	try {
-		defs = await loadLslDefinitionsFromYamlFile(definitionsPath);
-		registry = buildSluaRegistryFromLslDefinitions(defs);
+		const candidate = await loadLslDefinitionsFromYamlFile(definitionsPath);
+		const candidateRegistry = buildSluaRegistryFromLslDefinitions(candidate);
+		if (epoch !== definitionReloadEpoch) return false;
+		registry = candidateRegistry;
+		invalidateSourceProjects();
 		defsLoaded = true;
 		activeDefinitionsPath = definitionsPath;
+		return true;
 	} catch (err) {
-		defsLoaded = false;
-		defs = null;
-		registry = null;
+		if (epoch !== definitionReloadEpoch) return false;
+		// A rejected configuration must not discard an already working registry.
 		connection.console.error(`Failed to load LSL definitions YAML: ${String(err)}`);
+		return false;
 	}
 }
 
+connection.onRequest('slua/getDefinitions', () => ({ loaded: defsLoaded, definitionsPath: activeDefinitionsPath ?? null }));
+connection.onRequest('slua/setDefinitions', async (params: { definitionsPath?: unknown }) => {
+	if (typeof params?.definitionsPath !== 'string' || !params.definitionsPath.trim()) return { accepted: false };
+	const accepted = await reloadDefinitions(params.definitionsPath);
+	if (accepted) for (const doc of documents.all()) void validateTextDocument(doc.uri);
+	return { accepted, definitionsPath: activeDefinitionsPath ?? null };
+});
+
 connection.onInitialize(async (params: InitializeParams): Promise<InitializeResult> => {
+	supportsDocumentChanges = params.capabilities.workspace?.workspaceEdit?.documentChanges === true;
 	const initializationOptions = params.initializationOptions as ServerInitializationOptions | undefined;
+	setPreprocessorContext(initializationOptions?.preprocessorContext);
 	const definitionsPath = getDefinitionsPathFromSettings(initializationOptions);
 	await reloadDefinitions(definitionsPath);
 
 	return {
-		serverInfo: { name: SERVER_NAME, version: '0.0.0' },
+		serverInfo: { name: SERVER_NAME, version: SLUA_LSP_VERSION },
 		capabilities: {
 			textDocumentSync: TextDocumentSyncKind.Incremental,
 			completionProvider: {
@@ -128,7 +253,8 @@ connection.onInitialize(async (params: InitializeParams): Promise<InitializeResu
 				full: true
 			},
 			inlayHintProvider: { resolveProvider: false },
-			renameProvider: { prepareProvider: true }
+			renameProvider: { prepareProvider: true },
+			codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] }
 		}
 	};
 });
@@ -138,7 +264,7 @@ function locationFromCoreDefinition(uri: string, definition: ReturnType<typeof f
 	const loc = definition.identifier.location;
 	if (!loc) return null;
 	return {
-		uri,
+		uri: definition.kind === 'field' && definition.file ? pathToFileURL(definition.file).href : uri,
 		range: {
 			start: { line: Math.max(0, loc.start.line - 1), character: Math.max(0, loc.start.column - 1) },
 			end: { line: Math.max(0, loc.end.line - 1), character: Math.max(0, loc.end.column - 1) }
@@ -242,14 +368,16 @@ function selectionRangeForPosition(ast: unknown, pos: { line: number; character:
 	return out;
 }
 
-connection.onSignatureHelp((params): SignatureHelp | null => {
+connection.onSignatureHelp(async (params): Promise<SignatureHelp | null> => {
 	const doc = documents.get(params.textDocument.uri);
 	if (!doc) return null;
 	if (!registry) return null;
+	const sourceRegistry = await registryForDocument(doc);
+	if (!sourceRegistry) return null;
 
 	const text = doc.getText();
-	const parsed = parseSlua(text);
-	const help = getSignatureHelp(parsed.ast, params.position, registry, text);
+	const parsed = parsedDocuments.get(doc);
+	const help = getSignatureHelp(parsed.ast, params.position, sourceRegistry, text);
 	if (!help || help.signatures.length === 0) return null;
 
 	const signatures: SignatureInformation[] = help.signatures.map((s) => {
@@ -271,221 +399,32 @@ connection.onSignatureHelp((params): SignatureHelp | null => {
 	};
 });
 
-const IDENT_START = /[A-Za-z_]/;
-const IDENT_PART = /[A-Za-z0-9_]/;
-
-function posToOffset(sourceText: string, pos: { line: number; character: number }): number {
-	let offset = 0;
-	let line = 0;
-	for (let i = 0; i < sourceText.length && line < pos.line; i++) {
-		const ch = sourceText[i]!;
-		offset++;
-		if (ch === '\n') line++;
-	}
-	return Math.min(sourceText.length, offset + pos.character);
-}
-
-function offsetToPos(sourceText: string, offset: number): { line: number; character: number } {
-	const clamped = Math.max(0, Math.min(sourceText.length, offset));
-	let line = 0;
-	let lineStart = 0;
-	for (let i = 0; i < clamped; i++) {
-		if (sourceText[i] === '\n') {
-			line++;
-			lineStart = i + 1;
-		}
-	}
-	return { line, character: clamped - lineStart };
-}
-
-function identifierAtPositionInText(
-	sourceText: string,
-	pos: { line: number; character: number }
-): { name: string; range: { start: { line: number; character: number }; end: { line: number; character: number } } } | null {
-	const offset = posToOffset(sourceText, pos);
-	if (offset < 0 || offset > sourceText.length) return null;
-
-	let start = offset;
-	let end = offset;
-	while (start > 0 && IDENT_PART.test(sourceText[start - 1] ?? '')) start--;
-	while (end < sourceText.length && IDENT_PART.test(sourceText[end] ?? '')) end++;
-
-	const name = sourceText.slice(start, end);
-	if (!name || !IDENT_START.test(name[0] ?? '')) return null;
-
-	return {
-		name,
-		range: {
-			start: offsetToPos(sourceText, start),
-			end: offsetToPos(sourceText, end)
-		}
-	};
-}
-
-function findPrevUnescapedChar(sourceText: string, fromExclusive: number, ch: string): number {
-	for (let i = Math.min(fromExclusive - 1, sourceText.length - 1); i >= 0; i--) {
-		if (sourceText[i] !== ch) continue;
-		if (i > 0 && sourceText[i - 1] === '\\') continue;
-		return i;
-	}
-	return -1;
-}
-
-function findNextUnescapedChar(sourceText: string, fromInclusive: number, ch: string): number {
-	for (let i = Math.max(0, fromInclusive); i < sourceText.length; i++) {
-		if (sourceText[i] !== ch) continue;
-		if (i > 0 && sourceText[i - 1] === '\\') continue;
-		return i;
-	}
-	return -1;
-}
-
-function isInTemplateInterpolation(sourceText: string, pos: { line: number; character: number }): boolean {
-	const cursor = posToOffset(sourceText, pos);
-	const tickStart = findPrevUnescapedChar(sourceText, cursor, '`');
-	if (tickStart < 0) return false;
-	const tickEnd = findNextUnescapedChar(sourceText, tickStart + 1, '`');
-	if (tickEnd < 0) return false;
-	if (cursor <= tickStart || cursor >= tickEnd) return false;
-
-	let depth = 0;
-	for (let i = tickStart + 1; i < cursor; i++) {
-		const c = sourceText[i]!;
-		if (c === '{' && sourceText[i - 1] !== '\\') depth++;
-		else if (c === '}' && sourceText[i - 1] !== '\\') depth = Math.max(0, depth - 1);
-	}
-	return depth > 0;
-}
-
-function getFunctionNameFromIdentifier(id: unknown): { name: string; selectionLoc?: NonNullable<AstNode['location']> } | null {
-	if (!isRecord(id)) return null;
-	if (isIdentifier(id)) return { name: id.name, selectionLoc: id.location };
-	if (isMemberExpression(id)) {
-		const obj = id.object;
-		const prop = id.property;
-		if (!isIdentifier(obj) || !isIdentifier(prop)) return null;
-		const indexer = id.indexer ?? (id.colonCall ? ':' : '.');
-		return { name: `${obj.name}${indexer}${prop.name}`, selectionLoc: prop.location ?? id.location };
-	}
-	return null;
-}
-
-function collectDocumentSymbolsFromAst(ast: unknown): DocumentSymbol[] {
-	if (!isProgramNode(ast)) return [];
-	const program = ast;
-
-	function visitStatements(stmts: unknown[]): DocumentSymbol[] {
-		const out: DocumentSymbol[] = [];
-		for (const stmt of stmts) {
-			if (!isRecord(stmt)) continue;
-			if (!isFunctionDeclarationNode(stmt) || !stmt.location) {
-				// Recurse into nested blocks defensively.
-				for (const child of Object.values(stmt)) {
-					if (Array.isArray(child)) out.push(...visitStatements(child));
-				}
-				continue;
-			}
-
-			const idInfo = getFunctionNameFromIdentifier(stmt.identifier);
-			const name = idInfo?.name ?? '<anonymous>';
-			const range = lspRangeFromLoc(stmt.location);
-			const selectionRange = idInfo?.selectionLoc ? lspRangeFromLoc(idInfo.selectionLoc) : range;
-
-			const children = Array.isArray(stmt.body) ? visitStatements(stmt.body) : [];
-			out.push({
-				name,
-				kind: SymbolKind.Function,
-				range,
-				selectionRange,
-				children: children.length ? children : undefined
-			});
-		}
-		return out;
-	}
-
-	return visitStatements(program.body);
+function documentSymbolFromCore(symbol: SourceSymbol): DocumentSymbol {
+	const kinds = { variable: SymbolKind.Variable, function: SymbolKind.Function, method: SymbolKind.Method,
+		class: SymbolKind.Class, field: SymbolKind.Field, type: SymbolKind.Interface };
+	return { ...symbol, kind: kinds[symbol.kind], children: symbol.children?.map(documentSymbolFromCore) };
 }
 
 connection.onDocumentSymbol((params): DocumentSymbol[] => {
 	const doc = documents.get(params.textDocument.uri);
 	if (!doc) return [];
-	const text = doc.getText();
-	const parsed = parseSlua(text);
-	return collectDocumentSymbolsFromAst(parsed.ast);
+	const parsed = parsedDocuments.get(doc);
+	return getDocumentSymbols(parsed.ast).map(documentSymbolFromCore);
 });
 
 connection.onFoldingRanges((params): FoldingRange[] => {
 	const doc = documents.get(params.textDocument.uri);
 	if (!doc) return [];
-	const text = doc.getText();
-	const parsed = parseSlua(text);
+	const parsed = parsedDocuments.get(doc);
 	return collectFoldingRangesFromAst(parsed.ast);
 });
 
 connection.onSelectionRanges((params): SelectionRange[] => {
 	const doc = documents.get(params.textDocument.uri);
 	if (!doc) return params.positions.map((p) => ({ range: { start: p, end: p } }));
-	const text = doc.getText();
-	const parsed = parseSlua(text);
+	const parsed = parsedDocuments.get(doc);
 	return params.positions.map((p) => selectionRangeForPosition(parsed.ast, p) ?? { range: { start: p, end: p } });
 });
-
-function valueToDisplayString(value: unknown): string {
-	if (typeof value === 'string') return value;
-	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-	if (value === null) return 'nil';
-	return JSON.stringify(value);
-}
-
-function formatModuleFunctionSignature(
-	receiver: string,
-	fn: { name: string; signature: SluaType; params?: Array<{ name: string; type: SluaType }> }
-): string {
-	const sig = fn.signature;
-	const paramTypes: SluaType[] = sig.kind === 'function' ? sig.params : [];
-
-	const paramsText = fn.params
-		? fn.params.map((p) => `${p.name}: ${sluaTypeToString(p.type)}`).join(', ')
-		: paramTypes.map((t, i) => `arg${i + 1}: ${sluaTypeToString(t)}`).join(', ');
-
-	const retType = sig.kind === 'function' ? sluaTypeToString(sig.returns) : 'unknown';
-	return `${receiver}.${fn.name}(${paramsText}): ${retType}`;
-}
-
-function findLlMemberAtPosition(ast: unknown, pos: { line: number; character: number }): { receiver: string; name: string; loc: NonNullable<AstNode['location']> } | null {
-	let best: { receiver: string; name: string; loc: NonNullable<AstNode['location']> } | null = null;
-
-	function visit(value: unknown): void {
-		if (!value) return;
-		if (Array.isArray(value)) {
-			for (const item of value) visit(item);
-			return;
-		}
-		if (!isRecord(value)) return;
-
-		const node = value as AstNode;
-		if (isMemberExpression(node) && node.location && isIdentifier(node.object) && isIdentifier(node.property)) {
-			const receiver = node.object.name;
-			if ((receiver === 'll' || receiver === 'llcompat') && posInLoc(pos, node.property.location ?? node.location)) {
-				const propLoc = node.property.location ?? node.location;
-				if (!best) {
-					best = { receiver, name: node.property.name, loc: propLoc };
-				} else {
-					// Prefer the smallest range (most specific).
-					const cur = best.loc;
-					const curSpan = (cur.end.line - cur.start.line) * 10_000 + (cur.end.column - cur.start.column);
-					const nextSpan = (propLoc.end.line - propLoc.start.line) * 10_000 + (propLoc.end.column - propLoc.start.column);
-					if (nextSpan <= curSpan) best = { receiver, name: node.property.name, loc: propLoc };
-				}
-			}
-		}
-
-		for (const child of Object.values(value)) visit(child);
-	}
-
-	visit(ast);
-	return best;
-}
 
 function collectEventCallbackTypeInlayHints(
 	ast: unknown,
@@ -586,6 +525,10 @@ connection.onInitialized(() => {
 });
 
 connection.onDidChangeConfiguration((params) => {
+	const settings = params.settings as { preprocessorContext?: unknown; definitionsPath?: unknown; slua?: { definitionsPath?: unknown; preprocessor?: { context?: unknown } } } | null;
+	if (settings && Object.hasOwn(settings, 'preprocessorContext')) setPreprocessorContext(settings.preprocessorContext);
+	else if (settings?.slua?.preprocessor && Object.hasOwn(settings.slua.preprocessor, 'context')) setPreprocessorContext(settings.slua.preprocessor.context);
+	if (!settings || !Object.hasOwn(settings, 'definitionsPath') && !(settings.slua && Object.hasOwn(settings.slua, 'definitionsPath'))) return;
 	const definitionsPath = getDefinitionsPathFromSettings(params.settings);
 	if (definitionsPath === activeDefinitionsPath) return;
 	void reloadDefinitions(definitionsPath).then(() => {
@@ -628,167 +571,111 @@ connection.languages.semanticTokens.on((params): SemanticTokens => {
 	const doc = documents.get(params.textDocument.uri);
 	if (!doc || !semanticLegend) return { data: [] };
 
-	// Best-effort parse; classification works even without AST, but AST helps.
-	const parsed = parseSlua(doc.getText());
-	const tokens = classifySemanticTokens(doc.getText(), {
+	const data = parsedDocuments.getSemanticData(doc, (parsed) => encodeSemanticTokens(classifySemanticTokens(doc.getText(), {
 		ast: parsed.ast ?? undefined
-	});
-	return { data: encodeSemanticTokens(tokens) };
+	})));
+	return { data };
 });
 
 async function validateTextDocument(uri: string): Promise<void> {
 	const doc = documents.get(uri);
+	if (!doc) return;
+	const epoch = sourceEpoch;
+	const version = doc.version;
 	const text = doc?.getText() ?? '';
+	const project = sourceRoots.has(uri) ? await projectForDocument(doc) : null;
 
 	const diagnostics = computeDiagnosticsForText(text, {
-		registry,
+		registry: project?.registry ?? contextRegistry(doc),
 		defsLoaded,
-		serverName: SERVER_NAME
+		serverName: SERVER_NAME,
+		parsed: doc ? parsedDocuments.get(doc) : undefined
 	});
+	if (project) {
+		diagnostics.splice(0, diagnostics.length, ...project.diagnostics.filter((item) => item.file === project.graph.entry)
+			.map((item) => ({ range: item.range, message: item.message, code: item.code, source: SERVER_NAME, tags: item.tags?.map(() => 2 as const),
+				severity: item.severity === 'error' ? 1 as const : item.severity === 'warning' ? 2 as const : 3 as const })));
+		for (const edge of project.graph.edges.filter((item) => item.from === project.graph.entry && item.target)) {
+			const reachable = new Set<string>([edge.target!]);
+			let changed = true;
+			while (changed) {
+				changed = false;
+				for (const next of project.graph.edges) if (reachable.has(next.from) && next.target && !reachable.has(next.target)) { reachable.add(next.target); changed = true; }
+			}
+			const imported = project.diagnostics.filter((item) => item.file !== project.graph.entry && reachable.has(item.file));
+			if (imported.length) diagnostics.push({ range: edge.range, severity: imported.some((item) => item.severity === 'error') ? 1 : 2,
+				code: 'module-dependency', source: SERVER_NAME, message: `Dependency '${edge.specifier}' has ${imported.length} diagnostic(s).`,
+				relatedInformation: imported.slice(0, 20).map((item) => ({ location: { uri: pathToFileURL(item.file).href, range: item.range }, message: `${item.code}: ${item.message}` })) });
+		}
+	}
 
-	connection.sendDiagnostics({ uri, diagnostics });
+	if (sourceEpoch !== epoch || documents.get(uri)?.version !== version) return;
+	connection.sendDiagnostics({ uri, version, diagnostics });
 }
 
-documents.onDidOpen((e) => {
-	void validateTextDocument(e.document.uri);
-});
-
 documents.onDidChangeContent((change) => {
+	if (sourceRequireCalls(parsedDocuments.get(change.document).ast).length) sourceRoots.add(change.document.uri);
+	else { sourceRoots.delete(change.document.uri); sourceReads.delete(change.document.uri); sourceWatchers.closeRoot(change.document.uri); }
+	invalidateSourceProjects();
 	void validateTextDocument(change.document.uri);
+	validateDependentDocuments(change.document.uri);
 });
 documents.onDidClose((e) => {
+	sourceRoots.delete(e.document.uri);
+	sourceReads.delete(e.document.uri);
+	sourceWatchers.closeRoot(e.document.uri);
+	invalidateSourceProjects();
+	parsedDocuments.close(e.document.uri);
 	connection.sendDiagnostics({ uri: e.document.uri, diagnostics: [] });
+	validateDependentDocuments(e.document.uri);
+});
+connection.onDidChangeWatchedFiles((params) => {
+	const changed = params.changes.filter((item) => item.uri.startsWith('file:')).map((item) => fileURLToPath(item.uri));
+	if (!changed.some((file) => [...sourceReads.values()].some((reads) => reads.has(file)))) return;
+	invalidateSourceProjects();
+	validateDependentDocuments('');
 });
 
-connection.onHover((params): Hover | null => {
+connection.onHover(async (params): Promise<Hover | null> => {
 	const doc = documents.get(params.textDocument.uri);
-	if (!doc) return null;
-	if (!registry) return null;
-
-	const text = doc.getText();
-	const parsed = parseSlua(text);
-	const ast = parsed.ast;
-	if (!ast) return null;
-
-	const found = findLlMemberAtPosition(ast, params.position);
-	if (found) {
-		const mod = registry.getModule(found.receiver);
-		if (!mod) return null;
-
-		const fn = mod.functions[found.name];
-		if (fn) {
-			const lines: string[] = [];
-			lines.push('```luau');
-			lines.push(formatModuleFunctionSignature(found.receiver, fn));
-			lines.push('```');
-			lines.push('');
-			if (fn.deprecated) lines.push('**Deprecated**');
-			if (fn.meta?.godMode) lines.push('**God mode required**');
-			if (fn.meta?.sleepSeconds !== undefined && fn.meta.sleepSeconds !== null)
-				lines.push(`**Sleep:** ${fn.meta.sleepSeconds}s`);
-			if (fn.meta?.monoSleepSeconds !== undefined && fn.meta.monoSleepSeconds !== null)
-				lines.push(`**Mono sleep:** ${fn.meta.monoSleepSeconds}s`);
-			if (fn.docs) lines.push(fn.docs);
-			lines.push('');
-			if (fn.meta?.lslName) lines.push(`LSL: \`${fn.meta.lslName}\``);
-
-			return {
-				range: lspRangeFromLoc(found.loc),
-				contents: { kind: 'markdown', value: lines.join('\n') }
-			};
-		}
-
-		const c = mod.values[found.name];
-		if (c) {
-			const typeText = sluaTypeToString(c.type);
-			const valueText = valueToDisplayString(c.value);
-			const lines: string[] = [];
-			lines.push('```luau');
-			lines.push(`${found.receiver}.${c.name}: ${typeText} = ${valueText}`);
-			lines.push('```');
-			lines.push('');
-			lines.push('Constant (compile-time; replaced by the parser; read-only).');
-			if (c.docs) {
-				lines.push('');
-				lines.push(c.docs);
-			}
-			return {
-				range: lspRangeFromLoc(found.loc),
-				contents: { kind: 'markdown', value: lines.join('\n') }
-			};
-		}
-	}
-
-	// Template string interpolation hover (best-effort): resolve identifier + show inferred type.
-	// Only activates inside `{...}` of a backtick string, and only when hovering an identifier.
-	if (!isInTemplateInterpolation(text, params.position)) return null;
-	const id = identifierAtPositionInText(text, params.position);
-	if (!id) return null;
-
-	const def = findDefinitionAtPosition(ast, params.position, registry, text);
-	if (!def) return null;
-
-	let typeText: string | null = null;
-	if (def.identifier.typeAnnotation) {
-		typeText = def.identifier.typeAnnotation;
-	} else if (def.kind === 'local') {
-		const inferred = inferLocalVariableTypes(ast, registry);
-		const loc = def.identifier.location;
-		if (loc) {
-			const match = inferred.find((it) => {
-				const l = it.identifier.location;
-				return (
-					l &&
-					l.start.line === loc.start.line &&
-					l.start.column === loc.start.column &&
-					l.end.line === loc.end.line &&
-					l.end.column === loc.end.column
-				);
-			});
-			if (match) typeText = sluaTypeToString(match.type);
-		}
-	} else if (def.kind === 'parameter') {
-		// No parameter inference (yet); fall back to unknown unless annotated.
-		typeText = 'unknown';
-	}
-
-	const lines: string[] = [];
-	lines.push('```luau');
-	lines.push(`${def.name}${typeText ? `: ${typeText}` : ''}`);
-	lines.push('```');
-	lines.push('');
-	lines.push(`(${def.kind})`);
-	return { range: id.range, contents: { kind: 'markdown', value: lines.join('\n') } };
+	const sourceRegistry = doc ? await registryForDocument(doc) : null;
+	if (!doc || !sourceRegistry) return null;
+	const hover = getHover(parsedDocuments.get(doc).ast, params.position, sourceRegistry);
+	return hover ? { range: hover.range, contents: { kind: 'markdown', value: hover.markdown } } : null;
 });
 
-connection.languages.inlayHint.on((params): InlayHint[] => {
+connection.languages.inlayHint.on(async (params): Promise<InlayHint[]> => {
 	const doc = documents.get(params.textDocument.uri);
 	if (!doc) return [];
 	if (!registry) return [];
+	const sourceRegistry = await registryForDocument(doc);
+	if (!sourceRegistry) return [];
 
-	const parsed = parseSlua(doc.getText());
+	const parsed = parsedDocuments.get(doc);
 	const ast = parsed.ast;
 	if (!ast) return [];
 
 	return [
-		...collectEventCallbackTypeInlayHints(ast, params.range, registry.eventSignatures),
-		...collectLocalVariableTypeInlayHints(ast, params.range, registry)
+		...collectEventCallbackTypeInlayHints(ast, params.range, sourceRegistry.eventSignatures),
+		...collectLocalVariableTypeInlayHints(ast, params.range, sourceRegistry)
 	];
 });
 
-connection.onCompletion((params) => {
+connection.onCompletion(async (params) => {
 	if (!registry) return [];
 	
 	const document = documents.get(params.textDocument.uri);
 	if (!document) return [];
+	const sourceRegistry = await registryForDocument(document);
+	if (!sourceRegistry) return [];
 	
 	const text = document.getText();
-	const parsed = parseSlua(text);
+	const parsed = parsedDocuments.get(document);
 	if (!parsed.ast) return [];
 
 	const invoked = params.context?.triggerKind === 1;
 	const triggerCharacter = params.context?.triggerCharacter;
-	const completions = getCompletions(parsed.ast, params.position, registry, {
+	const completions = getCompletions(parsed.ast, params.position, sourceRegistry, {
 		sourceText: text,
 		invoked,
 		triggerCharacter
@@ -813,6 +700,8 @@ connection.onCompletion((params) => {
 				return LspCompletionItemKind.Class;
 			case 'constant':
 				return LspCompletionItemKind.Constant;
+			case 'keyword':
+				return LspCompletionItemKind.Keyword;
 			case 'event':
 				return LspCompletionItemKind.Event;
 			default:
@@ -837,62 +726,116 @@ connection.onCompletion((params) => {
 	}));
 });
 
-connection.onDefinition((params) => {
+connection.onCodeAction(async (params): Promise<CodeAction[]> => {
+	if (params.context.only && !params.context.only.some((kind) => kind === '' || kind === CodeActionKind.QuickFix)) return [];
+	const document = documents.get(params.textDocument.uri);
+	if (!document || !registry) return [];
+	const sourceRegistry = await registryForDocument(document);
+	if (!sourceRegistry) return [];
+	const text = document.getText();
+	const parsed = parsedDocuments.get(document);
+	if (!parsed.ast) return [];
+	// Revalidate against this document version; client diagnostics can be stale.
+	const diagnostics = analyzeTextWithDirectives(text, { ast: parsed.ast, registry: sourceRegistry, eventSignatures: sourceRegistry.eventSignatures });
+	return getCodeActions(text, parsed.ast, diagnostics, params.range).map((action) => ({
+		title: action.title, kind: CodeActionKind.QuickFix, isPreferred: action.isPreferred,
+		diagnostics: action.diagnostics.map((diagnostic) => ({ ...diagnostic, source: SERVER_NAME, tags: diagnostic.tags?.map(() => 2 as const),
+			severity: diagnostic.severity === 'error' ? 1 : diagnostic.severity === 'warning' ? 2 : diagnostic.severity === 'info' ? 3 : 4 })),
+		edit: supportsDocumentChanges
+			? { documentChanges: [{ textDocument: { uri: document.uri, version: document.version }, edits: action.edits }] }
+			: { changes: { [document.uri]: action.edits } }
+	}));
+});
+
+connection.onRequest('slua/getSourceModules', async (params: { uri?: unknown; maxDepth?: unknown }) => {
+	if (typeof params?.uri !== 'string' || !params.uri.startsWith('file:')) throw new Error('Source modules require a file URI');
+	if (params.maxDepth !== undefined && typeof params.maxDepth !== 'number') throw new Error('Module depth must be numeric');
+	return getSourceModuleGraph(fileURLToPath(params.uri), { maxDepth: params.maxDepth,
+		readFile: async (file) => documents.get(pathToFileURL(file).href)?.getText() ?? await readSourceModuleFile(file) });
+});
+
+connection.onRequest('slua/preprocess', async (params: { uri?: unknown; maxDepth?: unknown; context?: PreprocessorContext | null }) => {
+	if (typeof params?.uri !== 'string' || !params.uri.startsWith('file:')) throw new Error('Preprocessing requires a file URI');
+	if (params.maxDepth !== undefined && typeof params.maxDepth !== 'number') throw new Error('Module depth must be numeric');
+	return preprocessSource(fileURLToPath(params.uri), { maxDepth: params.maxDepth, context: params.context === null ? undefined : params.context ?? preprocessorContext,
+		readFile: async (file) => documents.get(pathToFileURL(file).href)?.getText() ?? await readSourceModuleFile(file) });
+});
+
+connection.onDefinition(async (params) => {
 	if (!registry) return null;
 	
 	const document = documents.get(params.textDocument.uri);
 	if (!document) return null;
 	
+	const version = document.version;
 	const text = document.getText();
-	const parsed = parseSlua(text);
+	const parsed = parsedDocuments.get(document);
 	if (!parsed.ast) return null;
+	if (document.uri.startsWith('file:') && collectSourceRequires(parsed.ast).some((include) => include.specifier !== undefined && sourceModuleRangeContains(include.range, params.position))) {
+		const graph = await getSourceModuleGraph(fileURLToPath(document.uri), { entryText: text,
+			readFile: async (file) => documents.get(pathToFileURL(file).href)?.getText() ?? await readSourceModuleFile(file) });
+		if (documents.get(document.uri)?.version !== version) return null;
+		const edge = graph.edges.find((include) => include.from === graph.entry && sourceModuleRangeContains(include.range, params.position));
+		return edge?.target ? { uri: pathToFileURL(edge.target).href, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } } } : null;
+	}
 	
-	const definition = findDefinitionAtPosition(parsed.ast, params.position, registry, text);
+	const sourceRegistry = await registryForDocument(document);
+	if (!sourceRegistry || documents.get(document.uri)?.version !== version) return null;
+	const definition = findDefinitionAtPosition(parsed.ast, params.position, sourceRegistry, text);
 	return locationFromCoreDefinition(params.textDocument.uri, definition);
 });
 
-connection.onDeclaration((params) => {
+connection.onDeclaration(async (params) => {
 	if (!registry) return null;
 
 	const document = documents.get(params.textDocument.uri);
 	if (!document) return null;
 
+	const version = document.version;
 	const text = document.getText();
-	const parsed = parseSlua(text);
+	const parsed = parsedDocuments.get(document);
 	if (!parsed.ast) return null;
 
-	const definition = findDefinitionAtPosition(parsed.ast, params.position, registry, text);
+	const sourceRegistry = await registryForDocument(document);
+	if (!sourceRegistry || documents.get(document.uri)?.version !== version) return null;
+	const definition = findDefinitionAtPosition(parsed.ast, params.position, sourceRegistry, text);
 	return locationFromCoreDefinition(params.textDocument.uri, definition);
 });
 
-connection.onTypeDefinition((params) => {
+connection.onTypeDefinition(async (params) => {
 	if (!registry) return null;
 
 	const document = documents.get(params.textDocument.uri);
 	if (!document) return null;
 
+	const version = document.version;
 	const text = document.getText();
-	const parsed = parseSlua(text);
+	const parsed = parsedDocuments.get(document);
 	if (!parsed.ast) return null;
 
 	// We currently don't have source locations for modeled types (registry/YAML),
 	// so fall back to declaration/definition locations when available.
-	const definition = findDefinitionAtPosition(parsed.ast, params.position, registry, text);
+	const sourceRegistry = await registryForDocument(document);
+	if (!sourceRegistry || documents.get(document.uri)?.version !== version) return null;
+	const definition = findDefinitionAtPosition(parsed.ast, params.position, sourceRegistry, text);
 	return locationFromCoreDefinition(params.textDocument.uri, definition);
 });
 
-connection.onImplementation((params) => {
+connection.onImplementation(async (params) => {
 	if (!registry) return null;
 
 	const document = documents.get(params.textDocument.uri);
 	if (!document) return null;
 
+	const version = document.version;
 	const text = document.getText();
-	const parsed = parseSlua(text);
+	const parsed = parsedDocuments.get(document);
 	if (!parsed.ast) return null;
 
 	// No separate interface/implementation model yet; return the best known target.
-	const definition = findDefinitionAtPosition(parsed.ast, params.position, registry, text);
+	const sourceRegistry = await registryForDocument(document);
+	if (!sourceRegistry || documents.get(document.uri)?.version !== version) return null;
+	const definition = findDefinitionAtPosition(parsed.ast, params.position, sourceRegistry, text);
 	const loc = locationFromCoreDefinition(params.textDocument.uri, definition);
 	return loc ? [loc] : null;
 });
@@ -903,8 +846,7 @@ connection.onReferences((params) => {
 	const document = documents.get(params.textDocument.uri);
 	if (!document) return [];
 	
-	const text = document.getText();
-	const parsed = parseSlua(text);
+	const parsed = parsedDocuments.get(document);
 	if (!parsed.ast) return [];
 	
 	const references = findAllReferences(parsed.ast, params.position, registry, params.context.includeDeclaration);
@@ -928,9 +870,8 @@ connection.onPrepareRename((params) => {
 	const document = documents.get(params.textDocument.uri);
 	if (!document) return null;
 	
-	const text = document.getText();
-	const parsed = parseSlua(text);
-	if (!parsed.ast) return null;
+	const parsed = parsedDocuments.get(document);
+	if (!parsed.ast || parsed.diagnostics.length) return null;
 	
 	return prepareRename(parsed.ast, params.position, registry);
 });
@@ -942,11 +883,11 @@ connection.onRenameRequest((params) => {
 	const document = documents.get(params.textDocument.uri);
 	if (!document) return null;
 	
-	const text = document.getText();
-	const parsed = parseSlua(text);
-	if (!parsed.ast) return null;
+	const parsed = parsedDocuments.get(document);
+	if (!parsed.ast || parsed.diagnostics.length) return null;
 	
 	const edits = getRenameEdits(parsed.ast, params.position, params.newName, registry);
+	if (!edits.length) return null;
 	
 	const changes: Record<string, Array<{ range: { start: { line: number; character: number }; end: { line: number; character: number } }; newText: string }>> = {};
 	changes[params.textDocument.uri] = edits.map(edit => {
@@ -961,7 +902,9 @@ connection.onRenameRequest((params) => {
 		};
 	}).filter(edit => edit !== null);
 	
-	return { changes };
+	return supportsDocumentChanges
+		? { documentChanges: [{ textDocument: { uri: document.uri, version: document.version }, edits: changes[document.uri]! }] }
+		: { changes };
 });
 
 documents.listen(connection);

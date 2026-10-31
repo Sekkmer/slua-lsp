@@ -1,0 +1,132 @@
+name: Refresh bundled Second Life definitions
+
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: bundled-definitions-update
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.27.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the validator and select validated official YAML
+        run: |
+          pnpm -C slua-lsp-core build
+          node scripts/update-bundled-definitions.mjs
+      - name: Qualify new definitions before proposing an update
+        run: |
+          node scripts/release-metadata.mjs
+          pnpm -r lint
+          pnpm -r build
+          pnpm -r test
+          python3 -m unittest discover -s scripts/tests -v
+          node --test scripts/tests/artifact-publication.test.mjs
+          node scripts/test-definition-cache.mjs
+          node scripts/test-lsp-recovery.mjs
+          node scripts/test-source-inspection.mjs
+          node scripts/test-source-alias-unicode.mjs
+          node scripts/test-cli-refresh.mjs
+          node scripts/test-code-actions.mjs
+          node scripts/test-workspace-memory.mjs
+          node scripts/test-bundled-definitions.mjs
+          pnpm exec node scripts/package-cli.mjs
+          pnpm exec node scripts/package-vsix.mjs
+          python3 scripts/unpack-vsix.py
+          node scripts/verify-candidate.mjs
+          SLUA_ALIAS_CLI="$PWD/.local/artifacts/cli/slua-lsp.mjs" SLUA_ALIAS_EVIDENCE="$PWD/.local/logs/source-alias-unicode-packaged.json" node scripts/test-source-alias-unicode.mjs
+      - name: Install native oracle toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++
+      - name: Qualify current C++ syntax, types and safe runtime before proposing an update
+        run: |
+          python3 scripts/prepare-oracle.py --download
+          python3 scripts/prepare-oracle.py --documentation --download
+          python3 scripts/qualify-oracle.py
+          node scripts/test-classes.mjs
+          node scripts/test-class-methods.mjs
+          node scripts/test-class-constructors.mjs
+          node scripts/test-class-initialization.mjs
+          node scripts/test-class-members.mjs
+          node scripts/test-class-bindings.mjs
+          node scripts/test-class-navigation.mjs
+          node scripts/test-class-library.mjs
+          node scripts/test-value-exports.mjs
+          node scripts/test-class-inheritance.mjs
+          node scripts/test-function-attribute-syntax.mjs
+          node scripts/test-function-metadata.mjs
+          node scripts/test-conditional-bindings.mjs
+          node scripts/test-integer-literals.mjs
+          node scripts/test-vector-rotation-operators.mjs
+          node scripts/test-member-definitions.mjs
+          node scripts/test-method-call-grammar.mjs
+          node scripts/test-json-options.mjs
+          node scripts/test-conversion-contracts.mjs
+          node scripts/test-open-return-packs.mjs
+          node scripts/test-gotchas.mjs
+          node scripts/test-source-context.mjs
+          node scripts/test-gotcha-scaling.mjs
+          node scripts/test-navigation.mjs
+      - name: Install isolated editor session prerequisites
+        run: sudo apt-get update && sudo apt-get install -y xvfb dbus
+      - name: Test the resulting packaged extension
+        env:
+          SLUA_EXTENSION_CANDIDATE: ${{ github.workspace }}/.local/artifacts/vsix-unpacked/extension
+        run: |
+          for version in 1.90.0 stable; do
+            SLUA_VSCODE_VERSION="$version" xvfb-run -a node slua-lsp-client/scripts/run-vscode-tests.cjs
+            SLUA_VSCODE_VERSION="$version" xvfb-run -a node slua-lsp-client/scripts/run-vscode-cache-faults.cjs
+          done
+      # GITHUB_TOKEN PRs do not trigger the ordinary pull_request CI again.
+      # All required candidate gates therefore run above in this workflow.
+      - name: Propose the qualified update for review
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
+        with:
+          branch: automation/secondlife-definitions
+          title: 'Update bundled Second Life definitions'
+          commit-message: 'Update validated Second Life definitions'
+          draft: true
+          add-paths: |
+            third_party/lsl-definitions
+            slua-lsp-client/third_party/lsl-definitions/lsl_definitions.yaml
+          body: |
+            Refreshes the official definitions submodule and the extension fallback.
+            Lint, build, unit, multi-process cache, server recovery, packaging and
+            actual packaged VS Code host checks passed in the refresh workflow.
+            Review the attached definition-bundle-update.json API deltas and current
+            SLua C++/documentation semantics before merging. No automatic merge or
+            marketplace release is performed.
+      - name: Preserve API deltas and validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: definitions-review
+          path: |
+            .local/logs/
+            .local/vscode-tests/results.json
+            .local/vscode-tests/cache-fault-results.json
+            .local/vscode-tests/history/*.json
+            .local/artifacts/vsix-contents.json
+            .local/native-qualification/results.json
+            .local/oracle-corpus/results.json
+            .local/build/slua-oracle/oracle-build.json
+          include-hidden-files: true

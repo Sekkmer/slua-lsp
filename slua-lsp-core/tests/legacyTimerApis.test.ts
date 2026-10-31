@@ -11,20 +11,18 @@ describe('legacy timer APIs', () => {
 		expect(d!.message).toContain('LLTimers:every');
 	});
 
-	it('flags llcompat.SetTimerEvent(...) as legacy and suggests LLTimers', () => {
+	it('accepts the upstream llcompat.SetTimerEvent compatibility declaration', () => {
 		const text = 'llcompat.SetTimerEvent(1.0)';
 		const diags = analyzeTextWithDirectives(text);
 		const d = diags.find((x) => x.code === 'legacy-timer-api');
-		expect(d).toBeTruthy();
-		expect(d!.message).toContain('LLTimers:once');
+		expect(d).toBeUndefined();
 	});
 
-	it('flags function timer() as legacy and suggests LLTimers', () => {
-		const text = 'function timer() end';
+	it('accepts an ordinary global function named timer without inferring automatic dispatch', () => {
+		const text = 'function timer() end\ntimer()';
 		const diags = analyzeTextWithDirectives(text);
 		const d = diags.find((x) => x.code === 'legacy-timer-api');
-		expect(d).toBeTruthy();
-		expect(d!.message).toContain('LLTimers:once');
+		expect(d).toBeUndefined();
 	});
 
 	it('flags referencing ll.SetTimerEvent as legacy (no call)', () => {

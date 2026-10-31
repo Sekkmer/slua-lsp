@@ -1,3 +1,5 @@
+import { conditionalBinding, conditionalBindingType } from '../../typing/conditionalBindings.js';
+import { isIntegerLiteralExpression } from '../../parser/ast.js';
 import type { CoreDiagnostic, Range } from '../types.js';
 
 import type { SluaRegistry } from '../../slua/registry.js';
@@ -206,8 +208,9 @@ type Multi = { values: SluaType[]; expands: boolean };
 
 function inferExpression(expr: unknown, env: Env, registry: SluaRegistry): Multi {
 	if (!isAstNode(expr)) return { values: [slua.unknown()], expands: false };
-	if (isStringNode(expr)) return { values: [slua.string()], expands: false };
+	if (isStringNode(expr) || expr.type === 'InterpolatedString') return { values: [slua.string()], expands: false };
 	if (isNumberNode(expr)) return { values: [slua.number()], expands: false };
+	if (isIntegerLiteralExpression(expr)) return { values: [slua.integer()], expands: false };
 	if (isBooleanNode(expr)) return { values: [slua.boolean()], expands: false };
 	if (isNilNode(expr)) return { values: [slua.nil()], expands: false };
 	if (isTableNode(expr)) return { values: [slua.table()], expands: false };
@@ -553,6 +556,15 @@ export function ruleTypeGuardConditions(ast: unknown, registry: SluaRegistry): C
 			return;
 		}
 		if (isIfStatement(stmt)) {
+			const binding = conditionalBinding(stmt);
+			if (binding) {
+				const inner = env.clone(); inner.pushScope();
+				inner.set(binding.name, conditionalBindingType(binding, inferExpression(stmt.test, env, registry).values[0] ?? slua.unknown()));
+				visitBlock(stmt.consequent, inner);
+				if (Array.isArray(stmt.alternate)) visitBlock(stmt.alternate, env.clone());
+				else if (isAstNode(stmt.alternate)) applyStatement(stmt.alternate, env.clone());
+				return;
+			}
 			const guards = collectTypeGuards(stmt.test);
 			for (const guard of guards) {
 				const known = env.get(guard.varName);

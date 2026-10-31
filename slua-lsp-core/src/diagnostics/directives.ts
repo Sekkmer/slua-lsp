@@ -1,3 +1,4 @@
+import { scanSourceComments } from '../parser/sourceComments.js';
 import type { CoreDiagnostic, DiagnosticCode } from './types.js';
 
 export type DirectiveKind = 'disable' | 'disable-next-line' | 'enable';
@@ -21,22 +22,12 @@ function normalizeCodes(raw: string): DiagnosticCode[] | 'all' {
 
 export function parseDirectives(text: string): ParsedDirective[] {
 	const directives: ParsedDirective[] = [];
-	const lines = text.split(/\r?\n/g);
-
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		// Lua/Luau line comments start with "--".
-		// We accept directives anywhere on the line, as long as they appear after a comment start.
-		const match = line.match(/--\s*slua-lsp:(disable-next-line|disable|enable)\b(.*)$/i);
+	if (!/slua-lsp:/i.test(text)) return directives;
+	for (const comment of scanSourceComments(text).comments) {
+		if (comment.kind !== 'line') continue;
+		const match = /^--\s*slua-lsp:(disable-next-line|disable|enable)\b(.*)$/i.exec(text.slice(comment.start, comment.end).replace(/\r$/, ''));
 		if (!match) continue;
-
-		const kind = match[1].toLowerCase() as DirectiveKind;
-		const rest = match[2] ?? '';
-		directives.push({
-			kind,
-			line: i,
-			codes: normalizeCodes(rest)
-		});
+		directives.push({ kind: match[1]!.toLowerCase() as DirectiveKind, line: comment.line, codes: normalizeCodes(match[2] ?? '') });
 	}
 
 	return directives;

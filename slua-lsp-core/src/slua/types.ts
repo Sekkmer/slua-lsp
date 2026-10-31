@@ -1,15 +1,22 @@
+import { mergeSourceOrigins } from './sourceOrigins.js';
+import { classType, nativeClassKind } from './classIdentity.js';
+
 export type SluaPrimitiveType = 'number' | 'string' | 'boolean' | 'nil' | 'unknown';
 
-export type SluaCustomType = 'uuid' | 'vector' | 'rotation' | 'integer' | 'DetectedEvent' | 'thread' | 'buffer';
+export type SluaCustomType = 'uuid' | 'vector' | 'rotation' | 'integer' | 'DetectedEvent' | 'thread' | 'buffer' | (string & {});
+
+/** Native argument presence is independent of whether a supplied value may be nil. */
+export type SluaCallArity = { min: number; max: number };
 
 export type SluaType =
 	| { kind: 'primitive'; name: SluaPrimitiveType }
 	| { kind: 'custom'; name: SluaCustomType }
 	| { kind: 'array'; element: SluaType }
-	| { kind: 'table' }
-	| { kind: 'tuple'; items: SluaType[] }
+	| { kind: 'table'; module?: string; metatable?: string; fields?: Record<string, SluaType> }
+	| { kind: 'literal'; value: string }
+	| { kind: 'tuple'; items: SluaType[]; variadic?: SluaType; minimum?: number }
 	| { kind: 'union'; items: SluaType[] }
-	| { kind: 'function'; params: SluaType[]; returns: SluaType };
+	| { kind: 'function'; params: SluaType[]; returns: SluaType; variadic?: SluaType; untyped?: true; arity?: SluaCallArity };
 
 export const slua = {
 	unknown(): SluaType {
@@ -48,22 +55,47 @@ export const slua = {
 	detectedEvent(): SluaType {
 		return { kind: 'custom', name: 'DetectedEvent' };
 	},
+	custom(name: string): SluaType {
+		return { kind: 'custom', name };
+	},
 	array(element: SluaType): SluaType {
 		return { kind: 'array', element };
 	},
-	table(): SluaType {
-		return { kind: 'table' };
+	table(fields?: Record<string, SluaType>): SluaType {
+		return { kind: 'table', ...(fields ? { fields } : {}) };
 	},
-	tuple(items: SluaType[]): SluaType {
-		return { kind: 'tuple', items: [...items] };
+	module(name: string): SluaType {
+		return { kind: 'table', module: name };
+	},
+	withMetatable(name: string): SluaType {
+		return { kind: 'table', metatable: name };
+	},
+	literal(value: string): SluaType {
+		return { kind: 'literal', value };
+	},
+	tuple(items: SluaType[], variadic?: SluaType, minimum?: number): SluaType {
+		return { kind: 'tuple', items: [...items], ...(variadic ? { variadic } : {}), ...(minimum !== undefined ? { minimum } : {}) };
 	},
 	union(items: SluaType[]): SluaType {
 		return { kind: 'union', items: [...items] };
 	},
-	fn(params: SluaType[], returns: SluaType): SluaType {
-		return { kind: 'function', params, returns };
+	/** The bare `function` type carries no parameter/result contract. */
+	anyFunction(): SluaType {
+		return { kind: 'function', params: [], returns: slua.unknown(), variadic: slua.unknown(), untyped: true };
+	},
+	fn(params: SluaType[], returns: SluaType, variadic?: SluaType, arity?: SluaCallArity): SluaType {
+		return { kind: 'function', params, returns, ...(variadic ? { variadic } : {}), ...(arity ? { arity: { ...arity } } : {}) };
 	}
 };
+
+/** Read a result in a value context: an absent pack element becomes nil.
+ * In a final argument/return context the original pack must stay unadjusted. */
+export function sluaPackValue(items: SluaType[], index: number, variadic?: SluaType, minimum = items.length): SluaType {
+	const value = items[index] ?? variadic ?? slua.nil();
+	if (index < minimum || value.kind === 'primitive' && (value.name === 'unknown' || value.name === 'nil')) return value;
+	if (value.kind === 'union' && value.items.some((item) => item.kind === 'primitive' && item.name === 'nil')) return value;
+	return slua.union([value, slua.nil()]);
+}
 
 function normalizeUnionItems(items: SluaType[]): SluaType[] {
 	const flattened: SluaType[] = [];
@@ -71,11 +103,17 @@ function normalizeUnionItems(items: SluaType[]): SluaType[] {
 		if (item.kind === 'union') flattened.push(...item.items);
 		else flattened.push(item);
 	}
-	const unique = new Map<string, SluaType>();
+	const unique = new Map<string, SluaType[]>();
 	for (const item of flattened) {
-		unique.set(sluaTypeToString(item), item);
+		const key = sluaTypeToString(item);
+		const bucket = unique.get(key) ?? [];
+		// Bounded display strings can coincide for different large table shapes.
+		const index = bucket.findIndex((previous) => sluaTypeEquals(previous, item));
+		if (index < 0) bucket.push(item);
+		else bucket[index] = mergeSourceOrigins(bucket[index]!, item);
+		unique.set(key, bucket);
 	}
-	return [...unique.values()].sort((a, b) => sluaTypeToString(a).localeCompare(sluaTypeToString(b)));
+	return [...unique.values()].flat().sort((a, b) => sluaTypeToString(a).localeCompare(sluaTypeToString(b)));
 }
 
 function splitTopLevel(text: string, separator: string): string[] {
@@ -131,47 +169,73 @@ function findTopLevelArrow(text: string): number {
 }
 
 export function sluaTypeEquals(a: SluaType, b: SluaType): boolean {
-	if (a.kind !== b.kind) return false;
-	switch (a.kind) {
-		case 'primitive':
-			return b.kind === 'primitive' && a.name === b.name;
-		case 'custom':
-			return b.kind === 'custom' && a.name === b.name;
-		case 'table':
-			return true;
-		case 'array':
-			return b.kind === 'array' && sluaTypeEquals(a.element, b.element);
-		case 'tuple': {
-			if (b.kind !== 'tuple') return false;
-			if (a.items.length !== b.items.length) return false;
-			for (let i = 0; i < a.items.length; i++) {
-				if (!sluaTypeEquals(a.items[i]!, b.items[i]!)) return false;
-			}
-			return true;
+	const seen = new WeakMap<object, WeakSet<object>>();
+	let remaining = 4096;
+	function equal(a: SluaType, b: SluaType): boolean {
+		if (a === b) return true;
+		if (remaining-- <= 0) return false;
+		const classA = classType(a), classB = classType(b);
+		if (classA || classB) return !!classA && !!classB && classA.kind === classB.kind && classA.info.declaration === classB.info.declaration;
+		if (a.kind === 'custom' && b.kind === 'custom') {
+			const nativeA = nativeClassKind(a), nativeB = nativeClassKind(b);
+			if (nativeA || nativeB) return nativeA === nativeB;
 		}
-		case 'union': {
-			if (b.kind !== 'union') return false;
-			const aItems = normalizeUnionItems(a.items);
-			const bItems = normalizeUnionItems(b.items);
-			if (aItems.length !== bItems.length) return false;
-			for (let i = 0; i < aItems.length; i++) {
-				if (!sluaTypeEquals(aItems[i]!, bItems[i]!)) return false;
+		const matches = seen.get(a) ?? new WeakSet<object>();
+		if (matches.has(b)) return true;
+		if (a.kind !== b.kind) return false;
+		matches.add(b); seen.set(a, matches);
+		switch (a.kind) {
+			case 'primitive':
+				return b.kind === 'primitive' && a.name === b.name;
+			case 'custom':
+				return b.kind === 'custom' && a.name === b.name;
+			case 'table':
+				return b.kind === 'table' && a.module === b.module && a.metatable === b.metatable
+					&& Object.keys(a.fields ?? {}).length === Object.keys(b.fields ?? {}).length
+					&& Object.entries(a.fields ?? {}).every(([name, type]) => !!b.fields?.[name] && equal(type, b.fields[name]!));
+			case 'literal':
+				return b.kind === 'literal' && a.value === b.value;
+			case 'array':
+				return b.kind === 'array' && equal(a.element, b.element);
+			case 'tuple': {
+				if (b.kind !== 'tuple') return false;
+				if (a.minimum !== b.minimum || Boolean(a.variadic) !== Boolean(b.variadic)) return false;
+				if (a.variadic && b.variadic && !equal(a.variadic, b.variadic)) return false;
+				if (a.items.length !== b.items.length) return false;
+				for (let i = 0; i < a.items.length; i++) {
+					if (!equal(a.items[i]!, b.items[i]!)) return false;
+				}
+				return true;
 			}
-			return true;
-		}
-		case 'function': {
-			if (b.kind !== 'function') return false;
-			if (a.params.length !== b.params.length) return false;
-			for (let i = 0; i < a.params.length; i++) {
-				if (!sluaTypeEquals(a.params[i]!, b.params[i]!)) return false;
+			case 'union': {
+				if (b.kind !== 'union') return false;
+				const aItems = normalizeUnionItems(a.items);
+				const bItems = normalizeUnionItems(b.items);
+				if (aItems.length !== bItems.length) return false;
+				for (let i = 0; i < aItems.length; i++) {
+					if (!equal(aItems[i]!, bItems[i]!)) return false;
+				}
+				return true;
 			}
-			return sluaTypeEquals(a.returns, b.returns);
-		}
-		default: {
-			const _exhaustive: never = a;
-			return _exhaustive;
+			case 'function': {
+				if (b.kind !== 'function') return false;
+				if (a.untyped !== b.untyped) return false;
+				if (a.arity?.min !== b.arity?.min || a.arity?.max !== b.arity?.max) return false;
+				if (a.params.length !== b.params.length) return false;
+				for (let i = 0; i < a.params.length; i++) {
+					if (!equal(a.params[i]!, b.params[i]!)) return false;
+				}
+				if (Boolean(a.variadic) !== Boolean(b.variadic)) return false;
+				if (a.variadic && b.variadic && !equal(a.variadic, b.variadic)) return false;
+				return equal(a.returns, b.returns);
+			}
+			default: {
+				const _exhaustive: never = a;
+				return _exhaustive;
+			}
 		}
 	}
+	return equal(a, b);
 }
 
 export function sluaTypeFromLuauAnnotationText(text: string | undefined | null): SluaType {
@@ -260,7 +324,7 @@ export function sluaTypeFromLuauAnnotationText(text: string | undefined | null):
 		case 'table':
 			return slua.table();
 		case 'function':
-			return slua.fn([], slua.unknown());
+			return slua.anyFunction();
 		default:
 			return slua.unknown();
 	}
@@ -269,9 +333,9 @@ export function sluaTypeFromLuauAnnotationText(text: string | undefined | null):
 export function sluaTypeFromLslType(lslType: string | undefined | null): SluaType {
 	switch (lslType) {
 		case 'integer':
-			// Model integer distinctly so we can enforce integer-only call sites,
-			// while still allowing integer values where numbers are expected.
-			return slua.integer();
+			// Ordinary SLua exposes LSL integer parameters/results/constants as
+			// Luau numbers. The integer library uses the separate 64-bit type.
+			return slua.number();
 		case 'float':
 			return slua.number();
 		case 'string':
@@ -294,47 +358,78 @@ export function sluaTypeFromLslType(lslType: string | undefined | null): SluaTyp
 
 
 export function sluaTypeToString(type: SluaType): string {
-	switch (type.kind) {
-		case 'primitive':
-			return type.name;
-		case 'custom':
-			return type.name;
-		case 'table':
-			return 'table';
-		case 'array':
-			return `${sluaTypeToString(type.element)}[]`;
-		case 'tuple':
-			return `(${type.items.map((t) => sluaTypeToString(t)).join(', ')})`;
-		case 'union': {
-			const items = normalizeUnionItems(type.items);
-			return items.map((t) => sluaTypeToString(t)).join(' | ');
-		}
-		case 'function': {
-			const params = type.params.map((p) => sluaTypeToString(p)).join(', ');
-			return `(${params}) -> ${sluaTypeToString(type.returns)}`;
-		}
-		default: {
-			const _exhaustive: never = type;
-			return String(_exhaustive);
+	let remaining = 512;
+	function format(type: SluaType, depth = 0): string {
+		if (remaining-- <= 0 || depth >= 16) return type.kind === 'table' ? 'table' : 'unknown';
+		const nested = (child: SluaType) => format(child, depth + 1);
+		switch (type.kind) {
+			case 'primitive':
+				return type.name;
+			case 'custom':
+				return type.name;
+			case 'table':
+				return type.module ? `typeof(${type.module})` : type.metatable ? `${type.metatable}` : type.fields && Object.keys(type.fields).length
+					? `{ ${Object.entries(type.fields).slice(0, Math.max(0, Math.min(128, remaining))).map(([name, field]) => `${name}: ${nested(field)}`).join(', ')} }` : 'table';
+			case 'literal':
+				return JSON.stringify(type.value);
+			case 'array':
+				return `${nested(type.element)}[]`;
+			case 'tuple':
+				return `(${[...type.items.map((t, i) => !type.variadic && type.minimum !== undefined && i >= type.minimum ? `[${nested(t)}]` : nested(t)), ...(type.variadic ? [`...${nested(type.variadic)}`] : [])].join(', ')})`;
+			case 'union': {
+				const items = normalizeUnionItems(type.items);
+				return items.map((t) => nested(t)).join(' | ');
+			}
+			case 'function': {
+				if (type.untyped) return 'function';
+				const params = type.params.map((p, i) => type.arity && i >= type.arity.min ? `[${nested(p)}]` : nested(p));
+				if (type.variadic) params.push(`...${nested(type.variadic)}`);
+				return `(${params.join(', ')}) -> ${nested(type.returns)}`;
+			}
+			default: {
+				const _exhaustive: never = type;
+				return String(_exhaustive);
+			}
 		}
 	}
+	return format(type);
 }
 
 export function sluaTypeIsAssignable(expected: SluaType, actual: SluaType): boolean {
 	if (sluaTypeEquals(expected, actual)) return true;
 
-	// Integer is a subtype of number (integer -> number allowed, not vice versa).
-	if (expected.kind === 'primitive' && expected.name === 'number') {
-		return actual.kind === 'custom' && actual.name === 'integer';
-	}
-
-	if (expected.kind === 'union') {
-		return expected.items.some((item) => sluaTypeIsAssignable(item, actual));
-	}
-
+	// Every value can flow into unknown. Each possible actual union member must
+	// fit the expected type (which may itself be a union).
+	if (expected.kind === 'primitive' && expected.name === 'unknown') return true;
 	if (actual.kind === 'union') {
 		return actual.items.every((item) => sluaTypeIsAssignable(expected, item));
 	}
+	if (expected.kind === 'union') {
+		return expected.items.some((item) => sluaTypeIsAssignable(item, actual));
+	}
+	const nativeClass = nativeClassKind(expected);
+	if (nativeClass) return nativeClassKind(actual) === nativeClass || classType(actual)?.kind === nativeClass;
+	const expectedClass = classType(expected), actualClass = classType(actual);
+	if (expectedClass || actualClass) {
+		if (expectedClass?.kind !== 'instance' || actualClass?.kind !== 'instance') return false;
+		const seen = new Set<object>();
+		for (let owner = actualClass.info; owner && !seen.has(owner); owner = owner.base!) {
+			if (owner.declaration === expectedClass.info.declaration) return true;
+			seen.add(owner);
+		}
+		return false;
+	}
+	if (expected.kind === 'function' && expected.untyped && actual.kind === 'function') return true;
+
+	if (expected.kind === 'table' && !expected.module && !expected.metatable && actual.kind === 'array') return true;
+
+	if (expected.kind === 'table' && actual.kind === 'table') {
+		return (!expected.module || expected.module === actual.module) && (!expected.metatable || expected.metatable === actual.metatable);
+	}
+	if (expected.kind === 'primitive' && expected.name === 'string' && actual.kind === 'literal') return true;
+
+	// Tagged integers are not a subtype of number. Some native C API calls
+	// convert them at runtime, but that does not make a number annotation valid.
 
 	// Arrays and tuples can be compared structurally.
 	if (expected.kind === 'array' && actual.kind === 'array') {
@@ -342,6 +437,7 @@ export function sluaTypeIsAssignable(expected: SluaType, actual: SluaType): bool
 	}
 
 	if (expected.kind === 'tuple' && actual.kind === 'tuple') {
+		if (expected.variadic || actual.variadic || expected.minimum !== actual.minimum) return sluaTypeEquals(expected, actual);
 		if (expected.items.length !== actual.items.length) return false;
 		for (let i = 0; i < expected.items.length; i++) {
 			if (!sluaTypeIsAssignable(expected.items[i]!, actual.items[i]!)) return false;

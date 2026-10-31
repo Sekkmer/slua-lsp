@@ -10,6 +10,7 @@ export type MetamethodName =
 	| '__sub'
 	| '__mul'
 	| '__div'
+	| '__idiv'
 	| '__mod'
 	| '__pow'
 	| '__unm'
@@ -34,6 +35,7 @@ const ALL_METAMETHOD_NAMES: ReadonlySet<MetamethodName> = new Set<MetamethodName
 	'__sub',
 	'__mul',
 	'__div',
+	'__idiv',
 	'__mod',
 	'__pow',
 	'__unm',
@@ -137,6 +139,10 @@ export class MetatableRegistry {
 		rightType: SluaType,
 		operator: string
 	): SluaType | undefined {
+		if (['+', '-', '*', '/', '//', '%', '^'].includes(operator) &&
+			(isVectorOrRotation(leftType) || isVectorOrRotation(rightType))) {
+			return getVectorRotationOperationReturnType(leftType, rightType, operator);
+		}
 		const metamethod = operatorToMetamethod(operator, 'binary');
 		if (!metamethod) return undefined;
 
@@ -292,6 +298,8 @@ function operatorToMetamethod(operator: string, type: 'binary' | 'unary'): Metam
 				return '__mul';
 			case '/':
 				return '__div';
+			case '//':
+				return '__idiv';
 			case '%':
 				return '__mod';
 			case '^':
@@ -355,6 +363,11 @@ export function buildDefaultMetatables(): MetatableDef[] {
 				name: '__mod',
 				signature: slua.fn([slua.number(), slua.number()], slua.number()),
 				docs: 'Number modulo: number % number'
+			},
+			__idiv: {
+				name: '__idiv',
+				signature: slua.fn([slua.number(), slua.number()], slua.number()),
+				docs: 'Number floor division: number // number'
 			},
 			__pow: {
 				name: '__pow',
@@ -492,8 +505,8 @@ export function buildDefaultMetatables(): MetatableDef[] {
 			getGroup: {
 				name: 'getGroup',
 				kind: 'method',
-				type: slua.fn([], slua.uuid()),
-				docs: 'Detected group key (like llDetectedGroup).',
+				type: slua.fn([], slua.boolean()),
+				docs: 'Whether the detected entity has the same active group as the script prim. Valid only during dispatch; this is a boolean, not a group UUID.',
 				requiresColonCall: true
 			},
 			getType: {
@@ -590,8 +603,8 @@ export function buildDefaultMetatables(): MetatableDef[] {
 			getDamage: {
 				name: 'getDamage',
 				kind: 'method',
-				type: slua.fn([], slua.number()),
-				docs: 'Detected damage (like llDetectedDamage).',
+				type: slua.fn([], slua.table()),
+				docs: 'Pending damage information list: current damage, damage type and original damage. Valid only during dispatch.',
 				requiresColonCall: true
 			},
 			adjustDamage: {
@@ -621,7 +634,7 @@ export function buildDefaultMetatables(): MetatableDef[] {
 			__mul: {
 				name: '__mul',
 				signature: slua.fn([slua.unknown(), slua.unknown()], slua.unknown()),
-				docs: 'Vector multiplication; specific combos are refined by the type engine (e.g. v*q rotate, v*v dot).'
+				docs: 'Vector multiplication: v*q rotates; v*v multiplies components. Use vector.dot for the dot product.'
 			},
 			__div: {
 				name: '__div',
@@ -799,56 +812,34 @@ function applyBuiltinsMetatableMembers(registry: MetatableRegistry): void {
 
 applyBuiltinsMetatableMembers(defaultMetatableRegistry);
 
-/**
- * Helper function to get specific return type for vector*rotation and rotation*vector operations.
- */
-export function getSpecificMultiplicationReturnType(
-	leftType: SluaType,
-	rightType: SluaType
-): SluaType | undefined {
-	// vector * number -> vector
-	if (leftType.kind === 'custom' && leftType.name === 'vector' && rightType.kind === 'primitive' && rightType.name === 'number') {
-		return slua.vector();
-	}
-	// number * vector -> vector
-	if (leftType.kind === 'primitive' && leftType.name === 'number' && rightType.kind === 'custom' && rightType.name === 'vector') {
-		return slua.vector();
-	}
-	// vector * vector -> number (SLua: dot product)
-	if (leftType.kind === 'custom' && leftType.name === 'vector' && rightType.kind === 'custom' && rightType.name === 'vector') {
-		return slua.number();
-	}
-	// vector * rotation -> vector (rotate vector by rotation)
-	if (leftType.kind === 'custom' && leftType.name === 'vector' && rightType.kind === 'custom' && rightType.name === 'rotation') {
-		return slua.vector();
-	}
-	// rotation * rotation -> rotation
-	if (leftType.kind === 'custom' && leftType.name === 'rotation' && rightType.kind === 'custom' && rightType.name === 'rotation') {
-		return slua.rotation();
-	}
+/** Native SLua arithmetic, distinct from LSL vector dot-product semantics. */
+export function isVectorOrRotation(type: SluaType): boolean {
+	return type.kind === 'custom' && (type.name === 'vector' || type.name === 'rotation');
+}
 
+export function getVectorRotationOperationReturnType(left: SluaType, right: SluaType, operator: string): SluaType | undefined {
+	const name = (type: SluaType) => type.kind === 'custom' || type.kind === 'primitive' ? type.name : undefined;
+	const a = name(left), b = name(right);
+	if (operator === '+' || operator === '-') {
+		if (a === 'vector' && b === 'vector') return slua.vector();
+		if (a === 'rotation' && b === 'rotation') return slua.rotation();
+	}
+	if (operator === '*' || operator === '/' || operator === '//') {
+		if (a === 'vector' && (b === 'vector' || b === 'number') || a === 'number' && b === 'vector') return slua.vector();
+		// Floor division does not invoke rotation/inverse-rotation operations.
+		if (operator !== '//') {
+			if (a === 'vector' && b === 'rotation') return slua.vector();
+			if (a === 'rotation' && b === 'rotation') return slua.rotation();
+		}
+	}
+	if (operator === '%' && a === 'vector' && b === 'vector') return slua.vector();
 	return undefined;
 }
 
-/**
- * Helper function to get specific return type for vector/rotation division operations.
- */
-export function getSpecificDivisionReturnType(
-	leftType: SluaType,
-	rightType: SluaType
-): SluaType | undefined {
-	// vector / number -> vector
-	if (leftType.kind === 'custom' && leftType.name === 'vector' && rightType.kind === 'primitive' && rightType.name === 'number') {
-		return slua.vector();
-	}
-	// vector / rotation -> vector (SLua: rotate by inverse)
-	if (leftType.kind === 'custom' && leftType.name === 'vector' && rightType.kind === 'custom' && rightType.name === 'rotation') {
-		return slua.vector();
-	}
-	// rotation / rotation -> rotation
-	if (leftType.kind === 'custom' && leftType.name === 'rotation' && rightType.kind === 'custom' && rightType.name === 'rotation') {
-		return slua.rotation();
-	}
+export function getSpecificMultiplicationReturnType(left: SluaType, right: SluaType): SluaType | undefined {
+	return getVectorRotationOperationReturnType(left, right, '*');
+}
 
-	return undefined;
+export function getSpecificDivisionReturnType(left: SluaType, right: SluaType, operator: '/' | '//' = '/'): SluaType | undefined {
+	return getVectorRotationOperationReturnType(left, right, operator);
 }

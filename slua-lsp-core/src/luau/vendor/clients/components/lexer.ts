@@ -1,5 +1,7 @@
 import type { Token } from './types';
 import { TokenType } from './types';
+import { LexerError } from './types';
+import { SourceTextIndex } from '../../../../parser/sourceTextIndex.js';
 import { OPERATORS, SINGLE_CHAR_TOKENS, KEYWORDS } from './operators';
 import { 
 	TokenizerContext, 
@@ -19,11 +21,14 @@ export class Lexer implements TokenizerContext {
 	public column: number = 1;
 
 	private pendingTokens: Token[] = [];
+	private pendingIndex = 0;
+	private sourceIndex: SourceTextIndex;
 
 	private tokenizers: Array<NumberTokenizer | StringTokenizer | IdentifierTokenizer | CommentTokenizer> = [];
 
 	constructor(input: string) {
 		this.input = input;
+		this.sourceIndex = new SourceTextIndex(input);
 		this.initializeTokenizers();
 	}
 
@@ -37,6 +42,7 @@ export class Lexer implements TokenizerContext {
 	}
 
 	public tokenize(input: string): Token[] {
+		if (input !== this.input) this.sourceIndex = new SourceTextIndex(input);
 		this.input = input;
 		this.reset();
     
@@ -45,7 +51,7 @@ export class Lexer implements TokenizerContext {
 		while (!this.isAtEnd()) {
 			// If a tokenizer expanded into multiple tokens, drain those first.
 			if (this.pendingTokens.length) {
-				tokens.push(this.pendingTokens.shift()!);
+				tokens.push(this.takePendingToken());
 				continue;
 			}
 
@@ -58,7 +64,7 @@ export class Lexer implements TokenizerContext {
     
 		// Drain any remaining pending tokens.
 		while (this.pendingTokens.length) {
-			tokens.push(this.pendingTokens.shift()!);
+			tokens.push(this.takePendingToken());
 		}
 
 		tokens.push(this.createToken(TokenType.EOF, ''));
@@ -70,6 +76,34 @@ export class Lexer implements TokenizerContext {
 		this.line = 1;
 		this.column = 1;
 		this.pendingTokens = [];
+		this.pendingIndex = 0;
+	}
+
+	private takePendingToken(): Token {
+		const token = this.pendingTokens[this.pendingIndex++]!;
+		if (this.pendingIndex === this.pendingTokens.length) { this.pendingTokens = []; this.pendingIndex = 0; }
+		return token;
+	}
+
+	public tokenizeInterpolation(): { tokens: Token[]; closing: Token } {
+		const start = this.position;
+		const tokens: Token[] = [];
+		let depth = 0;
+		while (!this.isAtEnd() || this.pendingTokens.length) {
+			let token: Token;
+			if (this.pendingTokens.length) token = this.takePendingToken();
+			else {
+				this.skipWhitespace();
+				if (this.isAtEnd()) break;
+				token = this.nextToken();
+			}
+			if (token.type === TokenType.RIGHT_BRACE) {
+				if (depth === 0) return { tokens, closing: { ...token, type: TokenType.INTERPOLATION_END } };
+				depth--;
+			} else if (token.type === TokenType.LEFT_BRACE) depth++;
+			tokens.push(token);
+		}
+		throw new LexerError('Unterminated template interpolation', start);
 	}
 
 	private nextToken(): Token {
@@ -101,7 +135,7 @@ export class Lexer implements TokenizerContext {
 			return this.createToken(tokenType, char);
 		}
     
-		throw new Error(`Unexpected character: ${char} at line ${this.line}, column ${this.column}`);
+		throw new LexerError(`Unexpected character: ${char}`, this.position - 1);
 	}
 
 	private tryTokenizeMergeMarker(): Token | null {
@@ -121,7 +155,7 @@ export class Lexer implements TokenizerContext {
 			lineText.startsWith('|||||||');
 		if (!isMarker) return null;
 
-		while (!this.isAtEnd() && this.peek() !== '\n') {
+		while (!this.isAtEnd() && this.peek() !== '\n' && this.peek() !== '\r') {
 			this.advance();
 		}
 		const value = this.input.slice(start, this.position);
@@ -129,8 +163,6 @@ export class Lexer implements TokenizerContext {
 	}
 
 	private tokenizeNewline(): Token {
-		this.line++;
-		this.column = 1;
 		return this.createToken(TokenType.NEWLINE, '\n');
 	}
 
@@ -181,7 +213,8 @@ export class Lexer implements TokenizerContext {
 		if (this.isAtEnd()) return '\0';
 		const char = this.input[this.position];
 		this.position++;
-		this.column++;
+		if (char === '\n') { this.line++; this.column = 1; }
+		else this.column++;
 		return char;
 	}
 
@@ -195,24 +228,30 @@ export class Lexer implements TokenizerContext {
 	}
 
 	public createToken(type: TokenType, value: string): Token {
+		const start = this.position - value.length, point = this.sourceIndex.lfPositionAt(start);
 		return {
 			type,
 			value,
-			line: this.line,
-			column: this.column - value.length,
-			start: this.position - value.length,
+			line: point.line + 1,
+			column: point.character + 1,
+			start,
 			end: this.position,
 		};
 	}
 
 	public enqueueTokens(tokens: Token[]): void {
 		if (!tokens.length) return;
-		this.pendingTokens.push(...tokens);
+		for (const token of tokens) this.pendingTokens.push(token);
 	}
 
 	public tokenizeFragment(fragment: string, base: { line: number; column: number; offset: number }): Token[] {
 		const inner = new Lexer(fragment);
-		const innerTokens = inner.tokenize(fragment);
+		let innerTokens: Token[];
+		try { innerTokens = inner.tokenize(fragment); }
+		catch (error) {
+			if (error instanceof LexerError) throw new LexerError(error.message, base.offset + error.offset);
+			throw error;
+		}
 		return innerTokens
 			.filter((t) => t.type !== TokenType.EOF)
 			.map((t) => {

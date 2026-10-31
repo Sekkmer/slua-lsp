@@ -1,3 +1,4 @@
+import { recordTypeRegion, copyTypeRegions, type TypeSource } from '../../../parser/typeRegions.js';
 import { Token, TokenType, Lexer } from '../clients/lexer';
 import { LuaParser, ParseError } from '../parsers/lua';
 import * as AST from '../types';
@@ -7,13 +8,20 @@ type LuauComment = {
 	type: 'Block' | 'Line';
 };
 
+// Pinned native Parser::parseClassStat reserves the rest of the __ namespace.
+const classMetamethods = new Set(['__init', '__call', '__concat', '__unm', '__add', '__sub', '__mul', '__div', '__mod', '__pow', '__tostring', '__eq', '__lt', '__le', '__iter', '__len', '__idiv']);
+const disallowedClassMetamethods = new Set(['__index', '__newindex', '__mode', '__metatable', '__type']);
+
+const isNameType = (type: TokenType) => [TokenType.IDENTIFIER, TokenType.CONTINUE, TokenType.EXPORT, TokenType.AS, TokenType.TYPE].includes(type);
+
 export class LuauParser {
 	private tokens: Token[] = [];
 	private current: number = 0;
 	private input: string = '';
 	private errors: ParseError[] = [];
+	private classNames = new Set<string>();
 
-	constructor(input: string = '') {
+	constructor(input: string = '', private annotationSource: TypeSource = { input }) {
 		this.input = input;
 	}
 
@@ -24,17 +32,21 @@ export class LuauParser {
 	public parse(input?: string): AST.Program {
 		if (input) {
 			this.input = input;
+			this.annotationSource = { input };
 		}
 		const lexer = new Lexer(this.input);
 		this.tokens = lexer.tokenize(this.input);
 		this.current = 0;
 		this.errors = [];
+		this.classNames.clear();
 
 		const statements: AST.Statement[] = [];
-		let safetyCounter = 0;
+		let previousToken = -1;
 		let pendingComments: LuauComment[] = [];
 
 		while (!this.isAtEnd()) {
+			if (this.current <= previousToken) throw new Error('LuauParser safety break: parser made no token progress');
+			previousToken = this.current;
 			// Collect comments before the statement
 			while (this.check(TokenType.COMMENT) || this.check(TokenType.MULTILINE_COMMENT)) {
 				const commentToken = this.advance();
@@ -71,6 +83,15 @@ export class LuauParser {
 				}
 			}
 
+			if (this.check(TokenType.EXPORT) && this.checkClassDeclaration(1)) {
+				this.advance();
+				this.skipClassTrivia();
+				const stmt = this.classDeclaration(pendingComments, true);
+				pendingComments = [];
+				statements.push(stmt);
+				continue;
+			}
+
 			if (this.checkTypeAliasStatement()) {
 				try {
 					const node = this.typeAliasDeclaration(pendingComments);
@@ -100,14 +121,14 @@ export class LuauParser {
 			}
 
 			if (this.checkClassDeclaration()) {
-				const stmt = this.classDeclaration(pendingComments);
+				const stmt = this.classDeclaration(pendingComments, false);
 				pendingComments = [];
 				statements.push(stmt);
 				continue;
 			}
 
 			// Use base parser for other statements
-			const baseParser = new LuaParser(this.input);
+			const baseParser = new LuaParser(this.input, this.annotationSource);
 			baseParser.setTokens(this.tokens, this.current);
 			try {
 				const stmt = baseParser.parseStatement();
@@ -134,10 +155,6 @@ export class LuauParser {
 				pendingComments = [];
 			}
 
-			safetyCounter++;
-			if (safetyCounter > 10000) {
-				throw new Error('LuauParser safety break: too many iterations (possible infinite loop)');
-			}
 		}
 
 		return {
@@ -195,56 +212,163 @@ export class LuauParser {
 		}
 	}
 
-	private checkClassDeclaration(): boolean {
-		return this.peek().type === TokenType.IDENTIFIER && this.peek().value === 'class' && this.peekAt(1).type === TokenType.IDENTIFIER;
+	private checkClassDeclaration(offset = 0): boolean {
+		let index = this.classSignificantIndex(this.current + offset);
+		if (this.tokens[index]?.value === 'open') index = this.classSignificantIndex(index + 1);
+		return this.tokens[index]?.value === 'class' && isNameType(this.tokens[this.classSignificantIndex(index + 1)]?.type);
 	}
 
-	private classDeclaration(pendingComments?: LuauComment[]): AST.Statement {
-		const classToken = this.advance();
-		const name = this.identifier();
+	private classSignificantIndex(index: number): number {
+		while ([TokenType.NEWLINE, TokenType.COMMENT, TokenType.MULTILINE_COMMENT].includes(this.tokens[index]?.type)) index++;
+		return Math.min(index, this.tokens.length - 1);
+	}
 
-		if (this.match(TokenType.END)) {
-			return this.classDeclarationNode(classToken, name, pendingComments);
+	private skipClassTrivia(): void { this.current = this.classSignificantIndex(this.current); }
+
+	/** Native parseClassRefExpr permits one suffix; its bracket key is an ordinary expression. */
+	private classReference(): AST.Expression {
+		this.skipClassTrivia();
+		const object = this.identifier();
+		this.skipClassTrivia();
+		if (this.match(TokenType.DOT)) {
+			this.skipClassTrivia();
+			const property = this.identifier();
+			return { type: 'MemberExpression', object, property, indexer: '.', location: { start: object.location!.start, end: property.location!.end } };
 		}
+		if (this.match(TokenType.LEFT_BRACKET)) {
+			const parser = new LuaParser(this.input, this.annotationSource);
+			parser.setTokens(this.tokens, this.current);
+			try {
+				const index = parser.parseNavigationExpression();
+				this.current = parser.getCurrentPosition();
+				this.skipClassTrivia();
+				this.consume(TokenType.RIGHT_BRACKET, 'Expected \']\' after class reference');
+				return { type: 'IndexExpression', object, index, location: { start: object.location!.start, end: this.getLocation().end } };
+			} finally {
+				this.errors.push(...parser.getErrors());
+			}
+		}
+		return object;
+	}
 
-		this.skipToNextStatementBoundary();
+	private classDeclaration(pendingComments?: LuauComment[], exported = false): AST.Statement {
+		this.annotationSource.hasClasses = true;
+		const open = this.peek().value === 'open';
+		let openKeywordLocation: AST.SourceLocation | undefined;
+		if (open) { this.advance(); openKeywordLocation = this.getLocation(); this.skipClassTrivia(); }
+		const classToken = this.advance();
+		const classKeywordLocation = this.getLocation();
+		this.skipClassTrivia();
+		const name = this.identifier();
+		const nameToken = this.previous();
+		this.skipClassTrivia();
+		let superClass: AST.Expression | undefined, extendsKeywordLocation: AST.SourceLocation | undefined;
+		if (this.peek().value === 'extends') {
+			this.advance(); extendsKeywordLocation = this.getLocation();
+			try { superClass = this.classReference(); }
+			catch (error) { if (!(error instanceof ParseError)) throw error; this.errors.push(error); }
+		}
+		const fields: AST.ClassField[] = [];
+		const methods: AST.FunctionDeclaration[] = [];
+		const members = new Set<string>();
+		if (this.classNames.has(name.name)) this.errors.push(new ParseError(`A class named '${name.name}' has already been declared in this module`, nameToken));
+		this.classNames.add(name.name);
+		const register = (token: Token) => {
+			if (members.has(token.value)) this.errors.push(new ParseError(`Duplicate class member '${token.value}'`, token));
+			members.add(token.value);
+		};
+
 		while (!this.isAtEnd()) {
 			while (this.match(TokenType.NEWLINE, TokenType.SEMICOLON, TokenType.COMMENT, TokenType.MULTILINE_COMMENT)) {
 				// skip class trivia
 			}
-			if (this.match(TokenType.END)) break;
+			if (this.check(TokenType.END)) break;
 			if (this.isAtEnd()) break;
 
-			if (this.checkClassField()) {
-				this.skipToNextStatementBoundary();
+			if (this.checkClassField() && this.peekAt(1).type !== TokenType.FUNCTION) {
+				const token = this.peekAt(1);
+				try {
+					fields.push(this.classFieldDeclaration());
+					if (token.value.startsWith('__')) this.errors.push(new ParseError('Class properties cannot start with \'__\'', token));
+					else register(token);
+				} catch (error) {
+					if (!(error instanceof ParseError)) throw error;
+					this.errors.push(error);
+				}
 				continue;
 			}
 
-			if (this.check(TokenType.FUNCTION)) {
-				const baseParser = new LuaParser(this.input);
-				baseParser.setTokens(this.tokens, this.current);
-				const stmt = baseParser.parseStatement();
-				if (stmt) {
-					this.current = baseParser.getCurrentPosition();
-					continue;
-				}
+			if (this.checkClassField() && this.peekAt(1).type === TokenType.FUNCTION) {
+				this.advance();
 			}
 
-			this.skipToNextStatementBoundary();
-		}
+			if (this.check(TokenType.FUNCTION)) {
+				const methodStart = this.current;
+				const methodName = this.peekAt(1);
+				const baseParser = new LuaParser(this.input, this.annotationSource);
+				baseParser.setTokens(this.tokens, this.current);
+				try {
+					const stmt = baseParser.parseStatement();
+					if (stmt?.type === 'FunctionDeclaration') {
+						methods.push(stmt);
+						if (stmt.identifier?.type !== 'Identifier') this.errors.push(new ParseError('Expected an unqualified class method name', methodName));
+						else {
+							register(methodName);
+							if (disallowedClassMetamethods.has(methodName.value)) this.errors.push(new ParseError(`Classes cannot define '${methodName.value}' as a metamethod`, methodName));
+							else if (methodName.value.startsWith('__') && !classMetamethods.has(methodName.value)) this.errors.push(new ParseError(`Cannot use '${methodName.value}' as a method name: names starting with '__' are reserved`, methodName));
+						}
+						if (stmt.parameters[0]?.name === 'self' && stmt.parameters[0].typeAnnotation !== undefined) {
+							let self = methodName;
+							for (let index = methodStart + 2; index < baseParser.getCurrentPosition(); index++) {
+								if (this.tokens[index].value === 'self') { self = this.tokens[index]; break; }
+							}
+							this.errors.push(new ParseError('The \'self\' parameter cannot have a type annotation', self));
+						}
+					}
+				} catch (error) {
+					if (!(error instanceof ParseError)) throw error;
+					this.errors.push(error);
+				} finally {
+					this.errors.push(...baseParser.getErrors());
+					this.current = Math.max(methodStart + 1, baseParser.getCurrentPosition());
+				}
+				continue;
+			}
 
-		return this.classDeclarationNode(classToken, name, pendingComments);
+			this.errors.push(new ParseError('Only class properties and functions can be declared within a class', this.advance()));
+		}
+		if (!this.match(TokenType.END)) this.errors.push(new ParseError('Expected \'end\' after class body', this.peek()));
+
+		const node = this.classDeclarationNode(classToken, name, fields, methods, exported, pendingComments);
+		node.open = open;
+		node.superClass = superClass;
+		node.classKeywordLocation = classKeywordLocation;
+		node.openKeywordLocation = openKeywordLocation;
+		node.extendsKeywordLocation = extendsKeywordLocation;
+		if (openKeywordLocation && node.location) node.location.start = openKeywordLocation.start;
+		return node;
 	}
 
-	private classDeclarationNode(classToken: Token, name: AST.Identifier, pendingComments?: LuauComment[]): AST.Statement {
+	private classDeclarationNode(
+		classToken: Token,
+		name: AST.Identifier,
+		fields: AST.ClassField[],
+		methods: AST.FunctionDeclaration[],
+		exported: boolean,
+		pendingComments?: LuauComment[]
+	): AST.ClassDeclaration {
+		if (exported) name.exported = true;
 		const node = {
 			type: 'ClassDeclaration',
 			name,
+			fields,
+			methods,
+			exported,
 			location: {
 				start: { line: classToken.line, column: classToken.column },
 				end: this.getLocation().end,
 			},
-		} as unknown as AST.Statement & { name: AST.Identifier; comments?: LuauComment[] };
+		} as AST.ClassDeclaration & { comments?: LuauComment[] };
 		if (pendingComments?.length) node.comments = pendingComments;
 		return node;
 	}
@@ -254,15 +378,45 @@ export class LuauParser {
 		return token.type === TokenType.IDENTIFIER && token.value === 'public';
 	}
 
-	private skipToNextStatementBoundary(): void {
+	private classFieldDeclaration(): AST.ClassField {
+		const visibilityToken = this.advance();
+		const name = this.identifier();
+		const owner = {};
+		let typeAnnotation: string | undefined;
+		if (this.match(TokenType.COLON)) {
+			typeAnnotation = this.readRawTypeUntilBoundary(owner);
+			if (!typeAnnotation) this.errors.push(new ParseError('Expected class property type after colon', this.peek()));
+		}
+
+		const field: AST.ClassField = {
+			type: 'ClassField',
+			visibility: 'public',
+			name,
+			typeAnnotation,
+			location: {
+				start: { line: visibilityToken.line, column: visibilityToken.column },
+				end: this.getLocation().end,
+			},
+		};
+		copyTypeRegions(owner, field);
+		return field;
+	}
+
+	private readRawTypeUntilBoundary(owner: object): string {
+		const firstToken = this.current;
+		const startToken = this.peek();
+		const startIndex = startToken.start;
+		let endIndex = startIndex;
+		let consumed = false;
 		let depthParen = 0;
 		let depthBrace = 0;
 		let depthBracket = 0;
+		let depthAngle = 0;
 
 		while (!this.isAtEnd()) {
 			const t = this.peek().type;
-			if (depthParen === 0 && depthBrace === 0 && depthBracket === 0 && (t === TokenType.NEWLINE || t === TokenType.SEMICOLON || t === TokenType.END)) {
-				return;
+			if (depthParen === 0 && depthBrace === 0 && depthBracket === 0 && depthAngle === 0 && (t === TokenType.NEWLINE || t === TokenType.SEMICOLON || t === TokenType.END || t === TokenType.COMMENT || t === TokenType.MULTILINE_COMMENT || t === TokenType.FUNCTION || (consumed && this.checkClassField()))) {
+				break;
 			}
 
 			switch (t) {
@@ -284,9 +438,21 @@ export class LuauParser {
 				case TokenType.RIGHT_BRACKET:
 					if (depthBracket > 0) depthBracket--;
 					break;
+				case TokenType.LESS_THAN:
+					depthAngle++;
+					break;
+				case TokenType.GREATER_THAN:
+					if (depthAngle > 0) depthAngle--;
+					break;
 			}
 			this.advance();
+			consumed = true;
+			endIndex = this.previous().end;
 		}
+
+		new LuaParser(this.input, this.annotationSource).validateAttributeTypes(this.tokens.slice(firstToken, this.current));
+		recordTypeRegion(owner, this.input, this.tokens.slice(firstToken, this.current), this.annotationSource);
+		return consumed ? this.input.slice(startIndex, endIndex).trim() : '';
 	}
 
 	private typeAliasDeclaration(pendingComments?: LuauComment[]): AST.TypeAlias {
@@ -312,6 +478,7 @@ export class LuauParser {
 			// Skip newlines
 		}
 
+		const firstToken = this.current;
 		const definition = this.parseType();
 
 		const typeAlias: AST.TypeAlias = {
@@ -326,6 +493,8 @@ export class LuauParser {
 			(typeAlias as AST.TypeAlias & { comments?: LuauComment[] }).comments = pendingComments;
 		}
 
+		new LuaParser(this.input, this.annotationSource).validateAttributeTypes(this.tokens.slice(firstToken, this.current));
+		recordTypeRegion(typeAlias, this.input, this.tokens.slice(firstToken, this.current), this.annotationSource);
 		return typeAlias;
 	}
 
@@ -513,7 +682,7 @@ export class LuauParser {
 			};
 		}
 
-		if (this.match(TokenType.IDENTIFIER)) {
+		if (this.match(TokenType.IDENTIFIER, TokenType.CONTINUE, TokenType.EXPORT, TokenType.AS, TokenType.TYPE)) {
 			const name = this.previous().value;
 			if (name === 'typeof' && this.match(TokenType.LEFT_PAREN)) {
 				this.skipBalancedExpressionUntilRightParen();
@@ -542,7 +711,7 @@ export class LuauParser {
 				default: {
 					let typeName = name;
 					while (this.match(TokenType.DOT)) {
-						typeName += `.${this.consume(TokenType.IDENTIFIER, 'Expected identifier after \'.\' in type').value}`;
+						typeName += `.${this.identifier().name}`;
 					}
 					if (this.match(TokenType.DOTS)) {
 						typeName += '...';
@@ -806,7 +975,7 @@ export class LuauParser {
 	}
 
 	private parseTypeParameterName(): string {
-		let name = this.consume(TokenType.IDENTIFIER, 'Expected type parameter').value;
+		let name = this.identifier().name;
 		if (this.match(TokenType.DOTS)) name += '...';
 		return name;
 	}
@@ -896,7 +1065,7 @@ export class LuauParser {
 
 	private checkTypeAliasStatement(offset = 0): boolean {
 		if (!this.checkTypeAliasKeyword(offset)) return false;
-		if (this.peekAt(offset + 1).type !== TokenType.IDENTIFIER) return false;
+		if (!isNameType(this.peekAt(offset + 1).type)) return false;
 		const afterName = this.peekAt(offset + 2);
 		return afterName.type === TokenType.ASSIGN || afterName.type === TokenType.LESS_THAN;
 	}
@@ -934,7 +1103,8 @@ export class LuauParser {
 	}
 
 	private identifier(): AST.Identifier {
-		this.consume(TokenType.IDENTIFIER, 'Expected identifier');
+		if (!isNameType(this.peek().type)) throw new ParseError('Expected identifier', this.peek());
+		this.advance();
 		return {
 			type: 'Identifier',
 			name: this.previous().value,

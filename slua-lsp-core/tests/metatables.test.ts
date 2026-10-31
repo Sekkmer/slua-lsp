@@ -100,11 +100,11 @@ describe('Specific Multiplication Operations', () => {
 		expect(result?.kind === 'custom' && result.name).toBe('vector');
 	});
 
-	it('should infer vector * vector -> number (dot product)', () => {
+	it('should infer vector * vector -> vector (component multiplication)', () => {
 		const result = getSpecificMultiplicationReturnType(slua.vector(), slua.vector());
 		expect(result).toBeDefined();
-		expect(result?.kind).toBe('primitive');
-		expect(result?.kind === 'primitive' && result.name).toBe('number');
+		expect(result?.kind).toBe('custom');
+		expect(result?.kind === 'custom' && result.name).toBe('vector');
 	});
 
 	it('should infer vector * rotation -> vector', () => {

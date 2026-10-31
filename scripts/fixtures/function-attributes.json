@@ -1,0 +1,1837 @@
+[
+  {
+    "name": "native-bare",
+    "source": "@native\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "native-list",
+    "source": "@[native]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "native-empty-args",
+    "source": "@[native()]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "checked-bare",
+    "source": "@checked\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "checked-list",
+    "source": "@[checked]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "checked-empty-args",
+    "source": "@[checked()]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "deprecated-bare",
+    "source": "@deprecated\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "deprecated-list",
+    "source": "@[deprecated]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "deprecated-empty-args",
+    "source": "@[deprecated()]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "all-list",
+    "source": "@[native,checked,deprecated]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "all-separate",
+    "source": "@native\n@checked\n@deprecated\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "mixed-list",
+    "source": "@native @[checked,deprecated{}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "attribute-trivia",
+    "source": "@native -- marker\n--[[ comment ]] @checked\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "named-global",
+    "source": "@native function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "named-const",
+    "source": "@native const function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "named-export",
+    "source": "@checked export function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "anonymous",
+    "source": "local double=@native function(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "argument-function",
+    "source": "local function apply(f: (number)->number): number return f(21) end\nassert(apply(@native function(value: number): number return value*2 end)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "table-function",
+    "source": "local api={double=@native function(value: number): number return value*2 end}\nassert(api.double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "table-method",
+    "source": "local api={x=21}\n@deprecated function api:double(): number return self.x*2 end\nassert(api:double()==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Operator '*' could not be applied to operands of types unknown and number; there is no corresponding overload for __mul"
+      ]
+    ]
+  },
+  {
+    "name": "table-static",
+    "source": "local api={}\n@native function api.double(value: number): number return value*2 end\nassert(api.double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "nested",
+    "source": "@native local function outer(value: number): number\n@checked local function inner(other: number): number return other*2 end\nreturn inner(value) end\nassert(outer(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "generic",
+    "source": "@checked local function identity<T>(value: T): T return value end\nassert(identity(42)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "deprecated-empty",
+    "source": "@[deprecated{}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "deprecated-use",
+    "source": "@[deprecated{use=\"next\"}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "deprecated-reason",
+    "source": "@[deprecated{reason=\"old\"}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "deprecated-both",
+    "source": "@[deprecated{use=\"next\",reason=\"old\"}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "deprecated-duplicates",
+    "source": "@[deprecated{use=\"first\",use=\"last\"}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "deprecated-long-string",
+    "source": "@[deprecated{use=[=[next]=],reason=`old`}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "deprecated-semicolon",
+    "source": "@[deprecated{reason=\"old\";use=\"next\";}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "native-args-nil",
+    "source": "@[native(nil)]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "native-args-boolean",
+    "source": "@[native(true,false)]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "native-args-number",
+    "source": "@[native(123)]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "native-args-string",
+    "source": "@[native(\"tag\")]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "native-args-table",
+    "source": "@[native({x=1, {true,nil}, label=\"tag\"})]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "native-args-parenthesized",
+    "source": "@[native((\"tag\"))]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only literals can be passed as arguments for attributes"
+      ]
+    ]
+  },
+  {
+    "name": "native-string-sugar",
+    "source": "@[native \"tag\"]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "native-table-sugar",
+    "source": "@[native {x=1}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "checked-args",
+    "source": "@[checked(false)]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "deprecated-alias",
+    "source": "@deprecated local function old(): number return 42 end\nlocal alias=old\nassert(alias()==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "deprecated-shadow",
+    "source": "@deprecated local function old(): number return 42 end\ndo local old=1 print(old) end\nassert(old()==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "recursive-deprecated",
+    "source": "@deprecated local function countdown(n: number): number if n==0 then return 0 end return countdown(n-1) end\nassert(countdown(2)==0)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "nested-deprecation-boundary",
+    "source": "@deprecated local function outer(): number local function inner(): number return 42 end return inner() end\nassert(outer()==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "checked-wrong-call",
+    "source": "@checked local function double(value: number): number return value*2 end\ndouble(\"bad\")",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Expected this to be 'number', but got 'string'"
+      ]
+    ]
+  },
+  {
+    "name": "checked-unknown-call",
+    "source": "@checked local function double(value: number): number return value*2 end\nlocal value: any=\"bad\"\ndouble(value)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 1
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "unknown",
+    "source": "@inline\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Invalid attribute '@inline'"
+      ]
+    ]
+  },
+  {
+    "name": "case-sensitive",
+    "source": "@Native\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Invalid attribute '@Native'"
+      ]
+    ]
+  },
+  {
+    "name": "duplicate-bare",
+    "source": "@native @native\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Cannot duplicate attribute '@native'"
+      ]
+    ]
+  },
+  {
+    "name": "duplicate-list",
+    "source": "@[native,native]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Cannot duplicate attribute '@native'"
+      ]
+    ]
+  },
+  {
+    "name": "duplicate-mixed",
+    "source": "@native @[native]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Cannot duplicate attribute '@native'"
+      ]
+    ]
+  },
+  {
+    "name": "empty-list",
+    "source": "@[]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Attribute list cannot be empty"
+      ]
+    ]
+  },
+  {
+    "name": "list-trailing-comma",
+    "source": "@[native,]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected identifier when parsing attribute name, got ']'"
+      ],
+      [
+        "SyntaxError",
+        "Invalid attribute '@%error-id%'"
+      ]
+    ]
+  },
+  {
+    "name": "list-leading-at",
+    "source": "@[@native]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected identifier when parsing attribute name, got 'native'"
+      ],
+      [
+        "SyntaxError",
+        "Invalid attribute '@%error-id%'"
+      ],
+      [
+        "SyntaxError",
+        "Expected ']' (to close '@[' at column 1), got 'native'"
+      ]
+    ]
+  },
+  {
+    "name": "list-nested",
+    "source": "@[[native]]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected identifier when parsing attribute name, got '['"
+      ],
+      [
+        "SyntaxError",
+        "Invalid attribute '@%error-id%'"
+      ],
+      [
+        "SyntaxError",
+        "Expected ']' (to close '@[' at column 1), got '['"
+      ],
+      [
+        "SyntaxError",
+        "Incomplete statement: expected assignment or a function call"
+      ],
+      [
+        "SyntaxError",
+        "Expected identifier when parsing expression, got ']'"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'native'; consider assigning to it first"
+      ]
+    ]
+  },
+  {
+    "name": "bare-args",
+    "source": "@native()\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected 'function', 'local function', 'const function', 'declare function' or a function type declaration after attribute, but got '(' instead"
+      ],
+      [
+        "SyntaxError",
+        "Expected identifier when parsing expression, got ')'"
+      ],
+      [
+        "SyntaxError",
+        "Incomplete statement: expected assignment or a function call"
+      ]
+    ]
+  },
+  {
+    "name": "bare-table",
+    "source": "@deprecated{}\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected 'function', 'local function', 'const function', 'declare function' or a function type declaration after attribute, but got '{' instead"
+      ]
+    ]
+  },
+  {
+    "name": "name-missing",
+    "source": "@\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Attribute name is missing"
+      ]
+    ]
+  },
+  {
+    "name": "name-whitespace",
+    "source": "@ native\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Attribute name is missing"
+      ],
+      [
+        "SyntaxError",
+        "Expected 'function', 'local function', 'const function', 'declare function' or a function type declaration after attribute, but got 'native' instead"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'native'; consider assigning to it first"
+      ]
+    ]
+  },
+  {
+    "name": "name-newline",
+    "source": "@\nnative\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Attribute name is missing"
+      ],
+      [
+        "SyntaxError",
+        "Expected 'function', 'local function', 'const function', 'declare function' or a function type declaration after attribute, but got 'native' instead"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'native'; consider assigning to it first"
+      ]
+    ]
+  },
+  {
+    "name": "list-incomplete",
+    "source": "@[native\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected ']' (to close '@[' at line 1), got 'local'"
+      ]
+    ]
+  },
+  {
+    "name": "name-missing-list",
+    "source": "@[\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected identifier when parsing attribute name, got 'local'"
+      ],
+      [
+        "SyntaxError",
+        "Invalid attribute '@%error-id%'"
+      ],
+      [
+        "SyntaxError",
+        "Expected ']' (to close '@[' at line 1), got 'local'"
+      ]
+    ]
+  },
+  {
+    "name": "deprecated-many",
+    "source": "@[deprecated({}, {})]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "@deprecated can be parametrized only by 1 argument"
+      ]
+    ]
+  },
+  {
+    "name": "deprecated-nil",
+    "source": "@[deprecated(nil)]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Unknown argument type for @deprecated"
+      ]
+    ]
+  },
+  {
+    "name": "deprecated-string",
+    "source": "@[deprecated \"old\"]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Unknown argument type for @deprecated"
+      ]
+    ]
+  },
+  {
+    "name": "deprecated-unknown-key",
+    "source": "@[deprecated{foo=\"old\"}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Unknown argument 'foo' for @deprecated. Only string constants for 'use' and 'reason' are allowed"
+      ]
+    ]
+  },
+  {
+    "name": "deprecated-bad-use",
+    "source": "@[deprecated{use=42}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only constant string allowed as value for 'use'"
+      ]
+    ]
+  },
+  {
+    "name": "deprecated-list-value",
+    "source": "@[deprecated{\"old\"}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only constants keys 'use' and 'reason' are allowed for @deprecated attribute"
+      ]
+    ]
+  },
+  {
+    "name": "deprecated-computed-key",
+    "source": "@[deprecated{[\"use\"]=\"next\"}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only literals can be passed as arguments for attributes"
+      ],
+      [
+        "SyntaxError",
+        "Only constants keys 'use' and 'reason' are allowed for @deprecated attribute"
+      ]
+    ]
+  },
+  {
+    "name": "deprecated-dynamic",
+    "source": "@[deprecated{reason=reason}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only literals can be passed as arguments for attributes"
+      ],
+      [
+        "SyntaxError",
+        "Only constant string allowed as value for 'reason'"
+      ]
+    ]
+  },
+  {
+    "name": "native-dynamic",
+    "source": "@[native(value)]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only literals can be passed as arguments for attributes"
+      ]
+    ]
+  },
+  {
+    "name": "native-arithmetic",
+    "source": "@[native(1+2)]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only literals can be passed as arguments for attributes"
+      ]
+    ]
+  },
+  {
+    "name": "native-unary",
+    "source": "@[native(-1)]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only literals can be passed as arguments for attributes"
+      ]
+    ]
+  },
+  {
+    "name": "native-integer",
+    "source": "@[native(1i)]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only literals can be passed as arguments for attributes"
+      ]
+    ]
+  },
+  {
+    "name": "native-computed-table",
+    "source": "@[native{[\"x\"]=1}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only literals can be passed as arguments for attributes"
+      ]
+    ]
+  },
+  {
+    "name": "native-dynamic-table",
+    "source": "@[native{x=value}]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only literals can be passed as arguments for attributes"
+      ]
+    ]
+  },
+  {
+    "name": "native-interpolated",
+    "source": "@[native(`{1}`)]\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only literals can be passed as arguments for attributes"
+      ]
+    ]
+  },
+  {
+    "name": "local-variable",
+    "source": "@native\nlocal value=1",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected 'function' after local declaration with attribute, but got 'value' instead"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'value'; consider assigning to it first"
+      ]
+    ]
+  },
+  {
+    "name": "const-variable",
+    "source": "@native\nconst value=1",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected 'function' after local declaration with attribute, but got 'value' instead"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'value'; consider assigning to it first"
+      ]
+    ]
+  },
+  {
+    "name": "export-variable",
+    "source": "@native\nexport local value=1",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected 'function' after export declaration with attribute, but got 'local' instead"
+      ]
+    ]
+  },
+  {
+    "name": "if",
+    "source": "@native\nif true then print(1) end",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected 'function', 'local function', 'const function', 'declare function' or a function type declaration after attribute, but got 'if' instead"
+      ]
+    ]
+  },
+  {
+    "name": "return",
+    "source": "@native\nreturn 1",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected 'function', 'local function', 'const function', 'declare function' or a function type declaration after attribute, but got 'return' instead"
+      ]
+    ]
+  },
+  {
+    "name": "class",
+    "source": "@native\nclass C end",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected 'function', 'local function', 'const function', 'declare function' or a function type declaration after attribute, but got 'class' instead"
+      ]
+    ]
+  },
+  {
+    "name": "type-alias",
+    "source": "@native\ntype F=()->number",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected 'function', 'local function', 'const function', 'declare function' or a function type declaration after attribute, but got 'type' instead"
+      ]
+    ]
+  },
+  {
+    "name": "literal",
+    "source": "@native\nlocal value=@native 1",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected 'function' after local declaration with attribute, but got 'value' instead"
+      ],
+      [
+        "SyntaxError",
+        "Expected 'function' declaration after attribute, but got '1' instead"
+      ],
+      [
+        "SyntaxError",
+        "Expected identifier when parsing expression, got '1'"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'value'; consider assigning to it first"
+      ]
+    ]
+  },
+  {
+    "name": "wrong-after-local",
+    "source": "local @native function old() end",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Expected identifier when parsing variable name, got 'native'"
+      ]
+    ]
+  },
+  {
+    "name": "wrong-after-export",
+    "source": "export @native function old() end",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Incomplete statement: expected assignment or a function call"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'export'; consider assigning to it first"
+      ]
+    ]
+  },
+  {
+    "name": "class-method",
+    "source": "class C\n@native function method(self): number return 1 end\nend",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only class properties and functions can be declared within a class"
+      ]
+    ]
+  },
+  {
+    "name": "class-static",
+    "source": "class C\n@native function answer(): number return 42 end\nend",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Only class properties and functions can be declared within a class"
+      ]
+    ]
+  },
+  {
+    "name": "local-function-type",
+    "source": "local value: @checked ()->number",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "attributes are not allowed in declaration context"
+      ],
+      [
+        "SyntaxError",
+        "Expected 'function', 'local function', 'const function', 'declare function' or a function type declaration after attribute, but got '(' instead"
+      ],
+      [
+        "SyntaxError",
+        "Expected identifier when parsing expression, got ')'"
+      ],
+      [
+        "SyntaxError",
+        "Incomplete statement: expected assignment or a function call"
+      ],
+      [
+        "SyntaxError",
+        "Expected identifier when parsing expression, got '->'"
+      ],
+      [
+        "SyntaxError",
+        "Incomplete statement: expected assignment or a function call"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'number'; consider assigning to it first"
+      ]
+    ]
+  },
+  {
+    "name": "alias-function-type",
+    "source": "type F=@checked ()->number",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "attributes are not allowed in declaration context"
+      ],
+      [
+        "SyntaxError",
+        "Expected 'function', 'local function', 'const function', 'declare function' or a function type declaration after attribute, but got '(' instead"
+      ],
+      [
+        "SyntaxError",
+        "Expected identifier when parsing expression, got ')'"
+      ],
+      [
+        "SyntaxError",
+        "Incomplete statement: expected assignment or a function call"
+      ],
+      [
+        "SyntaxError",
+        "Expected identifier when parsing expression, got '->'"
+      ],
+      [
+        "SyntaxError",
+        "Incomplete statement: expected assignment or a function call"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'number'; consider assigning to it first"
+      ]
+    ]
+  },
+  {
+    "name": "declare-function",
+    "source": "declare function old(): number",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Incomplete statement: expected assignment or a function call"
+      ],
+      [
+        "SyntaxError",
+        "Expected 'end' (to close 'function' at column 9), got <eof>"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'declare'; consider assigning to it first"
+      ],
+      [
+        "TypeError",
+        "Not all codepaths in this function return 'number'."
+      ]
+    ]
+  },
+  {
+    "name": "ordinary-names",
+    "source": "local native,checked,deprecated=1,2,3\nassert(native+checked+deprecated==6)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "strings-comments",
+    "source": "local text=\"@native\"\n-- @bad\nassert(text==\"@native\")",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "debugnoinline-disabled",
+    "source": "@debugnoinline\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "Invalid attribute '@debugnoinline'"
+      ]
+    ]
+  },
+  {
+    "name": "debugnoinline-enabled",
+    "source": "@debugnoinline\nlocal function double(value: number): number return value*2 end\nassert(double(21)==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true,DebugLuauNoInline=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "plain-dynamic-identity",
+    "source": "local function identity(value: number): number return value end\nlocal value: any=\"bad\"\nassert(identity(value)==\"bad\")",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Cannot compare unrelated types 'number' and '\"bad\"' with '=='"
+      ]
+    ]
+  },
+  {
+    "name": "plain-dynamic-add",
+    "source": "local function double(value: number): number return value*2 end\nlocal value: any=\"bad\"\ndouble(value)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 1
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "checked-dynamic-identity",
+    "source": "@checked local function identity(value: number): number return value end\nlocal value: any=\"bad\"\nassert(identity(value)==\"bad\")",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Cannot compare unrelated types 'number' and '\"bad\"' with '=='"
+      ]
+    ]
+  },
+  {
+    "name": "checked-dynamic-add",
+    "source": "@checked local function double(value: number): number return value*2 end\nlocal value: any=\"bad\"\ndouble(value)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 1
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "native-dynamic-identity",
+    "source": "@native local function identity(value: number): number return value end\nlocal value: any=\"bad\"\nassert(identity(value)==\"bad\")",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 1,
+      "execution": 0
+    },
+    "expectedStrictErrors": [
+      [
+        "TypeError",
+        "Cannot compare unrelated types 'number' and '\"bad\"' with '=='"
+      ]
+    ]
+  },
+  {
+    "name": "native-dynamic-add",
+    "source": "@native local function double(value: number): number return value*2 end\nlocal value: any=\"bad\"\ndouble(value)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 1
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "same-line-nested",
+    "source": "@native local function outer(): number @checked local function inner(): number return 42 end return inner() end\nassert(outer()==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "typeof-function",
+    "source": "local value: typeof(@native function(): number return 42 end)=@checked function(): number return 42 end\nassert(value()==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "typeof-type-alias",
+    "source": "type F=typeof(@native function(): number return 42 end)\nlocal value: F=@checked function(): number return 42 end\nassert(value()==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "nested-type-attribute-invalid",
+    "source": "local value: {f: @checked ()->number}\nprint(value)",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "attributes are not allowed in declaration context"
+      ]
+    ]
+  },
+  {
+    "name": "default-generic-attribute-invalid",
+    "source": "type F<T=@checked ()->number> = T",
+    "runtime": false,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "expectedStrictErrors": [
+      [
+        "SyntaxError",
+        "attributes are not allowed in declaration context"
+      ],
+      [
+        "SyntaxError",
+        "Expected 'function', 'local function', 'const function', 'declare function' or a function type declaration after attribute, but got '(' instead"
+      ],
+      [
+        "SyntaxError",
+        "Expected identifier when parsing expression, got ')'"
+      ],
+      [
+        "SyntaxError",
+        "Incomplete statement: expected assignment or a function call"
+      ],
+      [
+        "SyntaxError",
+        "Expected identifier when parsing expression, got '->'"
+      ],
+      [
+        "SyntaxError",
+        "Incomplete statement: expected assignment or a function call"
+      ],
+      [
+        "SyntaxError",
+        "Expected identifier when parsing expression, got '>'"
+      ],
+      [
+        "SyntaxError",
+        "Expected identifier when parsing expression, got '='"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'number'; consider assigning to it first"
+      ],
+      [
+        "TypeError",
+        "Unknown global 'T'; consider assigning to it first"
+      ]
+    ]
+  },
+  {
+    "name": "attribute-in-string-type",
+    "source": "type T=\"@native\"\nlocal value: T=\"@native\"\nassert(value==\"@native\")",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "deprecated-duplicate-reason",
+    "source": "@[deprecated{reason=\"first\",reason=\"last\"}] local function old(): number return 42 end\nassert(old()==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  },
+  {
+    "name": "deprecated-no-children",
+    "source": "@deprecated local function old(): (()->number)\nlocal function inner(): number return 42 end\nreturn inner end\nlocal inner=old()\nassert(inner()==42)",
+    "runtime": true,
+    "flags": "--fflags=LuauExportValueSyntax=true,DebugLuauUserDefinedClasses=true",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0,
+      "execution": 0
+    },
+    "expectedStrictErrors": []
+  }
+]

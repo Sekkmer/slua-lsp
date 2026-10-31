@@ -1,0 +1,178 @@
+[
+  {
+    "name": "utf8-length-single",
+    "source": "local n=utf8.len(\"A\ud83d\ude00\u00e9\"); assert(n==3)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "utf8-length-pair",
+    "source": "local n,pos=utf8.len(\"A\ud83d\ude00\u00e9\"); assert(n==3 and pos==nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "utf8-length-invalid",
+    "source": "local n,pos=utf8.len(\"a\\255\"); assert(n==nil and pos==2)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "utf8-length-too-many",
+    "source": "local a,b,c=utf8.len(\"a\"); assert(a==1 and b==nil and c==nil)",
+    "codes": [
+      "assignment-return-count-mismatch"
+    ],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "next-empty-single",
+    "source": "local key=next({}); assert(key==nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "next-empty-pair",
+    "source": "local key,value=next({}); assert(key==nil and value==nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "next-one-pair",
+    "source": "local key,value=next({marker=42}); assert(key==\"marker\" and value==42)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "next-too-many",
+    "source": "local key,value,extra=next({marker=42}); assert(key==\"marker\" and value==42 and extra==nil)",
+    "codes": [
+      "assignment-return-count-mismatch"
+    ],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "close-single",
+    "source": "local co=coroutine.create(function() end); local ok=coroutine.close(co); assert(ok)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "close-pair",
+    "source": "local co=coroutine.create(function() end); local ok,err=coroutine.close(co); assert(ok and err==nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "close-error",
+    "source": "local co=coroutine.create(function() error({marker=true}) end); local status,reason=coroutine.resume(co); assert(not status and type(reason)==\"table\"); local ok,err=coroutine.close(co); assert(not ok and type(err)==\"table\")",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "close-too-many",
+    "source": "local co=coroutine.create(function() end); local ok,err,extra=coroutine.close(co); assert(ok and err==nil and extra==nil)",
+    "codes": [
+      "assignment-return-count-mismatch"
+    ],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "length-wrapper",
+    "source": "local function read() return utf8.len(\"a\") end; local count=read(); assert(count==1)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "length-wrapper-too-many",
+    "source": "local function read() return utf8.len(\"a\") end; local a,b,c=read(); assert(a==1 and b==nil and c==nil)",
+    "codes": [
+      "assignment-return-count-mismatch"
+    ],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "wrap-results",
+    "source": "local fn=coroutine.wrap(function() return 1,\"two\",true end); local a,b,c=fn(); assert(a==1 and b==\"two\" and c==true)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "wrap-yield-results",
+    "source": "local fn=coroutine.wrap(function() local a,b=coroutine.yield(1,\"two\"); assert(a==3 and b==\"four\"); return 5,\"six\" end); local a,b=fn(); assert(a==1 and b==\"two\"); local c,d=fn(3,\"four\"); assert(c==5 and d==\"six\")",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "debug-function-info",
+    "source": "local function fn(a:number):number return a end; local count,vararg=debug.info(fn,\"a\"); assert(count==1 and not vararg)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "debug-empty-options",
+    "source": "local function fn() end; assert(select(\"#\",debug.info(fn,\"\"))==0)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "debug-function-hidden",
+    "source": "assert(debug.info(print,\"f\")==nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "debug-thread-info",
+    "source": "local co=coroutine.create(function() end); local source=debug.info(co,0,\"s\"); assert(source==nil or type(source)==\"string\")",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "debug-info-alias",
+    "source": "local info=debug.info; local co=coroutine.create(function() end); local source=info(co,0,\"s\"); assert(source==nil or type(source)==\"string\")",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "debug-info-wrong-target",
+    "source": "debug.info(true,\"s\")",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "debug-info-wrong-thread-level",
+    "source": "local co=coroutine.create(function() end); debug.info(co,\"bad\",\"s\")",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtimeAccepted": false
+  },
+  {
+    "name": "traceback-empty",
+    "source": "local text=debug.traceback(); assert(type(text)==\"string\")",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "traceback-message",
+    "source": "local text=debug.traceback(\"owned-marker\",0); assert(string.find(text,\"owned-marker\",1,true)~=nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "traceback-thread",
+    "source": "local co=coroutine.create(function() end); local text=debug.traceback(co,\"owned-marker\",0); assert(string.find(text,\"owned-marker\",1,true)~=nil)",
+    "codes": [],
+    "runtimeAccepted": true
+  },
+  {
+    "name": "traceback-wrong-message",
+    "source": "debug.traceback(false)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "runtimeAccepted": false
+  }
+]

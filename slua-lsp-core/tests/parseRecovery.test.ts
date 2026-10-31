@@ -10,6 +10,20 @@ function comparePos(a: Position, b: Position): number {
 }
 
 describe('parseSlua recovery + locations', () => {
+	it('retains constructor call receivers at incomplete member separators while reporting syntax errors', () => {
+		const result = parseSlua('llprim.ParamSetter.new():');
+		expect(result.diagnostics.some((d) => d.code === 'parse-error')).toBe(true);
+		const ast = result.ast as { body: { expression: { type: string; object: { type: string }; property: { name: string } } }[] };
+		expect(ast.body[0]?.expression.type).toBe('MemberExpression');
+		expect(ast.body[0]?.expression.object.type).toBe('CallExpression');
+		expect(ast.body[0]?.expression.property.name).toBe('');
+	});
+
+	it('accepts whitespace and comments after member separators', () => {
+		expect(parseSlua('print(math. -- comment\nabs(1))').diagnostics).toEqual([]);
+		expect(parseSlua('local object = {run = function(self) print(self) end}\nobject:\nrun()').diagnostics).toEqual([]);
+	});
+
 	it('returns a partial AST and a parse diagnostic for a broken type alias', () => {
 		const text = ['type Foo = { x: number,', 'local x = 1', ''].join('\n');
 		const result = parseSlua(text);

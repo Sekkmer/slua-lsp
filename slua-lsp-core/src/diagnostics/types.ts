@@ -18,5 +18,6 @@ export type CoreDiagnostic = {
 	code: DiagnosticCode;
 	message: string;
 	severity: DiagnosticSeverity;
+	tags?: Array<'deprecated'>;
 	range: Range;
 };

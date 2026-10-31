@@ -1,0 +1,443 @@
+[
+  {
+    "name": "field-read",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nassert(item.x==1)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "field-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nitem.x=42\nassert(item.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "field-string-read",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nassert(item[\"x\"]==1)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "field-string-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nitem[\"x\"]=42\nassert(item.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "field-type-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nitem.x=\"wrong\"",
+    "codes": [
+      "assignment-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "class-field-read",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nprint(Box.x)",
+    "codes": [
+      "class-unknown-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "instance-unknown-read",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nprint(item.missing)",
+    "codes": [
+      "class-unknown-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "class-unknown-read",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nprint(Box.missing)",
+    "codes": [
+      "class-unknown-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "instance-unknown-string",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nprint(item[\"missing\"])",
+    "codes": [
+      "class-unknown-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "class-unknown-string",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nprint(Box[\"missing\"])",
+    "codes": [
+      "class-unknown-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "instance-colon-method",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nassert(item:increment(2)==3)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "instance-dot-method",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nassert(item.increment(item,2)==3)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "instance-string-method",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nassert(item[\"increment\"](item,2)==3)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "stored-method",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nlocal fn=item.increment\nassert(fn(item,2)==3)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "method-wrong-argument",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nitem:increment(\"wrong\")",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "method-missing-argument",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nitem:increment()",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "method-dot-missing-self",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nitem.increment(2)",
+    "codes": [
+      "call-argument-count-mismatch",
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "class-instance-method-read",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nprint(Box.increment)",
+    "codes": [
+      "class-unknown-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "class-instance-method-call",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nBox.increment(item,2)",
+    "codes": [
+      "class-unknown-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "static-on-class",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nassert(Box.twice(2)==4)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "static-on-instance",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nassert(item.twice(2)==4)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "static-on-class-wrong",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nBox.twice(\"wrong\")",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "static-on-instance-wrong",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nitem.twice(\"wrong\")",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "static-on-class-colon",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nBox:twice(2)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "static-on-instance-colon",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nitem:twice(2)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "constructor-alias-static",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nlocal Make=Box\nassert(Make.twice(2)==4)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "constructor-alias-instance-method",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nlocal Make=Box\nprint(Make.increment)",
+    "codes": [
+      "class-unknown-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "stored-constructor-static",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nlocal tools={make=Box}\nassert(tools.make.twice(2)==4)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "instance-alias-method",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nlocal alias=item\nassert(alias:increment(2)==3)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "instance-alias-unknown",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nlocal alias=item\nprint(alias.missing)",
+    "codes": [
+      "class-unknown-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "factory-instance",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nlocal value=Box.zero()\nassert(value:increment(2)==2)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "factory-instance-unknown",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nlocal value=Box.zero()\nprint(value.missing)",
+    "codes": [
+      "class-unknown-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "instance-metamethod-read",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nassert(type(item.__tostring)==\"function\")",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "class-metamethod-read",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nprint(Box.__tostring)",
+    "codes": [
+      "class-unknown-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "metamethod-runtime",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nassert(tostring(item)==\"1\")",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "class-field-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nBox.x=function() return 1 end",
+    "codes": [
+      "class-readonly-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "class-static-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nBox.twice=function() return 1 end",
+    "codes": [
+      "class-readonly-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "class-instance-method-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nBox.increment=function() return 1 end",
+    "codes": [
+      "class-readonly-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "class-unknown-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nBox.missing=function() return 1 end",
+    "codes": [
+      "class-readonly-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "instance-method-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nitem.increment=function() return 1 end",
+    "codes": [
+      "class-readonly-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "instance-static-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nitem.twice=function() return 1 end",
+    "codes": [
+      "class-readonly-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "instance-unknown-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nitem.missing=function() return 1 end",
+    "codes": [
+      "class-readonly-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "instance-metamethod-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nitem.__tostring=function() return 1 end",
+    "codes": [
+      "class-readonly-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "instance-method-string-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nitem[\"increment\"]=function() return 1 end",
+    "codes": [
+      "class-readonly-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "class-static-string-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nBox[\"twice\"]=function() return 1 end",
+    "codes": [
+      "class-readonly-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "class-function-declaration-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nfunction Box.twice(value: number) return value end",
+    "codes": [
+      "class-readonly-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "instance-function-declaration-write",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nfunction item:increment(amount: number) return amount end",
+    "codes": [
+      "class-readonly-member"
+    ],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "shadow-constructor-table",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nlocal Box={x=42, increment=function(x: number) return x end}\nassert(Box.x==42 and Box.increment(1)==1)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "rebound-alias-table",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nlocal alias=item\nalias={missing=42}\nprint(alias.missing)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "preserved-constructor-before-shadow",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nlocal Make=Box\nlocal Box={x=42}\nassert(Make.twice(2)==4 and Box.x==42)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "class-name-shadow-method",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nlocal Box={increment=function(n: number) return n end}\nassert(item:increment(2)==3 and Box.increment(5)==5)",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  },
+  {
+    "name": "directive-unknown",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\n-- slua-lsp:disable-next-line class-unknown-member\nprint(item.missing)",
+    "codes": [],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "directive-readonly",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\n-- slua-lsp:disable-next-line class-readonly-member\nBox.twice=function() return 1 end",
+    "codes": [],
+    "nativeValid": false,
+    "runtime": false
+  },
+  {
+    "name": "metamethod-call",
+    "source": "class Box\npublic x: number\nfunction increment(self, amount: number): number\nself.x+=amount\nreturn self.x\nend\nfunction twice(value: number): number return value*2 end\nfunction zero(): Box return Box {x=0} end\nfunction __tostring(self): string return tostring(self.x) end\nend\nlocal item=Box {x=1}\nassert(item:__tostring()==\"1\")",
+    "codes": [],
+    "nativeValid": true,
+    "runtime": true
+  }
+]

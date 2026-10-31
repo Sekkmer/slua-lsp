@@ -1,27 +1,14 @@
-/* eslint-env node */
-/* globals process */
 const fs = require('node:fs');
 const path = require('node:path');
 
-function copyDir(src, dest) {
-	if (!fs.existsSync(src)) return;
-	fs.mkdirSync(dest, { recursive: true });
-	for (const entry of fs.readdirSync(src)) {
-		const s = path.join(src, entry);
-		const d = path.join(dest, entry);
-		const st = fs.statSync(s);
-		if (st.isDirectory()) copyDir(s, d);
-		else fs.copyFileSync(s, d);
-	}
+const client = path.resolve(__dirname, '..');
+const root = path.resolve(client, '..');
+for (const [source, destination] of [
+	['third_party/lsl-definitions/lsl_definitions.yaml', 'third_party/lsl-definitions/lsl_definitions.yaml'],
+	['third_party/lsl-definitions/LICENSE', 'third_party/lsl-definitions/LICENSE'],
+	['slua-lsp-core/src/slua/builtins.yaml', 'server/out/builtins.yaml']
+]) {
+	const target = path.join(client, destination);
+	fs.mkdirSync(path.dirname(target), { recursive: true });
+	fs.copyFileSync(path.join(root, source), target);
 }
-
-function main() {
-	const repoRoot = path.resolve(process.cwd(), '..');
-
-	// Copy the definitions YAML into the extension so packaging is self-contained.
-	const defsSrcDir = path.join(repoRoot, 'third_party', 'lsl-definitions');
-	const defsDestDir = path.resolve(process.cwd(), 'third_party', 'lsl-definitions');
-	copyDir(defsSrcDir, defsDestDir);
-}
-
-main();

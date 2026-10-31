@@ -10,6 +10,19 @@ async function loadEventSigs() {
 }
 
 describe('LLEvents event name + callback checks', () => {
+	it('resolves aliased and explicit-self event calls while ignoring shadowed receivers', async () => {
+		const eventSignatures = await loadEventSigs();
+		const diagnostics = analyzeTextWithDirectives([
+			'local events = LLEvents',
+			'events:on("state_exit", function() end)',
+			'events.on(LLEvents, "state_entry", function() end)',
+			'events.on(LLEvents, "listen", function(channel: string) end)',
+			'local LLEvents = {}; LLEvents:on("not-an-event", function(channel: string) end)'
+		].join('\n'), { eventSignatures });
+		expect(diagnostics.filter((d) => d.code === 'unknown-event')).toHaveLength(2);
+		expect(diagnostics.filter((d) => d.code === 'callback-param-type-mismatch')).toHaveLength(1);
+	});
+
 	it('accepts a valid event name', async () => {
 		const eventSigs = await loadEventSigs();
 		const text = 'LLEvents:on("listen", function(channel, name, id, text) end)';
@@ -25,11 +38,11 @@ describe('LLEvents event name + callback checks', () => {
 		expect(diags.some((d) => d.code === 'unknown-event')).toBe(true);
 	});
 
-	it('rejects timer (legacy event not exposed via LLEvents)', async () => {
+	it('accepts timer as a documented compatibility event', async () => {
 		const eventSigs = await loadEventSigs();
 		const text = 'LLEvents:on("timer", function() end)';
 		const diags = analyzeTextWithDirectives(text, { eventSignatures: eventSigs });
-		expect(diags.some((d) => d.code === 'unknown-event')).toBe(true);
+		expect(diags.some((d) => d.code === 'unknown-event')).toBe(false);
 	});
 
 	it('rejects unknown event names', async () => {
@@ -39,18 +52,18 @@ describe('LLEvents event name + callback checks', () => {
 		expect(diags.some((d) => d.code === 'unknown-event')).toBe(true);
 	});
 
-	it('errors when callback arity is wrong (too many)', async () => {
+	it('allows extra unannotated callback parameters, supplied as nil', async () => {
 		const eventSigs = await loadEventSigs();
 		const text = 'LLEvents:on("listen", function(a, b, c, d, e) end)';
 		const diags = analyzeTextWithDirectives(text, { eventSignatures: eventSigs });
-		expect(diags.some((d) => d.code === 'callback-arity-mismatch')).toBe(true);
+		expect(diags.some((d) => d.code === 'callback-arity-mismatch')).toBe(false);
 	});
 
-	it('errors when callback arity is wrong (not enough)', async () => {
+	it('allows callbacks to ignore supplied event parameters', async () => {
 		const eventSigs = await loadEventSigs();
 		const text = 'LLEvents:on("listen", function(a, b, c) end)';
 		const diags = analyzeTextWithDirectives(text, { eventSignatures: eventSigs });
-		expect(diags.some((d) => d.code === 'callback-arity-mismatch')).toBe(true);
+		expect(diags.some((d) => d.code === 'callback-arity-mismatch')).toBe(false);
 	});
 
 	it('validates callback param type annotations for listen (stable signature)', async () => {

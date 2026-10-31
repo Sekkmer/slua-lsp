@@ -1,0 +1,362 @@
+[
+  {
+    "name": "encode-omitted",
+    "source": "local result=lljson.encode(42)\nreturn result",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "encode-table",
+    "source": "local result=lljson.encode(42, {})\nreturn result",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "encode-nil",
+    "source": "local result=lljson.encode(42, nil)\nreturn result",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "encode-boolean",
+    "source": "local result=lljson.encode(42, true)\nreturn result",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "encode-missing",
+    "source": "local result=lljson.encode()\nreturn result",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "encode-extra",
+    "source": "local result=lljson.encode(42, {}, 1)\nreturn result",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "slencode-omitted",
+    "source": "local result=lljson.slencode(42)\nreturn result",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "slencode-table",
+    "source": "local result=lljson.slencode(42, {})\nreturn result",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "slencode-nil",
+    "source": "local result=lljson.slencode(42, nil)\nreturn result",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "slencode-boolean",
+    "source": "local result=lljson.slencode(42, true)\nreturn result",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "slencode-missing",
+    "source": "local result=lljson.slencode()\nreturn result",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "slencode-extra",
+    "source": "local result=lljson.slencode(42, {}, 1)\nreturn result",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "decode-omitted",
+    "source": "local result=lljson.decode('42')\nreturn result",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "decode-table",
+    "source": "local result=lljson.decode('42', {})\nreturn result",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "decode-nil",
+    "source": "local result=lljson.decode('42', nil)\nreturn result",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "decode-boolean",
+    "source": "local result=lljson.decode('42', true)\nreturn result",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "decode-missing",
+    "source": "local result=lljson.decode()\nreturn result",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "decode-extra",
+    "source": "local result=lljson.decode('42', {}, 1)\nreturn result",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "sldecode-omitted",
+    "source": "local result=lljson.sldecode('42')\nreturn result",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "sldecode-table",
+    "source": "local result=lljson.sldecode('42', {})\nreturn result",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "sldecode-nil",
+    "source": "local result=lljson.sldecode('42', nil)\nreturn result",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "sldecode-boolean",
+    "source": "local result=lljson.sldecode('42', true)\nreturn result",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "sldecode-missing",
+    "source": "local result=lljson.sldecode()\nreturn result",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "sldecode-extra",
+    "source": "local result=lljson.sldecode('42', {}, 1)\nreturn result",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "module-alias",
+    "source": "local json=lljson\nreturn json.encode(42,nil)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "function-alias",
+    "source": "local decode=lljson['decode']\nreturn decode('42',nil)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "field-alias",
+    "source": "local functions={encode=lljson.encode}\nreturn functions.encode(42,nil)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "bound-field-alias",
+    "source": "local functions={encode=lljson.encode}\nreturn functions:encode(nil)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "zero-tail",
+    "source": "local function zero() return end\nreturn lljson.encode(42,zero())",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "nil-tail",
+    "source": "local function one() return nil end\nreturn lljson.encode(42,one())",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "two-values",
+    "source": "local function pair() return 42,{} end\nreturn lljson.encode(pair())",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "two-values-nil",
+    "source": "local function pair() return 42,nil end\nreturn lljson.encode(pair())",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "three-values",
+    "source": "local function triple() return 42,{},1 end\nreturn lljson.encode(triple())",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "grouped-values",
+    "source": "local function triple() return 42,{},1 end\nreturn lljson.encode((triple()))",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "grouped-zero",
+    "source": "local function zero() return end\nreturn lljson.encode(42,(zero()))",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "nonfinal-zero",
+    "source": "local function zero() return end\nreturn lljson.encode(zero(),{})",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "user-shadow",
+    "source": "local lljson={encode=function(a,b) return {a,b} end}\nreturn lljson.encode(42,nil)",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "typed-nil-local",
+    "source": "local options=nil\nreturn lljson.slencode(42,options)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "encode-function-option",
+    "source": "local called=false\nlocal result=lljson.encode(42,function() called=true;return 99 end)\nassert(not called)\nreturn result",
+    "valid": false,
+    "codes": [
+      "call-argument-type-mismatch"
+    ]
+  },
+  {
+    "name": "slencode-function-option",
+    "source": "local called=false\nlocal result=lljson.slencode(42,function() called=true;return 99 end)\nassert(not called)\nreturn result",
+    "valid": false,
+    "codes": [
+      "call-argument-type-mismatch"
+    ]
+  },
+  {
+    "name": "decode-function-option",
+    "source": "local called=false\nlocal result=lljson.decode('42',function() called=true;return 99 end)\nassert(called and result==99)\nreturn result",
+    "valid": true,
+    "codes": []
+  },
+  {
+    "name": "sldecode-function-option",
+    "source": "local called=false\nlocal result=lljson.sldecode('42',function() called=true;return 99 end)\nassert(called and result==99)\nreturn result",
+    "valid": true,
+    "codes": []
+  },
+  {
+    "name": "joined-function-alias",
+    "source": "local encode=if true then lljson.encode else lljson.slencode\nreturn encode(42,nil)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "ordinary-nullable-option",
+    "source": "return table.remove({1},nil)",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "nil-input",
+    "source": "return lljson.encode(nil)",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "decode-nil-input",
+    "source": "return lljson.decode(nil)",
+    "codes": [
+      "call-argument-type-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "zero-input",
+    "source": "local function zero() return end\nreturn lljson.encode(zero())",
+    "codes": [
+      "call-argument-count-mismatch"
+    ],
+    "valid": false
+  },
+  {
+    "name": "grouped-zero-input",
+    "source": "local function zero() return end\nreturn lljson.encode((zero()))",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "zero-after-two",
+    "source": "local function zero() return end\nreturn lljson.encode(42,{},zero())",
+    "codes": [],
+    "valid": true
+  },
+  {
+    "name": "nonfinal-multiple",
+    "source": "local function pair() return 42,nil end\nreturn lljson.encode(pair(),{})",
+    "codes": [],
+    "valid": true
+  }
+]

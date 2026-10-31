@@ -295,4 +295,30 @@ describe('findDefinitionAtPosition', () => {
 		expect(outerDefinition).not.toBeNull();
 		expect(outerDefinition?.identifier.location?.start.line).toBe(1);
 	});
+
+	test('finds Luau class definitions from constructor calls and methods', () => {
+		const code = [
+			'class Point',
+			'\tpublic x: number',
+			'\tpublic function new(x: number)',
+			'\t\treturn Point { x = x }',
+			'\tend',
+			'end',
+			'local p = Point.new(1)'
+		].join('\n') + '\n';
+		const parsed = parseSlua(code);
+		expect(parsed.ast).toBeTruthy();
+		const registry = buildSluaRegistryFromLslDefinitions(null);
+		const lines = code.split(/\r?\n/);
+
+		const ctorDefinition = findDefinitionAtPosition(parsed.ast, { line: 6, character: lines[6]!.indexOf('Point') }, registry);
+		expect(ctorDefinition).not.toBeNull();
+		expect(ctorDefinition?.kind).toBe('class');
+		expect(ctorDefinition?.identifier.location?.start.line).toBe(1);
+
+		const methodDefinition = findDefinitionAtPosition(parsed.ast, { line: 3, character: lines[3]!.indexOf('Point') }, registry);
+		expect(methodDefinition).not.toBeNull();
+		expect(methodDefinition?.kind).toBe('class');
+		expect(methodDefinition?.identifier.location?.start.line).toBe(1);
+	});
 });

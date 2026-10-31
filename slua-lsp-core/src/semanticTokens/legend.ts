@@ -20,6 +20,6 @@ export const SLUA_SEMANTIC_TOKEN_TYPES = [
 
 export type SluaSemanticTokenType = (typeof SLUA_SEMANTIC_TOKEN_TYPES)[number];
 
-export const SLUA_SEMANTIC_TOKEN_MODIFIERS = ['declaration', 'deprecated'] as const;
+export const SLUA_SEMANTIC_TOKEN_MODIFIERS = ['declaration', 'deprecated', 'readonly'] as const;
 
 export type SluaSemanticTokenModifier = (typeof SLUA_SEMANTIC_TOKEN_MODIFIERS)[number];

@@ -3,7 +3,8 @@ export type RemovedApiInfo = {
 };
 
 /**
- * APIs that exist in upstream LSL definitions but are not available in the SLua runtime.
+ * APIs that exist in upstream LSL definitions but are removed from the ordinary SLua ll module.
+ * The upstream llcompat declaration surface retains them.
  *
  * These should:
  * - not appear in completions/signature help (filtered out of the registry), and
@@ -12,16 +13,16 @@ export type RemovedApiInfo = {
 export const REMOVED_LL_APIS: Record<string, RemovedApiInfo> = {
 	SetTimerEvent: {
 		message:
-			'This SLua runtime doesn\'t support the legacy \'timer\' event / ll.SetTimerEvent(). Use LLTimers:every(seconds, callback) or LLTimers:once(seconds, callback) instead.'
+			'The ordinary SLua module doesn\'t support the legacy \'timer\' event / ll.SetTimerEvent(). Use LLTimers:every(seconds, callback) or LLTimers:once(seconds, callback) instead.'
 	},
 	SetMemoryLimit: {
-		message: 'This SLua runtime doesn\'t expose ll.SetMemoryLimit().'
+		message: 'The ordinary SLua module doesn\'t expose ll.SetMemoryLimit().'
 	},
 	ResetTime: {
-		message: 'This SLua runtime doesn\'t expose ll.ResetTime().'
+		message: 'The ordinary SLua module doesn\'t expose ll.ResetTime().'
 	},
 	GetAndResetTime: {
-		message: 'This SLua runtime doesn\'t expose ll.GetAndResetTime().'
+		message: 'The ordinary SLua module doesn\'t expose ll.GetAndResetTime().'
 	}
 };
 

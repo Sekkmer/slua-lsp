@@ -20,6 +20,13 @@ function signatureHelpAtCursor(codeWithCursor: string) {
 }
 
 describe('getSignatureHelp', () => {
+	it('keeps later integer arguments on the variadic parameter', () => {
+		const help = signatureHelpAtCursor('integer.band(integer.maxsigned, integer.maxsigned, $integer.maxsigned)');
+		expect(help?.signatures[0]?.label).toContain('...: integer');
+		expect(help?.signatures[0]?.parameters).toEqual([{ label: '...: integer' }]);
+		expect(help?.activeParameter).toBe(0);
+	});
+
 	it('provides signature help for intrinsic object methods', () => {
 		const help = signatureHelpAtCursor('LLTimers:every(1$, function() end)');
 		expect(help).not.toBeNull();

@@ -1,0 +1,1010 @@
+[
+  {
+    "name": "typed-call-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function increment(value: number): number\n return value + 1\nend\nprint(increment(2))\n"
+  },
+  {
+    "name": "typed-call-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function increment(value: number): number\n return value + 1\nend\nprint(increment(\"bad\"))\n"
+  },
+  {
+    "name": "return-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function value(): number\n return 2\nend\nprint(value())\n"
+  },
+  {
+    "name": "return-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function value(): number\n return \"bad\"\nend\nprint(value())\n"
+  },
+  {
+    "name": "tuple-return-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function value(): (number, string)\n return 2\nend\nprint(value())\n"
+  },
+  {
+    "name": "typed-local-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local value: number = \"bad\"\nprint(value)\n"
+  },
+  {
+    "name": "typed-reassignment-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local value: number = 1\nvalue = \"bad\"\nprint(value)\n"
+  },
+  {
+    "name": "optional-standard-arguments",
+    "kind": "type",
+    "valid": true,
+    "source": "print(tonumber(\"42\"))\nassert(true)\nlocal values = {1,2}\nprint(next(values))\nprint(unpack(values))\n"
+  },
+  {
+    "name": "array-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local values: {number} = {1,2}\nfor _, value in values do print(value) end\n"
+  },
+  {
+    "name": "generic-function-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function identity<T>(value: T): T\n return value\nend\nprint(identity(1), identity(\"a\"))\n"
+  },
+  {
+    "name": "generic-for",
+    "kind": "syntax",
+    "valid": true,
+    "source": "for _, value in {1,2} do print(value) end\n"
+  },
+  {
+    "name": "continue-in-loop",
+    "kind": "syntax",
+    "valid": true,
+    "source": "for value = 1,3 do\n if value == 2 then continue end\n print(value)\nend\n"
+  },
+  {
+    "name": "continue-outside-loop",
+    "kind": "syntax",
+    "valid": false,
+    "source": "continue\n"
+  },
+  {
+    "name": "vararg-outside-function",
+    "kind": "syntax",
+    "valid": true,
+    "source": "print(...)\n"
+  },
+  {
+    "name": "goto",
+    "kind": "syntax",
+    "valid": false,
+    "source": "goto done\n::done::\nprint(1)\n"
+  },
+  {
+    "name": "value-statement",
+    "kind": "syntax",
+    "valid": false,
+    "source": "42\n"
+  },
+  {
+    "name": "type-assertion",
+    "kind": "syntax",
+    "valid": true,
+    "source": "local value = (1 :: number)\nprint(value)\n"
+  },
+  {
+    "name": "interpolation",
+    "kind": "syntax",
+    "valid": true,
+    "source": "local value = 3\nprint(`value {value}`)\n"
+  },
+  {
+    "name": "incomplete-local",
+    "kind": "syntax",
+    "valid": false,
+    "source": "local =\n"
+  },
+  {
+    "name": "break-outside-loop",
+    "kind": "syntax",
+    "valid": false,
+    "source": "break\n"
+  },
+  {
+    "name": "continue-in-nested-function",
+    "kind": "syntax",
+    "valid": false,
+    "source": "while true do\n local function nested() continue end\n nested()\n break\nend\n"
+  },
+  {
+    "name": "function-to-number-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local value: number = function() end\nprint(value)\n"
+  },
+  {
+    "name": "number-to-function-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local value: () -> () = 1\nprint(value)\n"
+  },
+  {
+    "name": "function-to-table-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local value: {} = function() end\nprint(value)\n"
+  },
+  {
+    "name": "optional-function-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local value: (() -> ())? = function() end\nprint(value)\n"
+  },
+  {
+    "name": "optional-function-number-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local value: (() -> ())? = 1\nprint(value)\n"
+  },
+  {
+    "name": "while-local-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "while true do\n local value: number = \"bad\"\n print(value)\n break\nend\n"
+  },
+  {
+    "name": "while-shadow-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local value = \"outer\"\nwhile true do\n local value = 2\n print(math.abs(value))\n break\nend\nprint(value)\n"
+  },
+  {
+    "name": "numeric-for-local-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "for i = 1, 2 do\n local value: number = \"bad\"\n print(i, value)\nend\n"
+  },
+  {
+    "name": "numeric-for-shadow-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local i = \"outer\"\nfor i = 1, 2 do\n print(math.abs(i))\nend\nprint(i)\n"
+  },
+  {
+    "name": "numeric-for-function-call-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function consume(value: number) print(value) end\nfor i = 1, 2 do\n local value = \"bad\"\n consume(value)\nend\n"
+  },
+  {
+    "name": "while-function-call-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function consume(value: number) print(value) end\nwhile true do\n local value = \"bad\"\n consume(value)\n break\nend\n"
+  },
+  {
+    "name": "nested-loop-scope-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local value = \"outer\"\nfor value = 1, 2 do\n while true do\n local value = \"inner\"\n print(string.len(value))\n break\n end\n print(math.abs(value))\nend\nprint(value)\n"
+  },
+  {
+    "name": "array-element-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local values: {number} = {1, \"bad\"}\nprint(values)\n"
+  },
+  {
+    "name": "nested-array-element-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local values: {{number}} = {{1}, {\"bad\"}}\nprint(values)\n"
+  },
+  {
+    "name": "nullable-array-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local values: {number}? = {1, 2}\nprint(values)\n"
+  },
+  {
+    "name": "nullable-array-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local values: {number}? = {1, \"bad\"}\nprint(values)\n"
+  },
+  {
+    "name": "array-literal-call-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function consume(values: {number}) print(values) end\nconsume({1, 2})\n"
+  },
+  {
+    "name": "array-literal-call-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function consume(values: {number}) print(values) end\nconsume({1, \"bad\"})\n"
+  },
+  {
+    "name": "array-indexed-element-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local values: {number} = {[1] = \"bad\"}\nprint(values)\n"
+  },
+  {
+    "name": "array-empty-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local values: {number} = {}\nprint(values)\n"
+  },
+  {
+    "name": "array-last-call-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function values(): (number, number) return 1, 2 end\nlocal list: {number} = {values()}\nprint(list)\n"
+  },
+  {
+    "name": "array-last-call-mixed-tail-native-accepted",
+    "kind": "type",
+    "valid": true,
+    "source": "local function values(): (number, string) return 1, \"bad\" end\nlocal list: {number} = {values()}\nprint(list)\n"
+  },
+  {
+    "name": "array-parenthesized-call-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function values(): (number, string) return 1, \"unused\" end\nlocal list: {number} = {(values())}\nprint(list)\n"
+  },
+  {
+    "name": "incomplete-builder-chain",
+    "kind": "syntax",
+    "valid": false,
+    "source": "llprim.ParamSetter.new():\n"
+  },
+  {
+    "name": "newline-after-dot",
+    "kind": "syntax",
+    "valid": true,
+    "source": "print(math.\nabs(1))\n"
+  },
+  {
+    "name": "newline-after-colon",
+    "kind": "syntax",
+    "valid": true,
+    "source": "local object = {run = function(self) print(self) end}\nobject:\nrun()\n"
+  },
+  {
+    "name": "string-byte-optional-bounds-and-pack",
+    "kind": "type",
+    "valid": true,
+    "source": "local first = string.byte(\"abc\")\nlocal function values() return \"abc\", 1 end\nprint(first, string.byte(values()), string.byte(\"abc\", nil, nil))\n"
+  },
+  {
+    "name": "directive-text-in-short-literal-is-not-suppression",
+    "kind": "type",
+    "valid": false,
+    "source": "local text = \"-- slua-lsp:disable all\"\nprint(text)\nmissingSentinel()\n"
+  },
+  {
+    "name": "directive-text-in-long-literal-is-not-suppression",
+    "kind": "type",
+    "valid": false,
+    "source": "local text = [=[\n-- slua-lsp:disable all\n]=]\nprint(text)\nmissingSentinel()\n"
+  },
+  {
+    "name": "directive-text-in-template-literal-is-not-suppression",
+    "kind": "type",
+    "valid": false,
+    "source": "local text = `-- slua-lsp:disable all {1}`\nprint(text)\nmissingSentinel()\n"
+  },
+  {
+    "name": "stdlib-string-optional-variadic",
+    "kind": "type",
+    "valid": true,
+    "source": "print(string.sub(\"abc\", 2), string.char(), string.char(65, 66), string.split(\"a b\"), string.unpack(\"B\", \"A\"))\n"
+  },
+  {
+    "name": "stdlib-math-optional-variadic",
+    "kind": "type",
+    "valid": true,
+    "source": "print(math.log(2), math.random(), math.random(3), math.noise(1), math.noise(1, 2), math.min(1), math.max(1, 2, 3))\n"
+  },
+  {
+    "name": "stdlib-table-optional-variadic",
+    "kind": "type",
+    "valid": true,
+    "source": "local values = table.create(3)\nprint(table.pack(), table.unpack(values), table.remove(values), table.find(values, 1))\ntable.move(values, 1, 2, 1)\ntable.sort(values)\nprint(table.concat({}, \",\", 1, 0))\n"
+  },
+  {
+    "name": "stdlib-utf8-optional-variadic",
+    "kind": "type",
+    "valid": true,
+    "source": "print(utf8.char(), utf8.char(65, 66), utf8.len(\"abc\"), utf8.codepoint(\"a\"), utf8.offset(\"abc\", 1))\n"
+  },
+  {
+    "name": "stdlib-buffer-numeric-optional",
+    "kind": "type",
+    "valid": true,
+    "source": "local b = buffer.create(16)\nbuffer.writei8(b, 0, 65)\nbuffer.writebits(b, 8, 8, 66)\nbuffer.fill(b, 2, 67)\nbuffer.writestring(b, 4, \"D\")\nbuffer.copy(b, 5, b)\nlocal n: number = buffer.readi8(b, 0)\nlocal bits: number = buffer.readbits(b, 0, 8)\nprint(n, bits)\n"
+  },
+  {
+    "name": "stdlib-bit32-optional-variadic",
+    "kind": "type",
+    "valid": true,
+    "source": "print(bit32.band(), bit32.bor(1), bit32.bxor(1,2,3), bit32.btest(1), bit32.extract(3, 0), bit32.replace(0, 1, 0))\n"
+  },
+  {
+    "name": "stdlib-nullable-tonumber-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local converted: number = tonumber(\"invalid\")\nprint(converted)\n"
+  },
+  {
+    "name": "stdlib-string-variadic-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "print(string.char(65, \"bad\"))\n"
+  },
+  {
+    "name": "stdlib-utf8-variadic-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "print(utf8.char(65, false))\n"
+  },
+  {
+    "name": "stdlib-math-variadic-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "print(math.max(1, 2, \"bad\"))\n"
+  },
+  {
+    "name": "stdlib-bit32-variadic-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "print(bit32.band(1, 2, \"bad\"))\n"
+  },
+  {
+    "name": "stdlib-buffer-wrong-value-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "buffer.writei8(buffer.create(8), 0, \"bad\")\n"
+  },
+  {
+    "name": "stdlib-math-required-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "print(math.min())\n"
+  },
+  {
+    "name": "stdlib-string-required-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "print(string.sub(\"abc\"))\n"
+  },
+  {
+    "name": "stdlib-fixed-tuple-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local whole: number, fraction: number = math.modf(2.5)\nlocal text: string, count: number = string.gsub(\"abc\", \"a\", \"A\")\nprint(whole, fraction, text, count)\n"
+  },
+  {
+    "name": "stdlib-fixed-tuple-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local whole: number, fraction: string = math.modf(2.5)\nprint(whole, fraction)\n"
+  },
+  {
+    "name": "stdlib-known-function-callback-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function compare(a: number, b: number): boolean return a < b end\nlocal function identity(a: number): number return a end\ntable.sort({2, 1}, compare)\nprint(pcall(identity, 42), coroutine.create(identity))\n"
+  },
+  {
+    "name": "stdlib-nonfunction-callback-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "coroutine.create(42)\n"
+  },
+  {
+    "name": "array-numeric-keys-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local values: {number} = {1, 2}\nlocal index: number = 1\nlocal value: number = values[index + 1]\nvalues[index] = 3\nprint(value, values[#values])\n"
+  },
+  {
+    "name": "array-boolean-key-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local values: {number} = {1}\nprint(values[false])\n"
+  },
+  {
+    "name": "array-string-key-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local values: {number} = {1}\nlocal key: string = \"1\"\nprint(values[key])\n"
+  },
+  {
+    "name": "array-nil-key-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local values: {number} = {1}\nprint(values[nil])\n"
+  },
+  {
+    "name": "array-table-key-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local values: {number} = {1}\nprint(values[{}])\n"
+  },
+  {
+    "name": "array-function-key-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local values: {number} = {1}\nprint(values[function() end])\n"
+  },
+  {
+    "name": "array-nullable-key-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function inspect(values: {number}, key: number?)\n print(values[key])\nend\nprint(inspect)\n"
+  },
+  {
+    "name": "array-element-write-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local values: {number} = {1}\nvalues[1] = \"bad\"\nprint(values)\n"
+  },
+  {
+    "name": "plain-table-hash-keys-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local values = {}\nvalues[false] = 1\nvalues[\"name\"] = 2\nprint(values[false], values[\"name\"])\n"
+  },
+  {
+    "name": "array-removal-nullable-write-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function update(values: {number}, maybe: number?)\n values[1] = nil\n values[2] = maybe\n print(values)\nend\nprint(update)\n"
+  },
+  {
+    "name": "guard-truthy-index-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function check(values: {number}, key: number?)\n if key then print(values[key], math.abs(key)) end\nend\nprint(check)\n"
+  },
+  {
+    "name": "guard-nil-inequality-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function check(key: number?)\n if nil ~= key then math.abs(key) end\nend\nprint(check)\n"
+  },
+  {
+    "name": "guard-else-negative-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function check(key: number?)\n if not key then print(key) else math.abs(key) end\nend\nprint(check)\n"
+  },
+  {
+    "name": "guard-type-elseif-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function check(value: number | string | nil)\n if value == nil then print(value)\n elseif type(value) == \"number\" then math.abs(value)\n else string.lower(value) end\nend\nprint(check)\n"
+  },
+  {
+    "name": "guard-short-circuit-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function check(key: number?)\n local a = key and math.abs(key)\n local b = not key or math.abs(key)\n local c = if key then math.abs(key) else 0\n print(a,b,c)\nend\nprint(check)\n"
+  },
+  {
+    "name": "guard-assert-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function check(key: number?)\n assert(key)\n math.abs(key)\nend\nprint(check)\n"
+  },
+  {
+    "name": "guard-or-insufficient-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function check(key: number?, flag: boolean)\n if key or flag then math.abs(key) end\nend\nprint(check)\n"
+  },
+  {
+    "name": "guard-false-inequality-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function check(key: number?)\n if key ~= false then math.abs(key) end\nend\nprint(check)\n"
+  },
+  {
+    "name": "guard-nil-branch-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function check(key: number?)\n if key then print(key) else math.abs(key) end\nend\nprint(check)\n"
+  },
+  {
+    "name": "guard-assert-shadow-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function check(key: number?)\n local assert = function(value) print(value) end\n assert(key)\n math.abs(key)\nend\nprint(check)\n"
+  },
+  {
+    "name": "guard-type-shadow-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function check(key: number?)\n local type = function(value) print(value) return \"number\" end\n if type(key) == \"number\" then math.abs(key) end\nend\nprint(check)\n"
+  },
+  {
+    "name": "guard-assignment-invalidates-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function check(key: number?)\n if key then key = nil\n math.abs(key) end\nend\nprint(check)\n"
+  },
+  {
+    "name": "guard-branch-local-write-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local value = 1\nif math.random() > 0.5 then value = \"bad\" else math.abs(value) end\nmath.abs(value)\n"
+  },
+  {
+    "name": "guard-early-return-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function check(key: number?)\n if not key then return end\n math.abs(key)\nend\nprint(check)\n"
+  },
+  {
+    "name": "guard-early-return-alternate-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function check(key: number?)\n if key then print(key) else return end\n math.abs(key)\nend\nprint(check)\n"
+  },
+  {
+    "name": "guard-while-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function check(key: number?)\n while key do\n math.abs(key)\n key = nil\n end\nend\nprint(check)\n"
+  },
+  {
+    "name": "function-common-assert-native-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function check(value: number?, flag: boolean)\n if flag then assert(value) else assert(value) end\n math.abs(value)\nend\nprint(check)\n"
+  },
+  {
+    "name": "function-single-assert-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function check(value: number?, flag: boolean)\n if flag then assert(value) end\n math.abs(value)\nend\nprint(check)\n"
+  },
+  {
+    "name": "function-return-parameter-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local value = \"outer\"\nlocal function identity(value: number) return value end\nlocal result = identity(3)\nmath.abs(result)\nprint(value)\n"
+  },
+  {
+    "name": "function-assert-return-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function requireNumber(value: number?)\n assert(value)\n return value\nend\nmath.abs(requireNumber(3))\n"
+  },
+  {
+    "name": "function-anonymous-assert-return-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local requireNumber = function(value: number?)\n assert(value)\n return value\nend\nmath.abs(requireNumber(3))\n"
+  },
+  {
+    "name": "function-fallthrough-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function maybe(flag: boolean)\n if flag then return 1 end\nend\nlocal result = maybe(false)\nmath.abs(result)\n"
+  },
+  {
+    "name": "function-complete-returns-native-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function choose(flag: boolean)\n if flag then return 1 else return \"text\" end\nend\nlocal result = choose(true)\nprint(result)\n"
+  },
+  {
+    "name": "function-mixed-returns-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function choose(flag: boolean)\n if flag then return 1 else return \"text\" end\nend\nmath.abs(choose(true))\n"
+  },
+  {
+    "name": "function-missing-tuple-slot-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function choose(flag: boolean)\n if flag then return 1, \"text\" else return 2 end\nend\nlocal first, second = choose(true)\nmath.abs(first)\nstring.lower(second)\n"
+  },
+  {
+    "name": "function-missing-tuple-slot-guard-native-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function choose(flag: boolean)\n if flag then return 1, \"text\" else return 2 end\nend\nlocal first, second = choose(true)\nmath.abs(first)\nif second then string.lower(second) end\n"
+  },
+  {
+    "name": "function-explicit-union-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function choose(flag: boolean): number | string\n if flag then return 1 else return \"text\" end\nend\nlocal result = choose(true)\nprint(result)\n"
+  },
+  {
+    "name": "function-explicit-tuple-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function choose(flag: boolean): (number, string?)\n if flag then return 1, \"text\" else return 2, nil end\nend\nlocal first, second = choose(true)\nif second then string.lower(second) end\nprint(first)\n"
+  },
+  {
+    "name": "function-direct-assert-return-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function check(value: number?) return assert(value) end\nmath.abs(check(1))\n"
+  },
+  {
+    "name": "function-assert-multiple-return-native-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local first, second = assert(1, \"text\")\nmath.abs(first)\nstring.lower(second)\n"
+  },
+  {
+    "name": "function-inconsistent-nil-return-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function check(flag: boolean)\n if flag then return 1 else return nil end\nend\nprint(check)\n"
+  },
+  {
+    "name": "function-nullable-fallthrough-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function check(flag: boolean): number?\n if flag then return 1 end\nend\nprint(check)\n"
+  },
+  {
+    "name": "function-infinite-loop-return-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function check()\n while true do return 1 end\nend\nmath.abs(check())\n"
+  },
+  {
+    "name": "function-declared-parameter-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function check(value: string): number return value end\nprint(check)\n"
+  },
+  {
+    "name": "function-declared-guarded-parameter-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function check(value: number?): number\n assert(value)\n return value\nend\nprint(check)\n"
+  },
+  {
+    "name": "const-value",
+    "kind": "syntax",
+    "valid": true,
+    "source": "const value = 2\nprint(value)"
+  },
+  {
+    "name": "const-typed",
+    "kind": "syntax",
+    "valid": true,
+    "source": "const value: number = 2\nprint(value)"
+  },
+  {
+    "name": "const-nil",
+    "kind": "syntax",
+    "valid": true,
+    "source": "const value = nil\nprint(value)"
+  },
+  {
+    "name": "const-multiple",
+    "kind": "syntax",
+    "valid": true,
+    "source": "const a, b = 1, 2\nprint(a, b)"
+  },
+  {
+    "name": "const-call-pack",
+    "kind": "syntax",
+    "valid": true,
+    "source": "const a, b = string.byte(\"ab\", 1, 2)\nprint(a, b)"
+  },
+  {
+    "name": "const-vararg-pack",
+    "kind": "syntax",
+    "valid": true,
+    "source": "local function values(...) const a, b = ...; return a, b end\nprint(values(1,2))"
+  },
+  {
+    "name": "const-function",
+    "kind": "syntax",
+    "valid": true,
+    "source": "const function sum(n: number): number if n == 0 then return 0 end; return n + sum(n-1) end\nprint(sum(3))"
+  },
+  {
+    "name": "const-table-field",
+    "kind": "syntax",
+    "valid": true,
+    "source": "const values = {count = 1}\nvalues.count += 1\nvalues[\"extra\"] = 3\nprint(values.count, values.extra)"
+  },
+  {
+    "name": "const-shadow-initializer",
+    "kind": "syntax",
+    "valid": true,
+    "source": "local value = 1\ndo const value = value + 1; print(value) end\nprint(value)"
+  },
+  {
+    "name": "const-inner-mutable-shadow",
+    "kind": "syntax",
+    "valid": true,
+    "source": "const value = 1\ndo local value = 2; value += 1; print(value) end\nprint(value)"
+  },
+  {
+    "name": "const-repeat-scope",
+    "kind": "syntax",
+    "valid": true,
+    "source": "repeat const finished = true until finished"
+  },
+  {
+    "name": "const-comment-newline",
+    "kind": "syntax",
+    "valid": true,
+    "source": "const -- declaration\nvalue = 2\nprint(value)"
+  },
+  {
+    "name": "const-identifier",
+    "kind": "syntax",
+    "valid": true,
+    "source": "local const = 1\nconst += 1\nprint(const)"
+  },
+  {
+    "name": "const-call-identifier",
+    "kind": "syntax",
+    "valid": true,
+    "source": "local const = function(value) return value end\nprint(const(2)); const(3)"
+  },
+  {
+    "name": "const-string-call",
+    "kind": "syntax",
+    "valid": true,
+    "source": "local const = function(value) print(value) end\nconst \"word\""
+  },
+  {
+    "name": "const-table-call",
+    "kind": "syntax",
+    "valid": true,
+    "source": "local const = function(value) print(value[1]) end\nconst {2}"
+  },
+  {
+    "name": "const-const-binding",
+    "kind": "syntax",
+    "valid": true,
+    "source": "const const = 2\nprint(const)"
+  },
+  {
+    "name": "const-typed-return-body",
+    "kind": "syntax",
+    "valid": true,
+    "source": "local function value(): number const result = 3; return result end\nprint(value())"
+  },
+  {
+    "name": "const-anonymous-typed-return-body",
+    "kind": "syntax",
+    "valid": true,
+    "source": "local value = function(): number const result = 3; return result end\nprint(value())"
+  },
+  {
+    "name": "const-missing-initializer",
+    "kind": "syntax",
+    "valid": false,
+    "source": "const value"
+  },
+  {
+    "name": "const-missing-second-value",
+    "kind": "syntax",
+    "valid": false,
+    "source": "const value, other = 1"
+  },
+  {
+    "name": "const-extra-initializer",
+    "kind": "syntax",
+    "valid": false,
+    "source": "const value = 1, 2"
+  },
+  {
+    "name": "const-grouped-call-short",
+    "kind": "syntax",
+    "valid": false,
+    "source": "const a, b = (string.byte(\"ab\", 1, 2))"
+  },
+  {
+    "name": "const-reassignment",
+    "kind": "syntax",
+    "valid": false,
+    "source": "const value = 1\nvalue = 2"
+  },
+  {
+    "name": "const-compound-reassignment",
+    "kind": "syntax",
+    "valid": false,
+    "source": "const value = 1\nvalue += 2"
+  },
+  {
+    "name": "const-multiple-reassignment",
+    "kind": "syntax",
+    "valid": false,
+    "source": "const value = 1\nlocal other\nvalue, other = 2, 3"
+  },
+  {
+    "name": "const-closure-reassignment",
+    "kind": "syntax",
+    "valid": false,
+    "source": "const value = 1\nlocal function update() value = 2 end"
+  },
+  {
+    "name": "const-function-reassignment",
+    "kind": "syntax",
+    "valid": false,
+    "source": "const function value() return 1 end\nvalue = function() return 2 end"
+  },
+  {
+    "name": "const-function-statement-reassignment",
+    "kind": "syntax",
+    "valid": false,
+    "source": "const value = function() return 1 end\nfunction value() return 2 end"
+  },
+  {
+    "name": "const-shadow-after-scope",
+    "kind": "syntax",
+    "valid": true,
+    "source": "do const value = 1; print(value) end\nlocal value = 2\nvalue += 1\nprint(value)"
+  },
+  {
+    "name": "const-loop-variable",
+    "kind": "syntax",
+    "valid": false,
+    "source": "for const value = 1, 2 do print(value) end"
+  },
+  {
+    "name": "const-key-literal",
+    "kind": "syntax",
+    "valid": true,
+    "source": "local values = {const = 1}\nprint(values.const)"
+  },
+  {
+    "name": "const-unbound-name-assignment",
+    "kind": "syntax",
+    "valid": true,
+    "source": "const = 1\nconst += 2\nprint(const)"
+  },
+  {
+    "name": "const-annotation-type-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "const value: number = \"bad\"\nprint(value)"
+  },
+  {
+    "name": "const-function-argument-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "const function increment(value: number): number return value + 1 end\nprint(increment(2))"
+  },
+  {
+    "name": "const-function-argument-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "const function increment(value: number): number return value + 1 end\nprint(increment(\"bad\"))"
+  },
+  {
+    "name": "grouped-call-return-single-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function pair(): (number, string) return 1, \"two\" end\nlocal function first(): number return (pair()) end\nprint(first())"
+  },
+  {
+    "name": "grouped-call-return-pack-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function pair(): (number, string) return 1, \"two\" end\nlocal function forward(): (number, string) return (pair()) end\nprint(forward())"
+  },
+  {
+    "name": "module-style-table-exports-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function make() return {count = 42, double = function(value: number): number return value * 2 end} end\nlocal api = make()\nlocal value: number = api.count\nlocal result: number = api.double(value)\nprint(result)"
+  },
+  {
+    "name": "module-style-table-export-field-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function make() return {count = 42} end\nlocal api = make()\nlocal value: string = api.count\nprint(value)"
+  },
+  {
+    "name": "module-style-table-export-argument-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function make() return {double = function(value: number): number return value * 2 end} end\nlocal api = make()\nprint(api.double(\"wrong\"))"
+  },
+  {
+    "name": "constructed-module-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local function make() local M = {}; M.count = 42; function M.double(value: number): number return value * 2 end; return M end\nlocal api = make()\nlocal value: number = api.count\nprint(api.double(value))"
+  },
+  {
+    "name": "constructed-module-field-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function make() local M = {}; M.count = 42; return M end\nlocal api = make()\nlocal value: string = api.count\nprint(value)"
+  },
+  {
+    "name": "constructed-module-argument-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local function make() local M = {}; function M.double(value: number): number return value * 2 end; return M end\nlocal api = make()\nprint(api.double(\"bad\"))"
+  },
+  {
+    "name": "constructed-module-colon-valid",
+    "kind": "type",
+    "valid": true,
+    "source": "local M = {}\nfunction M:message(value: string): string return value end\nprint(M:message(\"hi\"), M.message(M, \"ok\"))"
+  },
+  {
+    "name": "constructed-module-colon-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local M = {}\nfunction M:message(value: string): string return value end\nprint(M:message(1))"
+  },
+  {
+    "name": "constructed-module-alias-field-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local M = {}\nlocal alias = M\nalias.count = 42\nlocal value: string = M.count\nprint(value)"
+  },
+  {
+    "name": "constructed-module-nested-field-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local M = {}\nM.nested = {}\nM.nested.message = \"hi\"\nlocal value: number = M.nested.message\nprint(value)"
+  },
+  {
+    "name": "constructed-module-static-key-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local M = {}\nM[\"count\"] = 42\nlocal value: string = M[\"count\"]\nprint(value)"
+  },
+  {
+    "name": "constructed-module-self-return-invalid",
+    "kind": "type",
+    "valid": false,
+    "source": "local M = {}\nM.count = 42\nfunction M:get() return self.count end\nlocal value: string = M:get()\nprint(value)"
+  },
+  {
+    "name": "constructed-module-write-replace-field",
+    "kind": "type",
+    "valid": false,
+    "source": "local M = {}\nM.value = 1\nM.value = \"changed\"\nprint(M.value)"
+  },
+  {
+    "name": "constructed-module-write-branch-field",
+    "kind": "type",
+    "valid": false,
+    "source": "local M = {}\nif math.random() > 0.5 then M.value = 1 else M.value = \"hi\" end\nprint(M.value)"
+  },
+  {
+    "name": "constructed-module-write-nil-field",
+    "kind": "type",
+    "valid": false,
+    "source": "local M = {value = 1}\nM.value = nil\nprint(M.value)"
+  },
+  {
+    "name": "constructed-module-write-same-field",
+    "kind": "type",
+    "valid": true,
+    "source": "local M = {}\nM.value = 1\nM.value = 2\nprint(M.value)"
+  }
+]

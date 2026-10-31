@@ -1,0 +1,183 @@
+[
+  {
+    "name": "quoted-close",
+    "source": "print(`a{\"}\"}b`)",
+    "valid": true,
+    "stdout": "a}b\n"
+  },
+  {
+    "name": "quoted-open",
+    "source": "print(`a{\"{\"}b`)",
+    "valid": true,
+    "stdout": "a{b\n"
+  },
+  {
+    "name": "single-quoted-brace",
+    "source": "print(`a{'}'}b`)",
+    "valid": true,
+    "stdout": "a}b\n"
+  },
+  {
+    "name": "long-quoted-brace",
+    "source": "print(`a{[=[} {]=]}b`)",
+    "valid": true,
+    "stdout": "a} {b\n"
+  },
+  {
+    "name": "line-comment-brace",
+    "source": "print(`a{1 -- } ignored\n}b`)",
+    "valid": true,
+    "stdout": "a1b\n"
+  },
+  {
+    "name": "block-comment-brace",
+    "source": "print(`a{1 --[=[} {]=]\n}b`)",
+    "valid": true,
+    "stdout": "a1b\n"
+  },
+  {
+    "name": "nested-template-brace",
+    "source": "print(`outer {`inner {\"}\"}`} end`)",
+    "valid": true,
+    "stdout": "outer inner } end\n"
+  },
+  {
+    "name": "nested-template-expression",
+    "source": "local count=42\nprint(`outer {`inner {count}`} end`)",
+    "valid": true,
+    "stdout": "outer inner 42 end\n"
+  },
+  {
+    "name": "anonymous-body",
+    "source": "print(`value {(function() local t={key=\"}\"} return t.key end)()}`)",
+    "valid": true,
+    "stdout": "value }\n"
+  },
+  {
+    "name": "number-result",
+    "source": "local value: string=`{42}`\nprint(string.lower(value))",
+    "valid": true,
+    "stdout": "42\n"
+  },
+  {
+    "name": "boolean-result",
+    "source": "local value: string=`{false}`\nprint(string.lower(value))",
+    "valid": true,
+    "stdout": "false\n"
+  },
+  {
+    "name": "nil-result",
+    "source": "local value: string=`{nil}`\nprint(value)",
+    "valid": true,
+    "stdout": "nil\n"
+  },
+  {
+    "name": "table-tostring",
+    "source": "local object=setmetatable({}, {__tostring=function() return \"owned\" end})\nlocal value: string=`{object}`\nprint(value)",
+    "valid": true,
+    "stdout": "owned\n"
+  },
+  {
+    "name": "one-result",
+    "source": "local function values() return 1,2 end\nlocal first,second=`{values()}`\nprint(first,second)",
+    "valid": true,
+    "stdout": "1\tnil\n"
+  },
+  {
+    "name": "adjacent-expressions",
+    "source": "local first,second=1,2\nprint(`{first}{second}`)",
+    "valid": true,
+    "stdout": "12\n"
+  },
+  {
+    "name": "literal-close",
+    "source": "print(`a}b`)",
+    "valid": true,
+    "stdout": "a}b\n"
+  },
+  {
+    "name": "escaped-open",
+    "source": "print(`\\{literal\\}`)",
+    "valid": true,
+    "stdout": "{literal}\n"
+  },
+  {
+    "name": "shorthand-call",
+    "source": "print`text`",
+    "valid": false
+  },
+  {
+    "name": "double-brace",
+    "source": "local value=42\nprint(`{{value}}`)",
+    "valid": false
+  },
+  {
+    "name": "empty-expression",
+    "source": "print(`{}`)",
+    "valid": false
+  },
+  {
+    "name": "comment-only",
+    "source": "print(`{-- comment\n}`)",
+    "valid": false
+  },
+  {
+    "name": "comma-expression",
+    "source": "print(`{1,2}`)",
+    "valid": false
+  },
+  {
+    "name": "unfinished-expression",
+    "source": "print(`{1`)",
+    "valid": false
+  },
+  {
+    "name": "malformed-inner-string",
+    "source": "print(`{\"\\xGG\"}`)",
+    "valid": false
+  },
+  {
+    "name": "separate-anonymous-statements",
+    "source": "print(`{(function()\nlocal x=\"}\"\nreturn x\nend)()}`)",
+    "valid": true,
+    "stdout": "}\n"
+  },
+  {
+    "name": "newlines-expression",
+    "source": "print(`a{\n1\n+\n2\n}b`)",
+    "valid": true,
+    "stdout": "a3b\n"
+  },
+  {
+    "name": "unicode-cr-source",
+    "source": "-- \ud83d\ude00\rlocal value=\"hi\"\rprint(`outer {`inner {value}`} end`)",
+    "valid": true,
+    "stdout": "outer inner hi end\n"
+  },
+  {
+    "name": "nested-depth-48",
+    "source": "local value=42\nprint(`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{`{value}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`}`)",
+    "valid": true,
+    "stdout": "42\n"
+  },
+  {
+    "name": "many-parts-256",
+    "source": "local value=1\nprint(`{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}`)",
+    "valid": true,
+    "compileExit": 1,
+    "runtimeExit": 1,
+    "runtimeError": "Out of registers"
+  },
+  {
+    "name": "many-parts-128",
+    "source": "local value=1\nprint(`{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}{value}`)",
+    "valid": true,
+    "stdout": "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\n"
+  },
+  {
+    "name": "constant-backtick-key",
+    "source": "print(math[`abs`](-42))",
+    "valid": true,
+    "stdout": "42\n"
+  }
+]

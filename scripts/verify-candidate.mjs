@@ -1,0 +1,190 @@
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { readReleaseMetadata } from './release-metadata.mjs';
+import { launchServer } from './lsp-harness.mjs';
+
+const root = fileURLToPath(new URL('../', import.meta.url));
+const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'slua-relocation-'));
+const destination = path.join(temporary, 'relocated CLI');
+const artifact = path.join(root, '.local/artifacts/cli');
+const digest = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
+const checks = [];
+const release = await readReleaseMetadata();
+try {
+	await fs.cp(artifact, destination, { recursive: true });
+	const env = { ...process.env, XDG_CACHE_HOME: path.join(temporary, 'empty-cache') };
+	delete env.SLUA_LSP_DEFS_PATH;
+	function cli(args, input) {
+		const result = spawnSync(process.execPath, [path.join(destination, 'slua-lsp.mjs'), ...args], {
+			cwd: temporary, env, input, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024
+		});
+		if (result.error) throw result.error;
+		assert.equal(result.stderr, '', `Unexpected CLI stderr: ${result.stderr}`);
+		const output = JSON.parse(result.stdout);
+		assert.equal(output.schema, 'slua-lsp.cli.v1');
+		return { code: result.status, output };
+	}
+	for (const line of (await fs.readFile(path.join(destination, 'SHA256SUMS'), 'utf8')).trim().split('\n')) {
+		const [expected, name] = line.split('  ');
+		assert.equal(digest(await fs.readFile(path.join(destination, name))), expected);
+	}
+	checks.push('CLI hash manifest and directory relocation with a space, no node_modules');
+	assert.equal(cli(['version', '--json']).output.version, release.version);
+	assert.equal(cli(['capabilities']).output.version, release.version);
+	assert.equal(cli(['capabilities']).output.positionEncoding, 'utf-16');
+	assert.equal(cli(['capabilities']).output.navigation.automaticApplication, false);
+	const navigationSource = 'local value = 1\nlocal object = {value = value}\nvalue += 1\nprint("😀", object.value, value)';
+	const navigationArgs = ['-', '--position', '2:0', '--json'];
+	const definition = cli(['definition', ...navigationArgs], navigationSource);
+	assert.equal(definition.code, 0);
+	assert.deepEqual(definition.output.result.range.start, { line: 0, character: 6 });
+	assert.equal(definition.output.sourceSha256, digest(navigationSource));
+	assert.equal(cli(['references', ...navigationArgs], navigationSource).output.result.length, 4);
+	const rename = cli(['rename', ...navigationArgs, '--new-name', 'total'], navigationSource);
+	assert.equal(rename.code, 0);
+	assert.equal(rename.output.result.length, 4);
+	assert.ok(rename.output.result.every((edit) => edit.newText === 'total'));
+	assert.equal(cli(['rename', '-', '--position', '0:6', '--new-name', 'target', '--json'], 'local source = 1\nprint(source, target)').output.status, 'binding-conflict');
+	checks.push('offline hashed definition/references/rename proposals, assignment targets, field isolation and capture rejection');
+	const inspectionSource = 'local count = 1\nlocal double = function(value: number) local result = value * 2; return result end\nprint(count, double)';
+	const hover = cli(['hover', '-', '--position', '2:8', '--json'], inspectionSource);
+	assert.equal(hover.code, 0); assert.equal(hover.output.sourceSha256, digest(inspectionSource));
+	assert.ok(hover.output.result.markdown.includes('count: number'));
+	const symbols = cli(['symbols', '-', '--json'], inspectionSource);
+	assert.equal(symbols.code, 0); assert.equal(symbols.output.sourceSha256, digest(inspectionSource));
+	assert.deepEqual(symbols.output.result.map((item) => [item.name, item.kind]), [['count', 'variable'], ['double', 'function']]);
+	assert.equal(symbols.output.result[1].children[0].name, 'result');
+	checks.push('source hover and hierarchical symbols use shared-core JSON after standalone CLI relocation');
+	assert.equal(cli(['lookup', 'quaternion.normalize', '--json']).output.signature, '(rotation) -> rotation');
+	assert.equal(cli(['lookup', 'bit32.s32', '--json']).output.signature, '(number) -> number');
+	assert.ok(cli(['lookup', 'LLEvents.handlers', '--json']).output.signature.includes('string'));
+	checks.push('packaged current quaternion, numeric bit32 and event handler metadata');
+	assert.equal(cli(['lookup', 'string.char', '--json']).output.signature, '(...number) -> string');
+	assert.equal(cli(['lookup', 'buffer.readu32', '--json']).output.signature, '(buffer, number) -> number');
+	assert.equal(cli(['lookup', 'buffer.readinteger', '--json']).output.signature, '(buffer, number) -> integer');
+	assert.equal(cli(['lookup', 'table.append', '--json']).output.signature, '(table, ...unknown) -> nil');
+	assert.equal(cli(['check', '-', '--json', '--warnings-as-errors'], 'print(string.sub("abc", 2), string.char(), math.random(), table.pack(), utf8.len("a"))').code, 0);
+	const stdlibError = cli(['check', '-', '--json', '--warnings-as-errors'], 'string.char(65, false)\nlocal n: number = tonumber("invalid")\nprint(n)');
+	assert.equal(stdlibError.code, 1);
+	assert.deepEqual(stdlibError.output.diagnostics.map((d) => d.code).sort(), ['assignment-type-mismatch', 'call-argument-type-mismatch']);
+	checks.push('packaged optional standard-library calls, variadic types, nullable conversion and separate 64-bit buffers');
+	assert.equal(cli(['lookup', 'DetectedEvent.getGroup', '--json']).output.signature, '() -> boolean');
+	assert.equal(cli(['lookup', 'DetectedEvent.getDamage', '--json']).output.signature, '() -> table');
+	assert.equal(cli(['lookup', 'll.GetStatus', '--json']).output.definition.signature.returns.name, 'boolean');
+	assert.equal(cli(['lookup', 'llcompat.GetStatus', '--json']).output.definition.signature.returns.name, 'number');
+	assert.equal(cli(['check', '-', '--json', '--warnings-as-errors'], 'll.SetStatus(1, true)\nLLEvents:on("touch_start", function(items)\n local item = items[1]\n local same: boolean = item:getGroup()\n print(same)\nend)').code, 0);
+	const detectedError = cli(['check', '-', '--json', '--warnings-as-errors'], 'LLEvents:on("touch_start", function(items)\n local item = items[1]\n local wrong: uuid = item:getGroup()\n item.valid = false\n print(wrong)\nend)');
+	assert.equal(detectedError.code, 1);
+	assert.deepEqual(detectedError.output.diagnostics.map((d) => d.code).sort(), ['assignment-type-mismatch', 'readonly-write']);
+	checks.push('SLua/compatibility flag returns, inferred detected callbacks and readonly properties in the relocated CLI');
+	assert.equal(cli(['check', '-', '--json', '--warnings-as-errors'], 'local values: {number} = {1}\nvalues[1] = 2\nprint(values[math.abs(1)])').code, 0);
+	const arrayError = cli(['check', '-', '--json', '--warnings-as-errors'], 'local values: {number} = {1}\nvalues[false] = 2\nvalues[1] = "bad"\nprint(values)');
+	assert.equal(arrayError.code, 1);
+	assert.deepEqual(arrayError.output.diagnostics.map((d) => d.code), ['array-index-type-mismatch', 'assignment-type-mismatch']);
+	assert.deepEqual(arrayError.output.diagnostics[0].range, { start: { line: 1, character: 7 }, end: { line: 1, character: 12 } });
+	checks.push('typed numeric array keys, element writes and exact JSON diagnostic ranges in the relocated CLI');
+
+
+	const source = 'local p = vector.lerp(vector(0,0,0), vector(2,4,6), 0.5)\nlocal j = lljson.encode(42)\nlocal n = bit32.smul(2147483647, 2)\nprint(p, j, n, lljson.empty_object)';
+	assert.equal(cli(['check', '-', '--json', '--warnings-as-errors'], source).code, 0);
+	checks.push('current native helpers pass the actual packaged offline checker');
+	assert.equal(cli(['check', '-', '--json'], 'local =\n').code, 1);
+	assert.equal(cli(['check', '-', '--json', '--warnings-as-errors'], 'missing()').code, 1);
+	const typeError = cli(['check', '-', '--json', '--warnings-as-errors'], 'll.Say(0, 42)');
+	assert.equal(typeError.code, 1);
+	assert.ok(typeError.output.diagnostics.some((d) => d.code === 'call-argument-type-mismatch'));
+	assert.equal(cli(['check', '--not-an-option', '--json']).code, 2);
+	const unicode = 'local greeting = "😀"; print(greeting, missing)';
+	const position = cli(['check', '-', '--json'], unicode).output.diagnostics.find((d) => d.code === 'undeclared-name').range.start;
+	assert.deepEqual(position, { line: 0, character: unicode.indexOf('missing') });
+	checks.push('packaged JSON, Unicode ranges and diagnostic/usage/strict-warning exit codes');
+	const nativeCases = JSON.parse(await fs.readFile(path.join(root, 'slua-lsp-core/tests/fixtures/native/qualification.json'), 'utf8'));
+	for (const item of nativeCases) {
+		const result = cli(['check', '-', '--stdin-filepath', `${item.name}.luau`, '--json', '--warnings-as-errors'], item.source);
+		if (item.kind === 'syntax') assert.equal(!result.output.diagnostics.some((d) => d.code === 'parse-error'), item.valid, `Packaged native syntax regression: ${item.name}: ${JSON.stringify(result.output)}`);
+		else assert.equal(result.code, item.valid ? 0 : 1, `Packaged native type regression: ${item.name}: ${JSON.stringify(result.output)}`);
+	}
+	assert.equal(cli(['check', '-', '--json', '--warnings-as-errors'], 'LLTimers:every(0, function(time: number, interval: number) print(time, interval) end)').code, 0);
+	const callbackError = cli(['check', '-', '--json', '--warnings-as-errors'], 'LLTimers:once(0, function(time: number, interval: number) print(time, interval) end)');
+	assert.equal(callbackError.code, 1);
+	assert.ok(callbackError.output.diagnostics.some((d) => d.code === 'callback-param-type-mismatch'));
+	checks.push(`${nativeCases.length} native syntax/strict-type regression cases and timer annotations in the relocated CLI`);
+	const guardedIndex = 'local index = ll.SubStringIndex("hello", "e")\nif index then print(math.abs(index)) end';
+	assert.equal(cli(['check', '-', '--json', '--warnings-as-errors'], guardedIndex).code, 0);
+	const unsafeIndex = cli(['check', '-', '--json', '--warnings-as-errors'], guardedIndex + '\nprint(math.abs(index))');
+	assert.equal(unsafeIndex.code, 1);
+	assert.deepEqual(unsafeIndex.output.diagnostics.map((d) => [d.code, d.range.start.line]), [['call-argument-type-mismatch', 2]]);
+	checks.push('guarded nullable ll.SubStringIndex result and unsafe outer path in the relocated agent CLI');
+	const integerModule = cli(['lookup', 'integer', '--json']);
+	assert.equal(integerModule.code, 0);
+	assert.equal(integerModule.output.kind, 'module');
+	assert.ok(integerModule.output.definition.functions.fromstring);
+	assert.equal(cli(['lookup', 'integer.band', '--json']).output.signature, '(...integer) -> integer');
+	assert.equal(cli(['lookup', 'integer.create', '--json']).output.signature, '(number) -> integer | nil');
+	assert.equal(cli(['check', '-', '--json', '--warnings-as-errors'], 'print(integer.band(), integer.min(integer.maxsigned))').code, 0);
+	const constructors = cli(['check', '-', '--json', '--warnings-as-errors'], 'integer(1)\nnumber("1")\ninteger.band(integer.maxsigned, integer.maxsigned, 1)');
+	assert.equal(constructors.code, 1);
+	assert.deepEqual(constructors.output.diagnostics.map((d) => d.code), ['call-non-callable', 'undeclared-name', 'call-argument-type-mismatch']);
+	checks.push('current integer module discovery, nullable creation, variadic signatures and obsolete constructor diagnostics');
+	const builder = cli(['lookup', 'llprim.ParamSetter', '--json']);
+	assert.equal(builder.code, 0);
+	assert.equal(Object.keys(builder.output.definition.functions).length, 53);
+	assert.equal(cli(['lookup', 'llprim.ParamSetter.size', '--json']).code, 0);
+	assert.equal(cli(['check', '-', '--json', '--warnings-as-errors'], 'local P = llprim.ParamSetter\nlocal rules = P.new():size(vector.one):physical(true)\nprint(rules)').code, 0);
+	const badBuilder = cli(['check', '-', '--json', '--warnings-as-errors'], 'local rules = llprim.ParamSetter.new()\nrules:size("bad")\nrules:gltfNormal(0, "asset", "bad", vector.one, 0)');
+	assert.equal(badBuilder.code, 1);
+	assert.equal(badBuilder.output.diagnostics.filter((d) => d.code === 'call-argument-type-mismatch').length, 2);
+	checks.push('nested llprim module discovery, fluent builder aliases, rule argument types and exact clear sentinels');
+	assert.equal(cli(['check', '-', '--json', '--warnings-as-errors'], 'local events, timers = LLEvents, LLTimers\nevents.on(LLEvents, "listen", function(channel: number) end)\ntimers.once(LLTimers, 0, function(time: number, interval: nil) end)\nlocal LLEvents, LLTimers, lljson = {}, {}, {}\nLLEvents:on("not-an-event"); LLTimers:custom(); lljson.encode()').code, 0);
+	const aliasedCalls = cli(['check', '-', '--json'], 'local events, timers = LLEvents, LLTimers\nevents:on("state_exit", function() end)\ntimers:once(0, function(time: string) end)');
+	assert.equal(aliasedCalls.code, 1);
+	assert.deepEqual(aliasedCalls.output.diagnostics.map((d) => d.code).sort(), ['callback-param-type-mismatch', 'unknown-event']);
+	checks.push('lexical builtin aliases, explicit self, shadowing and event/timer callback diagnostics');
+	const actionSource = 'local json = lljson\njson:encode(3)';
+	const actionResponse = cli(['check', '-', '--json', '--include-actions'], actionSource);
+	assert.equal(actionResponse.code, 1);
+	const preferred = actionResponse.output.actions.find((action) => action.isPreferred);
+	assert.equal(preferred.sourceSha256, digest(Buffer.from(actionSource)));
+	assert.deepEqual(preferred.edits, [{ range: { start: { line: 1, character: 4 }, end: { line: 1, character: 5 } }, newText: '.' }]);
+	assert.equal(cli(['check', '-', '--json', '--include-actions'], actionSource.replace('json:encode', 'json.encode')).code, 0);
+	assert.equal(cli(['check', '-', '--json', '--warnings-as-errors'], 'local example = "-- slua-lsp:disable all"\nprint(example)\nmissingSentinel()').code, 1);
+	checks.push('agent code-action edits with exact source hash and no accidental suppression from literal text');
+	assert.equal(cli(['check', '-', '--json', '--warnings-as-errors'], 'local math = {pi = 1}\nmath.pi = 2').code, 0);
+	const readonly = cli(['check', '-', '--json'], 'local native = math\nnative.pi = 0\nlocal callback = function(item: {read x: number}) item.x = 2 end\nprint(callback)');
+	assert.equal(readonly.code, 1);
+	assert.equal(readonly.output.diagnostics.filter((d) => d.code === 'readonly-write').length, 2);
+	checks.push('readonly builtin aliases and nested callback writes with mutable local shadows');
+	const extension = path.join(root, '.local/artifacts/vsix-unpacked/extension');
+	const extensionPackage = JSON.parse(await fs.readFile(path.join(extension, 'package.json'), 'utf8'));
+	assert.equal(extensionPackage.version, release.version);
+	const server = launchServer(path.join(extension, 'server/out/index.js'), temporary);
+	try {
+		const definitionsPath = path.join(extension, 'third_party/lsl-definitions/lsl_definitions.yaml');
+		const initialized = await server.request('initialize', { processId: process.pid, rootUri: null, capabilities: {}, initializationOptions: { definitionsPath } });
+		assert.equal(initialized.serverInfo.version, release.version);
+		server.notify('initialized', {});
+		assert.deepEqual(await server.request('slua/getDefinitions', {}), { loaded: true, definitionsPath });
+	} finally { await server.close(); }
+	checks.push('workspace metadata, relocated CLI, packaged extension and actual packaged LSP share the release version');
+	const notices = await fs.readFile(path.join(extension, 'THIRD_PARTY_NOTICES.txt'), 'utf8');
+	const inventory = JSON.parse(await fs.readFile(path.join(extension, 'bundled-licenses.json'), 'utf8'));
+	assert.ok(inventory.packages.length >= 11);
+	assert.ok(inventory.packages.some((pkg) => pkg.name === 'jsonc-parser' && pkg.version === '3.3.1'));
+	for (const pkg of inventory.packages) {
+		assert.ok(notices.includes(`${pkg.name}@${pkg.version}`), `Missing notice for ${pkg.name}`);
+		assert.ok(pkg.licenses.length);
+	}
+	assert.equal(await fs.readFile(path.join(extension, 'server/out/builtins.yaml'), 'utf8'), await fs.readFile(path.join(root, 'slua-lsp-core/src/slua/builtins.yaml'), 'utf8'));
+	assert.equal(await fs.readFile(path.join(extension, 'third_party/lsl-definitions/lsl_definitions.yaml'), 'utf8'), await fs.readFile(path.join(root, 'third_party/lsl-definitions/lsl_definitions.yaml'), 'utf8'));
+	checks.push(`actual VSIX builtins, definitions and notices for all ${inventory.packages.length} bundled dependencies`);
+	const report = { passed: true, release, node: process.version, measuredAt: new Date().toISOString(), cliSha256: digest(await fs.readFile(path.join(destination, 'slua-lsp.mjs'))),
+		vsix: JSON.parse(await fs.readFile(path.join(root, '.local/artifacts/vsix-contents.json'), 'utf8')), checks };
+	await fs.mkdir(path.join(root, '.local/logs'), { recursive: true });
+	await fs.writeFile(path.join(root, '.local/logs/candidate-verification.json'), JSON.stringify(report, null, 2) + '\n');
+	console.log(JSON.stringify(report));
+} finally { await fs.rm(temporary, { recursive: true, force: true }); }

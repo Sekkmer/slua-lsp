@@ -1,15 +1,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import type { SluaType } from './types.js';
+import type { SluaType, SluaCallArity } from './types.js';
 import { slua, sluaTypeFromLuauAnnotationText } from './types.js';
+import { nativeClassType, markClassOf } from './classIdentity.js';
 
 export type BuiltinsFunction = {
+	intrinsic?: 'classof';
+	arity?: SluaCallArity;
 	params: SluaType[];
+	variadic?: SluaType;
 	returns: SluaType;
 	docs: string;
 	deprecated: boolean;
-	overloads?: Array<{ params: SluaType[]; returns: SluaType }>;
+	overloads?: Array<{ params: SluaType[]; returns: SluaType; variadic?: SluaType; arity?: SluaCallArity }>;
 };
 
 export type BuiltinsValue = {
@@ -94,21 +98,36 @@ function readBundledBuiltinsYamlText(): string | null {
 	return null;
 }
 
+function parseArity(value: unknown, params: unknown): SluaCallArity | undefined {
+	if (value === undefined) return undefined;
+	if (!isRecord(value) || !Number.isSafeInteger(value.min) || !Number.isSafeInteger(value.max) ||
+		typeof value.min !== 'number' || typeof value.max !== 'number' || value.min < 0 || value.max < value.min ||
+		!Array.isArray(params) || value.max > params.length) throw new Error('Invalid builtin argument arity');
+	return { min: value.min, max: value.max };
+}
+
 function parseTypeSpec(spec: unknown): SluaType {
 	if (typeof spec === 'string') return sluaTypeFromLuauAnnotationText(spec);
 	if (!isRecord(spec)) return slua.unknown();
+	if (spec.nativeClass === 'constructor' || spec.nativeClass === 'instance') return nativeClassType(spec.nativeClass);
+	if (typeof spec.module === 'string') return slua.module(spec.module);
+	if (typeof spec.metatable === 'string') return slua.withMetatable(spec.metatable);
+	if (typeof spec.literal === 'string') return slua.literal(spec.literal);
+	if (Array.isArray(spec.union)) return slua.union(spec.union.map(parseTypeSpec));
 
 	// fn: { params: [...], returns: <type> }
 	if ('fn' in spec && isRecord(spec.fn)) {
 		const fnSpec = spec.fn as Record<string, unknown>;
 		const params = Array.isArray(fnSpec.params) ? fnSpec.params.map((p) => parseTypeSpec(p)) : [];
 		const returns = parseTypeSpec(fnSpec.returns ?? 'unknown');
-		return slua.fn(params, returns);
+		return slua.fn(params, returns, fnSpec.variadic === undefined ? undefined : parseTypeSpec(fnSpec.variadic), parseArity(fnSpec.arity, fnSpec.params));
 	}
 
 	// tuple: [t1, t2, ...]
 	if ('tuple' in spec && Array.isArray(spec.tuple)) {
-		return slua.tuple(spec.tuple.map((t) => parseTypeSpec(t)));
+		if (spec.minimum !== undefined && (!Number.isSafeInteger(spec.minimum) || typeof spec.minimum !== 'number' || spec.minimum < 0 || spec.minimum > 4096)) throw new Error('Invalid builtin return-pack minimum');
+		if (spec.variadic === undefined && typeof spec.minimum === 'number' && spec.minimum > spec.tuple.length) throw new Error('Builtin return-pack minimum exceeds finite maximum');
+		return slua.tuple(spec.tuple.map((t) => parseTypeSpec(t)), spec.variadic === undefined ? undefined : parseTypeSpec(spec.variadic), spec.minimum as number | undefined);
 	}
 
 	// array: t
@@ -144,11 +163,15 @@ function parseBuiltinsYaml(text: string): BuiltinsData {
 					.filter((o) => isRecord(o))
 					.map((o) => ({
 						params: toParamTypeList((o as Record<string, unknown>).params),
-						returns: toSluaType((o as Record<string, unknown>).returns ?? 'unknown')
+						arity: parseArity(o.arity, o.params),
+						returns: toSluaType((o as Record<string, unknown>).returns ?? 'unknown'),
+						variadic: (o as Record<string, unknown>).variadic === undefined ? undefined : toSluaType((o as Record<string, unknown>).variadic)
 					}))
 				: undefined;
 			globals[name] = {
 				params: toParamTypeList(spec.params),
+				arity: parseArity(spec.arity, spec.params),
+				variadic: spec.variadic === undefined ? undefined : toSluaType(spec.variadic),
 				returns: toSluaType(spec.returns ?? 'unknown'),
 				docs: typeof spec.docs === 'string' ? spec.docs : '',
 				deprecated: spec.deprecated === true,
@@ -173,11 +196,16 @@ function parseBuiltinsYaml(text: string): BuiltinsData {
 							.filter((o) => isRecord(o))
 							.map((o) => ({
 								params: toParamTypeList((o as Record<string, unknown>).params),
-								returns: toSluaType((o as Record<string, unknown>).returns ?? 'unknown')
+								arity: parseArity(o.arity, o.params),
+								returns: toSluaType((o as Record<string, unknown>).returns ?? 'unknown'),
+								variadic: (o as Record<string, unknown>).variadic === undefined ? undefined : toSluaType((o as Record<string, unknown>).variadic)
 							}))
 						: undefined;
 					functions[fnName] = {
+						intrinsic: fnSpec.intrinsic === 'classof' ? 'classof' : undefined,
 						params: toParamTypeList(fnSpec.params),
+						arity: parseArity(fnSpec.arity, fnSpec.params),
+						variadic: fnSpec.variadic === undefined ? undefined : toSluaType(fnSpec.variadic),
 						returns: toSluaType(fnSpec.returns ?? 'unknown'),
 						docs: typeof fnSpec.docs === 'string' ? fnSpec.docs : '',
 						deprecated: fnSpec.deprecated === true,
@@ -221,11 +249,14 @@ function parseBuiltinsYaml(text: string): BuiltinsData {
 							.filter((o) => isRecord(o))
 							.map((o) => ({
 								params: toParamTypeList((o as Record<string, unknown>).params),
-								returns: toSluaType((o as Record<string, unknown>).returns ?? 'unknown')
+								arity: parseArity(o.arity, o.params),
+								returns: toSluaType((o as Record<string, unknown>).returns ?? 'unknown'),
+								variadic: (o as Record<string, unknown>).variadic === undefined ? undefined : toSluaType((o as Record<string, unknown>).variadic)
 							}))
 						: undefined;
 					metamethods[mmName] = {
 						params: toParamTypeList(mmSpec.params),
+						variadic: mmSpec.variadic === undefined ? undefined : toSluaType(mmSpec.variadic),
 						returns: toSluaType(mmSpec.returns ?? 'unknown'),
 						docs: typeof mmSpec.docs === 'string' ? mmSpec.docs : '',
 						deprecated: mmSpec.deprecated === true,
@@ -269,9 +300,10 @@ function parseBuiltinsYaml(text: string): BuiltinsData {
 
 export function buildBuiltinsFunctionSignature(fn: BuiltinsFunction): SluaType {
 	const overloads = fn.overloads ?? [];
-	const types = (overloads.length ? overloads : [{ params: fn.params, returns: fn.returns }]).map((o) =>
-		slua.fn(o.params, o.returns)
+	const types = (overloads.length ? overloads : [{ params: fn.params, returns: fn.returns, variadic: fn.variadic, arity: fn.arity }]).map((o) =>
+		slua.fn(o.params, o.returns, o.variadic, o.arity)
 	);
+	if (fn.intrinsic === 'classof') for (const type of types) markClassOf(type);
 	return types.length === 1 ? types[0] : slua.union(types);
 }
 

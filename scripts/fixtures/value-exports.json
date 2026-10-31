@@ -1,0 +1,218 @@
+[
+  {
+    "name": "mutable",
+    "source": "export local value=1\nvalue=2\nassert(value==2)",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "uninitialized",
+    "source": "export local value\nassert(value==nil)\nvalue=3\nassert(value==3)",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "multi",
+    "source": "export local a,b=1,\"two\"\nassert(a==1 and b==\"two\")",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "typed",
+    "source": "export local value: number=1\nassert(value==1)",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "const",
+    "source": "export const value=3\nassert(value==3)",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "function",
+    "source": "export function double(value: number): number return value*2 end\nassert(double(3)==6)",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "recursive",
+    "source": "export function down(value: number): number if value==0 then return 0 end return down(value-1) end\nassert(down(3)==0)",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "function-body-return",
+    "source": "export function get(): number if true then return 3 end return 4 end",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "shadow-before",
+    "source": "local value=1\nexport local value=value+1\nassert(value==2)",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "shadow-after",
+    "source": "export local value=1\nlocal value=\"other\"\nvalue=\"changed\"\nassert(value==\"changed\")",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "function-shadow",
+    "source": "local function get(): number return 1 end\nexport function get(): number return 2 end\nassert(get()==2)",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "contextual-export",
+    "source": "local export=1\nexport=2\nlocal t={export=export}\nassert(t.export==2)",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "contextual-name",
+    "source": "export local export=1\nassert(export==1)",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "trivia",
+    "source": "export -- owned\nlocal value=1\nassert(value==1)",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "duplicate-local",
+    "source": "export local value=1\nexport local value=2",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "duplicate-list",
+    "source": "export local value,value=1,2",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "duplicate-function",
+    "source": "export local get=1\nexport function get() end",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "duplicate-class",
+    "source": "export local Box=1\nexport class Box end",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "const-write",
+    "source": "export const value=1\nvalue=2",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "function-write",
+    "source": "export function get() end\nget=function() end",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "function-statement-write",
+    "source": "export function get() end\nfunction get() end",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "nested-block",
+    "source": "do export local value=1 end",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "nested-function",
+    "source": "local function get() export local value=1 end",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "nested-loop",
+    "source": "for i=1,2 do export local value=i end",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "return-after",
+    "source": "export local value=1\nreturn value",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "return-before",
+    "source": "if true then return 1 end\nexport local value=1",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "return-empty",
+    "source": "export local value=1\nreturn",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "return-closure-control",
+    "source": "local get=function() return 1 end\nexport local value=get()",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "type-return-control",
+    "source": "export type Value=number\nreturn 3",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "local-function-refusal",
+    "source": "export local function get() end",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "const-function-refusal",
+    "source": "export const function get() end",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "bare-refusal",
+    "source": "export value=1",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "member-function-refusal",
+    "source": "export function object.get() end",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "missing-const-initializer",
+    "source": "export const value",
+    "parseValid": false,
+    "runtime": false
+  },
+  {
+    "name": "export-class",
+    "source": "export class Box end\nlocal item=Box{}\nassert(class.classof(item)==Box)",
+    "parseValid": true,
+    "runtime": true
+  },
+  {
+    "name": "class-return",
+    "source": "export class Box end\nreturn Box",
+    "parseValid": false,
+    "runtime": false
+  }
+]

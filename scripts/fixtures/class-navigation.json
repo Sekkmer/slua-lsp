@@ -1,0 +1,759 @@
+[
+  {
+    "name": "typed-local",
+    "source": "class Box end\nlocal item: Box=Box {}\nassert(item~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      26,
+      30
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal item: Cell=Cell {}\nassert(item~=nil)"
+  },
+  {
+    "name": "parameter-and-return",
+    "source": "class Box end\nlocal function identity(item: Box): Box return item end\nassert(identity(Box{})~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      44,
+      50,
+      86
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal function identity(item: Cell): Cell return item end\nassert(identity(Cell{})~=nil)"
+  },
+  {
+    "name": "anonymous-function",
+    "source": "class Box end\nlocal identity=function(item: Box): Box return item end\nassert(identity(Box{})~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      44,
+      50,
+      86
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal identity=function(item: Cell): Cell return item end\nassert(identity(Cell{})~=nil)"
+  },
+  {
+    "name": "type-alias",
+    "source": "class Box end\ntype Alias=Box\nlocal item: Alias=Box{}\nassert(item~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      25,
+      47
+    ],
+    "expectedRenamedSource": "class Cell end\ntype Alias=Cell\nlocal item: Alias=Cell{}\nassert(item~=nil)"
+  },
+  {
+    "name": "forward-type-alias",
+    "source": "type Alias=Box\nclass Box end\nlocal item: Alias=Box{}\nassert(item~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      11,
+      21,
+      47
+    ],
+    "expectedRenamedSource": "type Alias=Cell\nclass Cell end\nlocal item: Alias=Cell{}\nassert(item~=nil)"
+  },
+  {
+    "name": "cast",
+    "source": "class Box end\nlocal item=(Box{} :: Box)\nassert(item~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      26,
+      35
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal item=(Cell{} :: Cell)\nassert(item~=nil)"
+  },
+  {
+    "name": "optional-field-and-method",
+    "source": "class Box\npublic next: Box?\nfunction copy(self): Box return self end\nend\nlocal item: Box=Box{next=nil}\nassert(item:copy()==item)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      23,
+      49,
+      85,
+      89
+    ],
+    "expectedRenamedSource": "class Cell\npublic next: Cell?\nfunction copy(self): Cell return self end\nend\nlocal item: Cell=Cell{next=nil}\nassert(item:copy()==item)"
+  },
+  {
+    "name": "record-type-label-and-string",
+    "source": "class Box end\ntype Row={Box:Box,tag:\"Box\"}\nlocal row: Row={Box=Box{},tag=\"Box\"}\nassert(row.Box~=nil and row.tag==\"Box\")",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      28,
+      63
+    ],
+    "expectedRenamedSource": "class Cell end\ntype Row={Box:Cell,tag:\"Box\"}\nlocal row: Row={Box=Cell{},tag=\"Box\"}\nassert(row.Box~=nil and row.tag==\"Box\")"
+  },
+  {
+    "name": "array-and-generic-arguments",
+    "source": "class Box end\ntype List<T> = {T}\ntype Boxes=List<Box>\nlocal items: {Box}={Box{}}\nassert(#items==1)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      49,
+      68,
+      74
+    ],
+    "expectedRenamedSource": "class Cell end\ntype List<T> = {T}\ntype Boxes=List<Cell>\nlocal items: {Cell}={Cell{}}\nassert(#items==1)"
+  },
+  {
+    "name": "function-type-label",
+    "source": "class Box end\nlocal identity: (Box:Box)->Box=function(item: Box): Box return item end\nassert(identity(Box{})~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      35,
+      41,
+      60,
+      66,
+      102
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal identity: (Box:Cell)->Cell=function(item: Cell): Cell return item end\nassert(identity(Cell{})~=nil)"
+  },
+  {
+    "name": "function-generic-shadow",
+    "source": "class Box end\nlocal function identity<Box>(item: Box): Box return item end\nlocal item: Box=Box{}\nassert(identity(item)==item)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      87,
+      91
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal function identity<Box>(item: Box): Box return item end\nlocal item: Cell=Cell{}\nassert(identity(item)==item)"
+  },
+  {
+    "name": "alias-generic-shadow",
+    "source": "class Box end\ntype Identity<Box> = Box\nlocal item: Box=Box{}\nassert(item~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      51,
+      55
+    ],
+    "expectedRenamedSource": "class Cell end\ntype Identity<Box> = Box\nlocal item: Cell=Cell{}\nassert(item~=nil)"
+  },
+  {
+    "name": "value-shadow-keeps-type",
+    "source": "class Box end\nlocal Make=Box\nlocal Box=1\nlocal item: Box=Make{}\nassert(Box==1 and item~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      25,
+      53
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal Make=Cell\nlocal Box=1\nlocal item: Cell=Make{}\nassert(Box==1 and item~=nil)"
+  },
+  {
+    "name": "typeof-constructor",
+    "source": "class Box end\ntype Maker=typeof(Box)\nlocal Make: Maker=Box\nassert(Make{}~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      32,
+      55
+    ],
+    "expectedRenamedSource": "class Cell end\ntype Maker=typeof(Cell)\nlocal Make: Maker=Cell\nassert(Make{}~=nil)"
+  },
+  {
+    "name": "unused-alias-destination-before",
+    "source": "type Cell=number\nclass Box end\nassert(Box{}~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": false,
+    "runtime": true,
+    "expectedRenameOffsets": [],
+    "expectedRenamedSource": null
+  },
+  {
+    "name": "unused-alias-destination-after",
+    "source": "class Box end\ntype Cell=number\nassert(Box{}~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": false,
+    "runtime": true,
+    "expectedRenameOffsets": [],
+    "expectedRenamedSource": null
+  },
+  {
+    "name": "unused-class-destination",
+    "source": "class Box end\nclass Cell end\nassert(Box{}~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": false,
+    "runtime": true,
+    "expectedRenameOffsets": [],
+    "expectedRenamedSource": null
+  },
+  {
+    "name": "builtin-type-capture",
+    "source": "class Box end\nlocal count: number=1\nlocal item: Box=Box{}\nassert(count==1 and item~=nil)",
+    "newName": "number",
+    "expectSafeRename": false,
+    "runtime": true,
+    "expectedRenameOffsets": [],
+    "expectedRenamedSource": null
+  },
+  {
+    "name": "generic-type-capture",
+    "source": "class Box end\nlocal function identity<Cell>(item: Box): Box return item end\nassert(identity(Box{})~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": false,
+    "runtime": true,
+    "expectedRenameOffsets": [],
+    "expectedRenamedSource": null
+  },
+  {
+    "name": "value-capture-already-refused",
+    "source": "class Box end\nlocal Cell=1\nassert(Box{}~=nil and Cell==1)",
+    "newName": "Cell",
+    "expectSafeRename": false,
+    "runtime": true,
+    "expectedRenameOffsets": [],
+    "expectedRenamedSource": null
+  },
+  {
+    "name": "crlf-emoji",
+    "source": "-- \ud83d\ude00 Box\r\nclass Box end\r\nlocal item: Box=Box{}\r\nassert(item~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      17,
+      38,
+      42
+    ],
+    "expectedRenamedSource": "-- \ud83d\ude00 Box\r\nclass Cell end\r\nlocal item: Cell=Cell{}\r\nassert(item~=nil)"
+  },
+  {
+    "name": "unused-class-without-value-uses",
+    "source": "class Box end\nclass Cell end",
+    "newName": "Cell",
+    "expectSafeRename": false,
+    "runtime": true,
+    "expectedRenameOffsets": [],
+    "expectedRenamedSource": null
+  },
+  {
+    "name": "unused-alias-without-value-uses",
+    "source": "class Box end\ntype Cell=number",
+    "newName": "Cell",
+    "expectSafeRename": false,
+    "runtime": true,
+    "expectedRenameOffsets": [],
+    "expectedRenamedSource": null
+  },
+  {
+    "name": "signature-typeof-outer-class",
+    "source": "class Box end\nlocal Make=Box\nlocal function choose(Box: number): typeof(Box) return Make end\nassert(choose(1){}~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      25,
+      72
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal Make=Cell\nlocal function choose(Box: number): typeof(Cell) return Make end\nassert(choose(1){}~=nil)"
+  },
+  {
+    "name": "parameter-annotation-typeof-outer",
+    "source": "class Box end\nlocal function choose(Box: typeof(Box)): typeof(Box) return Box end\nassert(choose(Box){}~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      48,
+      62,
+      96
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal function choose(Box: typeof(Cell)): typeof(Cell) return Box end\nassert(choose(Cell){}~=nil)"
+  },
+  {
+    "name": "local-annotation-before-shadow",
+    "source": "class Box end\nlocal Box: typeof(Box)=Box\nlocal item: Box=Box{}\nassert(item~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      32,
+      37,
+      53
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal Box: typeof(Cell)=Cell\nlocal item: Cell=Box{}\nassert(item~=nil)"
+  },
+  {
+    "name": "body-typeof-parameter-shadow",
+    "source": "class Box end\nlocal function identity(Box: number) local item: typeof(Box)=Box\nreturn item end\nassert(identity(1)==1 and Box{}~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      121
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal function identity(Box: number) local item: typeof(Box)=Box\nreturn item end\nassert(identity(1)==1 and Cell{}~=nil)"
+  },
+  {
+    "name": "generic-typeof-is-value-namespace",
+    "source": "class Box end\ntype Maker<Box> = typeof(Box)\nlocal Make: Maker<number> =Box\nassert(Make{}~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      39,
+      71
+    ],
+    "expectedRenamedSource": "class Cell end\ntype Maker<Box> = typeof(Cell)\nlocal Make: Maker<number> =Cell\nassert(Make{}~=nil)"
+  },
+  {
+    "name": "generic-signature-typeof-is-value",
+    "source": "class Box end\nlocal function choose<Box>(item: typeof(Box)): typeof(Box) return item end\nassert(choose(Box){}~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      54,
+      68,
+      103
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal function choose<Box>(item: typeof(Cell)): typeof(Cell) return item end\nassert(choose(Cell){}~=nil)"
+  },
+  {
+    "name": "cr-only-lines",
+    "source": "-- \ud83d\ude00 Box\rclass Box end\rlocal item: Box=Box{}\rassert(item~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      16,
+      36,
+      40
+    ],
+    "expectedRenamedSource": "-- \ud83d\ude00 Box\rclass Cell end\rlocal item: Cell=Cell{}\rassert(item~=nil)"
+  },
+  {
+    "name": "local-function-name-after-signature",
+    "source": "class Box end\nlocal Make=Box\nlocal function Box(): typeof(Box) return Make end\nlocal C=Box()\nassert(C{}~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      25,
+      58
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal Make=Cell\nlocal function Box(): typeof(Cell) return Make end\nlocal C=Box()\nassert(C{}~=nil)"
+  },
+  {
+    "name": "typeof-constructed-instance",
+    "source": "class Box end\nlocal item: typeof(Box{})=Box{}\nassert(item~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      33,
+      40
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal item: typeof(Cell{})=Cell{}\nassert(item~=nil)"
+  },
+  {
+    "name": "typeof-function-annotations",
+    "source": "class Box end\nlocal identity: typeof(function(value: Box): Box return value end) = function(value: Box): Box return value end\nassert(identity(Box{})~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      53,
+      59,
+      99,
+      105,
+      142
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal identity: typeof(function(value: Cell): Cell return value end) = function(value: Cell): Cell return value end\nassert(identity(Cell{})~=nil)"
+  },
+  {
+    "name": "generic-function-type",
+    "source": "class Box end\nlocal identity: <T>(T,Box)->Box=function<T>(_: T,item:Box):Box return item end\nassert(identity(1,Box{})~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      36,
+      42,
+      68,
+      73,
+      111
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal identity: <T>(T,Cell)->Cell=function<T>(_: T,item:Cell):Cell return item end\nassert(identity(1,Cell{})~=nil)"
+  },
+  {
+    "name": "type-field-indexer",
+    "source": "class Box end\ntype Rows={[Box]:Box}\nlocal item=Box{}\nlocal rows:Rows={[item]=item}\nassert(rows[item]==item)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      26,
+      31,
+      47
+    ],
+    "expectedRenamedSource": "class Cell end\ntype Rows={[Cell]:Cell}\nlocal item=Cell{}\nlocal rows:Rows={[item]=item}\nassert(rows[item]==item)"
+  },
+  {
+    "name": "field-and-method-typeof",
+    "source": "class Box\npublic maker: typeof(Box)?\nend\nlocal item=Box{maker=nil}\nassert(item~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      31,
+      52
+    ],
+    "expectedRenamedSource": "class Cell\npublic maker: typeof(Cell)?\nend\nlocal item=Cell{maker=nil}\nassert(item~=nil)"
+  },
+  {
+    "name": "return-before-body-call",
+    "source": "class Box end\nlocal function make(): Box print(\"x\") return Box{} end\nassert(make()~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      37,
+      59
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal function make(): Cell print(\"x\") return Cell{} end\nassert(make()~=nil)"
+  },
+  {
+    "name": "method-return-before-body-call",
+    "source": "class Box\nfunction make(): Box print(\"x\") return Box{} end\nend\nassert(Box.make()~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      27,
+      49,
+      70
+    ],
+    "expectedRenamedSource": "class Cell\nfunction make(): Cell print(\"x\") return Cell{} end\nend\nassert(Cell.make()~=nil)"
+  },
+  {
+    "name": "tuple-return-before-body-call",
+    "source": "class Box end\nlocal function make():(Box,number) print(\"x\") return Box{},1 end\nlocal item,count=make()\nassert(item~=nil and count==1)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      37,
+      67
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal function make():(Cell,number) print(\"x\") return Cell{},1 end\nlocal item,count=make()\nassert(item~=nil and count==1)"
+  },
+  {
+    "name": "function-return-before-body-call",
+    "source": "class Box end\nlocal function factory(): (Box)->Box print(\"x\") return function(value: Box): Box return value end end\nassert(factory()(Box{})~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      41,
+      47,
+      85,
+      91,
+      133
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal function factory(): (Cell)->Cell print(\"x\") return function(value: Cell): Cell return value end end\nassert(factory()(Cell{})~=nil)"
+  },
+  {
+    "name": "typeof-return-before-body-call",
+    "source": "class Box end\nlocal function maker(): typeof(Box) print(\"x\") return Box end\nassert(maker(){}~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      45,
+      68
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal function maker(): typeof(Cell) print(\"x\") return Cell end\nassert(maker(){}~=nil)"
+  },
+  {
+    "name": "never-buffer-body-call",
+    "source": "class Box end\nlocal function stop(value: buffer): never error(value) end\nassert(Box{}~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      80
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal function stop(value: buffer): never error(value) end\nassert(Cell{}~=nil)"
+  },
+  {
+    "name": "parenthesized-union-intersection",
+    "source": "class Box end\nlocal item: ((Box?) & Box)|nil=Box{}\nassert(item~=nil)",
+    "newName": "Cell",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      28,
+      36,
+      45
+    ],
+    "expectedRenamedSource": "class Cell end\nlocal item: ((Cell?) & Cell)|nil=Cell{}\nassert(item~=nil)"
+  },
+  {
+    "name": "rename-to-typeof-type",
+    "source": "class Box end\nlocal item: Box=Box{}\nassert(item~=nil)",
+    "newName": "typeof",
+    "expectSafeRename": false,
+    "runtime": true,
+    "expectedRenameOffsets": [],
+    "expectedRenamedSource": null
+  },
+  {
+    "name": "rename-to-number-type",
+    "source": "class Box end\nlocal item: Box=Box{}\nassert(item~=nil)",
+    "newName": "number",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      26,
+      30
+    ],
+    "expectedRenamedSource": "class number end\nlocal item: number=number{}\nassert(item~=nil)"
+  },
+  {
+    "name": "rename-to-any-type",
+    "source": "class Box end\nlocal item: Box=Box{}\nassert(item~=nil)",
+    "newName": "any",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      26,
+      30
+    ],
+    "expectedRenamedSource": "class any end\nlocal item: any=any{}\nassert(item~=nil)"
+  },
+  {
+    "name": "rename-to-class-type",
+    "source": "class Box end\nlocal item: Box=Box{}\nassert(item~=nil)",
+    "newName": "class",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      26,
+      30
+    ],
+    "expectedRenamedSource": "class class end\nlocal item: class=class{}\nassert(item~=nil)"
+  },
+  {
+    "name": "rename-to-object-type",
+    "source": "class Box end\nlocal item: Box=Box{}\nassert(item~=nil)",
+    "newName": "object",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      26,
+      30
+    ],
+    "expectedRenamedSource": "class object end\nlocal item: object=object{}\nassert(item~=nil)"
+  },
+  {
+    "name": "rename-to-type-type",
+    "source": "class Box end\nlocal item: Box=Box{}\nassert(item~=nil)",
+    "newName": "type",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      26,
+      30
+    ],
+    "expectedRenamedSource": "class type end\nlocal item: type=type{}\nassert(item~=nil)"
+  },
+  {
+    "name": "rename-to-continue-type",
+    "source": "class Box end\nlocal item: Box=Box{}\nassert(item~=nil)",
+    "newName": "continue",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      26,
+      30
+    ],
+    "expectedRenamedSource": "class continue end\nlocal item: continue=continue{}\nassert(item~=nil)"
+  },
+  {
+    "name": "rename-to-export-type",
+    "source": "class Box end\nlocal item: Box=Box{}\nassert(item~=nil)",
+    "newName": "export",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      26,
+      30
+    ],
+    "expectedRenamedSource": "class export end\nlocal item: export=export{}\nassert(item~=nil)"
+  },
+  {
+    "name": "rename-to-self-type",
+    "source": "class Box end\nlocal item: Box=Box{}\nassert(item~=nil)",
+    "newName": "self",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      26,
+      30
+    ],
+    "expectedRenamedSource": "class self end\nlocal item: self=self{}\nassert(item~=nil)"
+  },
+  {
+    "name": "rename-to-typeof-value",
+    "source": "class Box end\nlocal item=Box{}\nassert(item~=nil)",
+    "newName": "typeof",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      25
+    ],
+    "expectedRenamedSource": "class typeof end\nlocal item=typeof{}\nassert(item~=nil)"
+  },
+  {
+    "name": "rename-to-as-type",
+    "source": "class Box end\nlocal item: Box=Box{}\nassert(item~=nil)",
+    "newName": "as",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      26,
+      30
+    ],
+    "expectedRenamedSource": "class as end\nlocal item: as=as{}\nassert(item~=nil)"
+  },
+  {
+    "name": "rename-to-goto-type",
+    "source": "class Box end\nlocal item: Box=Box{}\nassert(item~=nil)",
+    "newName": "goto",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      26,
+      30
+    ],
+    "expectedRenamedSource": "class goto end\nlocal item: goto=goto{}\nassert(item~=nil)"
+  },
+  {
+    "name": "rename-to-const-type",
+    "source": "class Box end\nlocal item: Box=Box{}\nassert(item~=nil)",
+    "newName": "const",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      26,
+      30
+    ],
+    "expectedRenamedSource": "class const end\nlocal item: const=const{}\nassert(item~=nil)"
+  },
+  {
+    "name": "typeof-value-query-remains-valid",
+    "source": "class Box end\ntype Maker=typeof(Box)\nlocal Make: Maker=Box\nassert(Make{}~=nil)",
+    "newName": "typeof",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      32,
+      55
+    ],
+    "expectedRenamedSource": "class typeof end\ntype Maker=typeof(typeof)\nlocal Make: Maker=typeof\nassert(Make{}~=nil)"
+  },
+  {
+    "name": "generic-contextual-capture-continue",
+    "source": "class Box end\nlocal function identity<continue>(item: Box): Box return item end\nassert(identity(Box{})~=nil)",
+    "newName": "continue",
+    "expectSafeRename": false,
+    "runtime": true,
+    "expectedRenameOffsets": [],
+    "expectedRenamedSource": null
+  },
+  {
+    "name": "generic-contextual-capture-export",
+    "source": "class Box end\nlocal function identity<export>(item: Box): Box return item end\nassert(identity(Box{})~=nil)",
+    "newName": "export",
+    "expectSafeRename": false,
+    "runtime": true,
+    "expectedRenameOffsets": [],
+    "expectedRenamedSource": null
+  },
+  {
+    "name": "static-class-self-scope",
+    "source": "class Box\nfunction create(): Box return Box{} end\nend\nassert(Box.create()~=nil)",
+    "newName": "self",
+    "expectSafeRename": true,
+    "runtime": true,
+    "expectedRenameOffsets": [
+      6,
+      29,
+      40,
+      61
+    ],
+    "expectedRenamedSource": "class self\nfunction create(): self return self{} end\nend\nassert(self.create()~=nil)"
+  }
+]

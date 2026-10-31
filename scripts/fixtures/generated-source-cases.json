@@ -1,0 +1,415 @@
+[
+  {
+    "name": "cached-table-identity",
+    "main": "local a=require(\"mod\")\nlocal b=require(\"mod\")\nassert(a==b)\nprint(\"ok\")",
+    "files": {
+      "mod.luau": "print(\"module-run\")\nreturn {}"
+    },
+    "stdout": "module-run\nok\n",
+    "valid": true
+  },
+  {
+    "name": "cached-zero",
+    "main": "assert(require(\"mod\")==0)\nassert(require(\"mod\")==0)\nprint(\"ok\")",
+    "files": {
+      "mod.luau": "print(\"module-run\")\nreturn 0"
+    },
+    "stdout": "module-run\nok\n",
+    "valid": true
+  },
+  {
+    "name": "cached-empty-string",
+    "main": "assert(require(\"mod\")==\"\")\nassert(require(\"mod\")==\"\")\nprint(\"ok\")",
+    "files": {
+      "mod.luau": "print(\"module-run\")\nreturn \"\""
+    },
+    "stdout": "module-run\nok\n",
+    "valid": true
+  },
+  {
+    "name": "false-reexecutes",
+    "main": "assert(require(\"mod\")==false)\nassert(require(\"mod\")==false)\nprint(\"ok\")",
+    "files": {
+      "mod.luau": "print(\"module-run\")\nreturn false"
+    },
+    "stdout": "module-run\nmodule-run\nok\n",
+    "valid": true
+  },
+  {
+    "name": "nil-reexecutes",
+    "main": "assert(require(\"mod\")==nil)\nassert(require(\"mod\")==nil)\nprint(\"ok\")",
+    "files": {
+      "mod.luau": "print(\"module-run\")"
+    },
+    "stdout": "module-run\nmodule-run\nok\n",
+    "valid": true
+  },
+  {
+    "name": "first-return-only",
+    "main": "local a,b=require(\"mod\")\nassert(a==42 and b==nil)\nprint(\"ok\")",
+    "files": {
+      "mod.luau": "return 42, 99"
+    },
+    "stdout": "ok\n",
+    "valid": true
+  },
+  {
+    "name": "returned-function-sandbox",
+    "main": "caller_marker=99\nlocal f=require(\"mod\")\nassert(f()==42 and module_marker==nil)\nprint(\"ok\")",
+    "files": {
+      "mod.luau": "module_marker=42\nreturn function()\nassert(caller_marker==nil)\nreturn module_marker\nend"
+    },
+    "stdout": "ok\n",
+    "valid": true
+  },
+  {
+    "name": "caller-locals-isolated",
+    "main": "local caller_local={value=99}\nassert(require(\"mod\")==true)\nassert(caller_local.value==99)\nprint(\"ok\")",
+    "files": {
+      "mod.luau": "return caller_local==nil"
+    },
+    "stdout": "ok\n",
+    "valid": true
+  },
+  {
+    "name": "errors-propagate-and-retry",
+    "main": "local ok,e=pcall(function() return require(\"mod\") end)\nassert(not ok and string.find(e,\"owned-module-error\",1,true))\nlocal again=pcall(function() return require(\"mod\") end)\nassert(not again)\nprint(\"ok\")",
+    "files": {
+      "mod.luau": "print(\"module-run\")\nerror(\"owned-module-error\")"
+    },
+    "stdout": "module-run\nmodule-run\nok\n",
+    "valid": true
+  },
+  {
+    "name": "yield-rejected",
+    "main": "local ok,e=pcall(function() return require(\"mod\") end)\nassert(not ok and string.find(e,\"attempt to yield from sandboxed require\",1,true))\nprint(\"ok\")",
+    "files": {
+      "mod.luau": "coroutine.yield()\nreturn 42"
+    },
+    "stdout": "ok\n",
+    "valid": true
+  },
+  {
+    "name": "nested-diamond-shares-cache",
+    "main": "assert(require(\"left\")==require(\"right\"))\nprint(\"ok\")",
+    "files": {
+      "left.luau": "return require(\"shared\")",
+      "right.luau": "return require(\"shared\")",
+      "shared.luau": "print(\"shared-run\")\nreturn {}"
+    },
+    "stdout": "shared-run\nok\n",
+    "valid": true
+  },
+  {
+    "name": "cycle-rejected",
+    "main": "require(\"a\")",
+    "files": {
+      "a.luau": "return require(\"b\")",
+      "b.luau": "return require(\"a\")"
+    },
+    "valid": false
+  },
+  {
+    "name": "depth-rejected",
+    "main": "require(\"a\")",
+    "files": {
+      "a.luau": "return require(\"b\")",
+      "b.luau": "return 42"
+    },
+    "maxDepth": 1,
+    "valid": false
+  },
+  {
+    "name": "missing-rejected",
+    "main": "require(\"missing\")",
+    "files": {},
+    "valid": false
+  },
+  {
+    "name": "empty-module-accepted",
+    "main": "require(\"empty\")",
+    "files": {
+      "empty.luau": ""
+    },
+    "valid": true,
+    "stdout": ""
+  },
+  {
+    "name": "local-require-preserved",
+    "main": "local function require(x) return x end\nprint(require(\"missing\"))",
+    "files": {},
+    "valid": true,
+    "stdout": "missing\n"
+  },
+  {
+    "name": "dynamic-call-refused",
+    "main": "local p=\"mod\"\nprint(require(p))",
+    "files": {
+      "mod.luau": "return 42"
+    },
+    "stdout": "",
+    "nativeExit": 1,
+    "stderrContains": "Expected identifier when parsing expression",
+    "valid": false
+  },
+  {
+    "name": "comments-and-literal-strings",
+    "main": "-- require(\"missing\")\n--[=[ require(\"also_missing\") ]=]\nlocal s=[=[require(\"still_missing\")]=]\nlocal v=require(\"mod\")\nprint(v)",
+    "files": {
+      "mod.luau": "return 42"
+    },
+    "stdout": "42\n",
+    "valid": true
+  },
+  {
+    "name": "source-map-module-and-caller",
+    "main": "local x=1\nlocal v=require(\"mod\")\nprint(\"unexpected\")",
+    "files": {
+      "mod.luau": "local x=1\n\nerror(\"mapped-owned-error\")"
+    },
+    "stdout": "",
+    "nativeExit": 1,
+    "stderrContains": "mapped-owned-error",
+    "mapping": true,
+    "valid": true
+  },
+  {
+    "name": "source-macros-disabled",
+    "main": "assert(__LINE__==nil and __FILE__==nil)\nprint(\"ok\")",
+    "files": {},
+    "stdout": "ok\n",
+    "valid": true
+  },
+  {
+    "name": "source-macros-explicit-context",
+    "main": "assert(__LINE__==1)\nassert(__FILE__==__EXPECTED_MAIN__)\nassert(require(\"mod\")==3)\nprint(\"ok\")",
+    "files": {
+      "mod.luau": "assert(__FILE__==__EXPECTED_MODULE__)\n\nreturn __LINE__"
+    },
+    "stdout": "ok\n",
+    "valid": true,
+    "context": {}
+  },
+  {
+    "name": "string-call",
+    "main": "print(require \"mod\")",
+    "files": {
+      "mod.luau": "return 42"
+    },
+    "valid": true,
+    "stdout": "42\n"
+  },
+  {
+    "name": "long-string-call",
+    "main": "print(require[[mod]])",
+    "files": {
+      "mod.luau": "return 42"
+    },
+    "valid": true,
+    "stdout": "42\n"
+  },
+  {
+    "name": "multiline-call",
+    "main": "print(require( -- comment\r\n \"mod\"\r\n))",
+    "files": {
+      "mod.luau": "return 42"
+    },
+    "valid": true,
+    "stdout": "42\n"
+  },
+  {
+    "name": "helper-names-not-captured",
+    "main": "local t=require(\"mod\")\nassert(t.modules==\"nil\" and t.cache==\"nil\")\nprint(\"ok\")",
+    "files": {
+      "mod.luau": "return {modules=type(modules),cache=type(cache)}"
+    },
+    "valid": true,
+    "stdout": "ok\n"
+  },
+  {
+    "name": "identity-time-context",
+    "main": "assert(__AGENTID__==\"00000000-0000-0000-0000-000000000000\")\nassert(tostring(__AGENTKEY__)==__AGENTID__)\nassert(__AGENTNAME__==\"Name \\\"quoted\\\"\\010next 😀\")\nassert(__DATE__==\"2026-10-30\" and __TIME__==\"01:02:03\")\nassert(__TIMESTAMP__==\"2026-10-30T01:02:03.000Z\" and __UNIXTIME__==1793322123)\nprint(\"context-ok\")",
+    "files": {},
+    "valid": true,
+    "stdout": "context-ok\n",
+    "context": {
+      "agentId": "00000000-0000-0000-0000-000000000000",
+      "agentName": "Name \"quoted\"\nnext 😀",
+      "timestamp": "2026-10-30T01:02:03Z"
+    }
+  },
+  {
+    "name": "interpolated-source-call",
+    "main": "print(`value {require(\"mod\")}`)",
+    "files": {
+      "mod.luau": "return 42"
+    },
+    "valid": true,
+    "stdout": "value 42\n"
+  },
+  {
+    "name": "macro-local-shadow",
+    "main": "local __LINE__=999\nassert(__LINE__==999)\nassert(require(\"mod\")==123)\nprint(\"ok\")",
+    "files": {
+      "mod.luau": "local __FILE__=123\nreturn __FILE__"
+    },
+    "valid": true,
+    "stdout": "ok\n",
+    "context": {}
+  },
+  {
+    "name": "indirect-require-refused",
+    "main": "local load=require\nreturn load(\"mod\")",
+    "files": {},
+    "valid": false
+  },
+  {
+    "name": "macro-write-refused",
+    "main": "__LINE__=2",
+    "files": {},
+    "valid": false,
+    "context": {}
+  },
+  {
+    "name": "global-loader-write-refused",
+    "main": "require=function(x) return x end",
+    "files": {},
+    "valid": false
+  },
+  {
+    "name": "missing-macro-context-refused",
+    "main": "print(__AGENTNAME__)",
+    "files": {},
+    "valid": false,
+    "context": {}
+  },
+  {
+    "name": "main-runtime-error",
+    "main": "local v=require(\"mod\")\nerror(\"owned-main-error\")",
+    "files": {
+      "mod.luau": "return 42"
+    },
+    "valid": true,
+    "stdout": "",
+    "nativeExit": 1,
+    "stderrContains": "owned-main-error",
+    "mainMapping": true
+  },
+  {
+    "name": "cr-only-import-comments",
+    "main": "-- root\rprint(require(\"mod\"))",
+    "files": {
+      "mod.luau": "-- module\rreturn 42\r"
+    },
+    "stdout": "42\n",
+    "valid": true
+  },
+  {
+    "name": "mixed-long-and-escaped-lines",
+    "main": "local text=[[a\rb]]\r\nlocal escaped=\"a\\\rb\"\nassert(#text==3 and #escaped==3)\rprint(\"ok\")",
+    "files": {},
+    "stdout": "ok\n",
+    "valid": true
+  },
+  {
+    "name": "cr-module-error-mapping",
+    "main": "local v=require(\"mod\")\rprint(v)",
+    "files": {
+      "mod.luau": "local value=1\rerror(\"mapped-owned-error\")\rreturn value"
+    },
+    "stdout": "",
+    "valid": true,
+    "nativeExit": 1,
+    "stderrContains": "mapped-owned-error",
+    "mapping": true
+  },
+  {
+    "name": "cr-main-error-mapping",
+    "main": "-- header\rerror(\"owned-main-error\")",
+    "files": {},
+    "stdout": "",
+    "valid": true,
+    "nativeExit": 1,
+    "stderrContains": "owned-main-error",
+    "mainMapping": true
+  },
+  {
+    "name": "cr-comment-invalid-statement",
+    "main": "-- header\rlocal =",
+    "files": {},
+    "valid": false,
+    "nativeOriginalSyntaxExit": 1
+  },
+  {
+    "name": "lf-unescaped-quoted-line",
+    "main": "print(\"first\nsecond\")",
+    "files": {},
+    "valid": false,
+    "nativeOriginalSyntaxExit": 1
+  },
+  {
+    "name": "cr-unescaped-quoted-line",
+    "main": "print(\"first\rsecond\")",
+    "files": {},
+    "valid": false,
+    "nativeOriginalSyntaxExit": 1
+  },
+  {
+    "name": "crlf-unescaped-quoted-line",
+    "main": "print(\"first\r\nsecond\")",
+    "files": {},
+    "valid": false,
+    "nativeOriginalSyntaxExit": 1
+  },
+  {
+    "name": "escaped-literal-module-path",
+    "main": "assert(require(\"\\x6dod\")==42)\nassert(math[\"\\u{61}bs\"](-1)==1)\nprint(\"ok\")",
+    "files": {
+      "mod.luau": "return 42"
+    },
+    "stdout": "ok\n",
+    "valid": true
+  },
+  {
+    "name": "malformed-string-escape",
+    "main": "print(\"\\xGG\")",
+    "files": {},
+    "valid": false,
+    "nativeOriginalSyntaxExit": 1
+  },
+  {
+    "name": "nested-interpolation-import",
+    "main": "local value=require(\"mod\")\nprint(`outer {`inner {value} {\"}\"}`} end`)",
+    "files": {
+      "mod.luau": "return 42"
+    },
+    "valid": true,
+    "stdout": "outer inner 42 } end\n"
+  },
+  {
+    "name": "template-double-brace-refusal",
+    "main": "print(`{{42}}`)",
+    "files": {},
+    "valid": false,
+    "nativeOriginalSyntaxExit": 1
+  },
+  {
+    "name": "simple-backtick-module-path",
+    "main": "print(require(`mod`))",
+    "files": {
+      "mod.luau": "return 42"
+    },
+    "valid": true,
+    "stdout": "42\n"
+  },
+  {
+    "name": "interpolation-require-and-line-macro",
+    "main": "print(`nested {require(\"mod\")} line {__LINE__}`)",
+    "files": {
+      "mod.luau": "return 42"
+    },
+    "context": {},
+    "valid": true,
+    "stdout": "nested 42 line 1\n"
+  }
+]

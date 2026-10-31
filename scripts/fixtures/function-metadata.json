@@ -1,0 +1,755 @@
+[
+  {
+    "name": "direct",
+    "source": "@deprecated local function old(): number return 42 end\nprint(old())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 6
+          },
+          "end": {
+            "line": 1,
+            "character": 9
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "alias",
+    "source": "@deprecated local function old(): number return 42 end\nlocal alias=old\nprint(alias())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 12
+          },
+          "end": {
+            "line": 1,
+            "character": 15
+          }
+        }
+      },
+      {
+        "message": "Function 'alias' is deprecated",
+        "range": {
+          "start": {
+            "line": 2,
+            "character": 6
+          },
+          "end": {
+            "line": 2,
+            "character": 11
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "shadow",
+    "source": "@deprecated local function old(): number return 42 end\ndo local old=42 print(old) end\nprint(old())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 2,
+            "character": 6
+          },
+          "end": {
+            "line": 2,
+            "character": 9
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "reassigned",
+    "source": "@deprecated local function old(): number return 42 end\nlocal function fresh(): number return 7 end\nold=fresh\nprint(old())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": []
+  },
+  {
+    "name": "alias-before-reassign",
+    "source": "@deprecated local function old(): number return 42 end\nlocal function fresh(): number return 7 end\nlocal alias=old\nold=fresh\nprint(alias())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 2,
+            "character": 12
+          },
+          "end": {
+            "line": 2,
+            "character": 15
+          }
+        }
+      },
+      {
+        "message": "Function 'alias' is deprecated",
+        "range": {
+          "start": {
+            "line": 4,
+            "character": 6
+          },
+          "end": {
+            "line": 4,
+            "character": 11
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "callback",
+    "source": "@deprecated local function old(): number return 42 end\nlocal function apply(fn: ()->number): number return fn() end\nprint(apply(old))",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 2,
+            "character": 12
+          },
+          "end": {
+            "line": 2,
+            "character": 15
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "record-key",
+    "source": "@deprecated local function old(): number return 42 end\nlocal api={old=42}\nprint(api.old)",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": []
+  },
+  {
+    "name": "anonymous",
+    "source": "local old=@deprecated function(): number return 42 end\nprint(old())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 6
+          },
+          "end": {
+            "line": 1,
+            "character": 9
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "table-literal",
+    "source": "local api={old=@deprecated function(): number return 42 end}\nprint(api.old())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Member 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 6
+          },
+          "end": {
+            "line": 1,
+            "character": 13
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "table-dot",
+    "source": "local api={}\n@deprecated function api.old(): number return 42 end\nprint(api.old())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Member 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 2,
+            "character": 6
+          },
+          "end": {
+            "line": 2,
+            "character": 13
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "table-colon",
+    "source": "local api={}\n@deprecated function api:old(): number return 42 end\nprint(api:old())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Member 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 2,
+            "character": 6
+          },
+          "end": {
+            "line": 2,
+            "character": 13
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "table-alias",
+    "source": "local api={old=@deprecated function(): number return 42 end}\nlocal alias=api\nprint(alias.old())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Member 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 2,
+            "character": 6
+          },
+          "end": {
+            "line": 2,
+            "character": 15
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "member-value",
+    "source": "local api={old=@deprecated function(): number return 42 end}\nlocal alias=api.old\nprint(alias())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Member 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 12
+          },
+          "end": {
+            "line": 1,
+            "character": 19
+          }
+        }
+      },
+      {
+        "message": "Function 'alias' is deprecated",
+        "range": {
+          "start": {
+            "line": 2,
+            "character": 6
+          },
+          "end": {
+            "line": 2,
+            "character": 11
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "bracket-member",
+    "source": "local api={old=@deprecated function(): number return 42 end}\nprint(api[\"old\"]())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": []
+  },
+  {
+    "name": "member-reassigned",
+    "source": "local api={old=@deprecated function(): number return 42 end}\napi.old=function(): number return 7 end\nprint(api.old())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Member 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 0
+          },
+          "end": {
+            "line": 1,
+            "character": 7
+          }
+        }
+      },
+      {
+        "message": "Member 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 2,
+            "character": 6
+          },
+          "end": {
+            "line": 2,
+            "character": 13
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "recursive",
+    "source": "@deprecated local function old(n: number): number if n==0 then return 42 end return old(n-1) end\nprint(old(2))",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 6
+          },
+          "end": {
+            "line": 1,
+            "character": 9
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "recursive-global",
+    "source": "@deprecated function old(n: number): number if n==0 then return 42 end return old(n-1) end\nprint(old(2))",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 6
+          },
+          "end": {
+            "line": 1,
+            "character": 9
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "recursive-member",
+    "source": "local api={}\n@deprecated function api.old(n: number): number if n==0 then return 42 end return api.old(n-1) end\nprint(api.old(2))",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Member 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 2,
+            "character": 6
+          },
+          "end": {
+            "line": 2,
+            "character": 13
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "nested-recursive",
+    "source": "@deprecated local function old(n: number): number local function inner(): number return old(n-1) end if n==0 then return 42 end return inner() end\nprint(old(2))",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 6
+          },
+          "end": {
+            "line": 1,
+            "character": 9
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "no-children",
+    "source": "@deprecated local function old(): (()->number) local function inner(): number return 42 end return inner end\nlocal inner=old()\nprint(inner())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 12
+          },
+          "end": {
+            "line": 1,
+            "character": 15
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "return-deprecated",
+    "source": "@deprecated local function old(): number return 42 end\nlocal function choose(): (()->number) return old end\nlocal alias=choose()\nprint(alias())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 45
+          },
+          "end": {
+            "line": 1,
+            "character": 48
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "annotated-alias",
+    "source": "@deprecated local function old(): number return 42 end\nlocal alias: ()->number=old\nprint(alias())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 24
+          },
+          "end": {
+            "line": 1,
+            "character": 27
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "branch-mixed",
+    "source": "@deprecated local function old(): number return 42 end\nlocal function fresh(): number return 7 end\nlocal fn=old\nlocal coin: boolean=false\nif coin then fn=fresh end\nprint(fn())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 2,
+            "character": 9
+          },
+          "end": {
+            "line": 2,
+            "character": 12
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "branch-both",
+    "source": "@deprecated local function old(): number return 42 end\n@deprecated local function other(): number return 7 end\nlocal fn=old\nlocal coin: boolean=false\nif coin then fn=other end\nprint(fn())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated",
+        "range": {
+          "start": {
+            "line": 2,
+            "character": 9
+          },
+          "end": {
+            "line": 2,
+            "character": 12
+          }
+        }
+      },
+      {
+        "message": "Function 'other' is deprecated",
+        "range": {
+          "start": {
+            "line": 4,
+            "character": 16
+          },
+          "end": {
+            "line": 4,
+            "character": 21
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "all-options",
+    "source": "@[deprecated{use=\"fresh\",reason=\"old API\"}] local function old(): number return 42 end\nprint(old())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated, use 'fresh' instead. old API",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 6
+          },
+          "end": {
+            "line": 1,
+            "character": 9
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "first-key",
+    "source": "@[deprecated{use=\"first\",use=\"last\",reason=\"why\",reason=\"later\"}] local function old(): number return 42 end\nprint(old())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated, use 'first' instead. why",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 6
+          },
+          "end": {
+            "line": 1,
+            "character": 9
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "empty-use",
+    "source": "@[deprecated{use=\"\",reason=\"\"}] local function old(): number return 42 end\nprint(old())",
+    "kind": "deprecation",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": [
+      {
+        "message": "Function 'old' is deprecated, use '' instead. ",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 6
+          },
+          "end": {
+            "line": 1,
+            "character": 9
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "native-backtick",
+    "source": "@[native `tag`] local function answer(): number return 42 end\nprint(answer())",
+    "kind": "syntax",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "deprecations": []
+  },
+  {
+    "name": "native-backtick-empty",
+    "source": "@[native ``] local function answer(): number return 42 end\nprint(answer())",
+    "kind": "syntax",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "deprecations": []
+  },
+  {
+    "name": "checked-backtick",
+    "source": "@[checked `tag`] local function answer(): number return 42 end\nprint(answer())",
+    "kind": "syntax",
+    "expectedNative": {
+      "syntax": 1,
+      "compile": 1,
+      "strict": 1
+    },
+    "deprecations": []
+  },
+  {
+    "name": "native-parenthesized-backtick",
+    "source": "@[native(`tag`)] local function answer(): number return 42 end\nprint(answer())",
+    "kind": "syntax",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": []
+  },
+  {
+    "name": "native-long-string",
+    "source": "@[native [=[tag]=]] local function answer(): number return 42 end\nprint(answer())",
+    "kind": "syntax",
+    "expectedNative": {
+      "syntax": 0,
+      "compile": 0,
+      "strict": 0
+    },
+    "deprecations": []
+  }
+]

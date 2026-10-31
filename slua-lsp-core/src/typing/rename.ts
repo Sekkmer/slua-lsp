@@ -1,12 +1,14 @@
+import { collectNavigationBindings, navigationRenamePreservesBindings } from './navigationBindings.js';
 import type { SluaRegistry } from '../slua/registry.js';
 import { findAllReferences, type ReferenceLocation } from './findReferences.js';
+import { lexicalOccurrenceAt } from './lexicalBindings.js';
 
 export type RenameEdit = {
 	identifier: ReferenceLocation['identifier'];
 	newName: string;
 };
 
-const LUA_RESERVED_WORDS = new Set([
+const LUAU_RESERVED_WORDS = new Set([
 	'and',
 	'break',
 	'do',
@@ -16,7 +18,6 @@ const LUA_RESERVED_WORDS = new Set([
 	'false',
 	'for',
 	'function',
-	'goto',
 	'if',
 	'in',
 	'local',
@@ -43,7 +44,7 @@ function posInLoc(pos: { line: number; character: number }, loc: Loc): boolean {
 
 export function isValidRenameIdentifier(name: string): boolean {
 	if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) return false;
-	return !LUA_RESERVED_WORDS.has(name);
+	return !LUAU_RESERVED_WORDS.has(name);
 }
 
 /**
@@ -84,9 +85,13 @@ export function getRenameEdits(
 	ast: unknown,
 	position: { line: number; character: number },
 	newName: string,
-	registry: SluaRegistry
+	_registry: SluaRegistry
 ): RenameEdit[] {
 	if (!isValidRenameIdentifier(newName)) return [];
-	const references = findAllReferences(ast, position, registry, true);
-	return references.map(ref => ({ identifier: ref.identifier, newName }));
+	const bindings = collectNavigationBindings(ast);
+	const occurrences = bindings.occurrences;
+	const selected = lexicalOccurrenceAt(occurrences, position)?.definition;
+	if (!selected?.identifier.location || !navigationRenamePreservesBindings(ast, bindings, selected, newName)) return [];
+	return occurrences.filter((entry) => entry.definition?.identifier === selected.identifier)
+		.map((entry) => ({ identifier: entry.identifier, newName }));
 }

@@ -1,73 +1,48 @@
 import type { CoreDiagnostic } from '../types.js';
+import { isAstNode, isMemberExpression, isIdentifier, rangeFromNode, type CallExpressionNode } from '../../parser/ast.js';
+import { resolveBuiltinExpression, type LocalTypeLookup } from '../../slua/resolveBuiltin.js';
+import type { SluaRegistry } from '../../slua/registry.js';
+import { defaultMetatableRegistry } from '../../slua/metatables.js';
+import { sluaTypeIsAssignable } from '../../slua/types.js';
 
-const LLEVENTS_METHODS = ['on', 'off', 'once', 'eventNames', 'listeners'] as const;
-const LLTIMERS_METHODS = ['once', 'off', 'every'] as const;
-
-function buildLineStarts(text: string): number[] {
-	const starts = [0];
-	for (let i = 0; i < text.length; i++) {
-		if (text.charCodeAt(i) === 10) starts.push(i + 1);
+/** Check actual calls after lexical binding resolution; member reads are legal. */
+export function diagnoseMethodCallStyle(call: CallExpressionNode, registry: SluaRegistry, local: LocalTypeLookup): CoreDiagnostic[] {
+	if (!isMemberExpression(call.callee) || !isIdentifier(call.callee.property)) return [];
+	const member = call.callee;
+	const name = call.callee.property.name;
+	const receiver = resolveBuiltinExpression(member.object, registry, local);
+	if (!receiver || (receiver.type.kind !== 'table' && receiver.type.kind !== 'custom')) return [];
+	const type = receiver.type.kind === 'custom' ? { kind: 'table' as const, metatable: receiver.type.name } : receiver.type;
+	const display = receiver.displayName ?? type.metatable ?? type.module ?? 'value';
+	const range = rangeFromNode(call.callee.property);
+	if (type.metatable) {
+		const object = registry.getObjectType(type.metatable);
+		const method = object?.methods[name] ?? defaultMetatableRegistry.getMembers(type.metatable)?.[name];
+		if (!method) return object ? [{ code: 'unknown-intrinsic-method', severity: 'error',
+			message: `Unknown method ${display}:${name}(...).`, range }] : [];
+		if (method.requiresColonCall && member.indexer !== ':') {
+			const explicitSelf = resolveBuiltinExpression(call.arguments[0], registry, local)?.type;
+			const signature = registry.getModule(type.metatable)?.functions[name]?.signature;
+			const expectedSelf = receiver.type.kind === 'custom' ? receiver.type : signature?.kind === 'function' ? signature.params[0] ?? type : type;
+			// Dot syntax is valid when the caller supplies self explicitly. Unknown
+			// values remain conservative; argument diagnostics may know more later.
+			if (expectedSelf.kind === 'table' && !expectedSelf.metatable && !expectedSelf.module &&
+				isAstNode(call.arguments[0]) && call.arguments[0].type === 'Table') return [];
+			if (explicitSelf && (sluaTypeIsAssignable(expectedSelf, explicitSelf) ||
+				(explicitSelf.kind === 'primitive' && explicitSelf.name === 'unknown'))) return [];
+			return [{ code: 'use-colon-call', severity: 'error',
+				message: `Use ':' when calling ${display}:${name}(...), or pass self explicitly as the first argument.`, range }];
+		}
+		return [];
 	}
-	return starts;
-}
-
-function positionFromOffset(lineStarts: number[], offset: number): { line: number; character: number } {
-	let lo = 0;
-	let hi = lineStarts.length - 1;
-	while (lo <= hi) {
-		const mid = (lo + hi) >> 1;
-		const start = lineStarts[mid]!;
-		const nextStart = mid + 1 < lineStarts.length ? lineStarts[mid + 1]! : Number.POSITIVE_INFINITY;
-		if (offset < start) {
-			hi = mid - 1;
-		} else if (offset >= nextStart) {
-			lo = mid + 1;
-		} else {
-			return { line: mid, character: offset - start };
+	if (type.module && member.indexer === ':') {
+		const fn = registry.getModule(type.module)?.functions[name];
+		// Only diagnose known plain functions, not missing exports or a native
+		// table builder whose signature already expects an explicit self table.
+		if (fn?.signature.kind === 'function' && fn.signature.params[0]?.kind !== 'table') {
+			return [{ code: 'use-dot-call', severity: 'error',
+				message: `Use '.' when calling ${display}.${name}(...); colon-call passes 'self'.`, range }];
 		}
 	}
-	// Fallback
-	return { line: 0, character: 0 };
-}
-
-export function ruleMethodCallStyle(text: string): CoreDiagnostic[] {
-	// We want to flag dot-calls where SLua runtime expects `self` (method call).
-	// Example (bad): LLEvents.on("listen", fn)
-	// Example (good): LLEvents:on("listen", fn)
-	//
-	// This is intentionally string-based (not AST) so it still works even when we
-	// preprocess Luau-ish syntax for parsing.
-	const lleventsMethodPattern = LLEVENTS_METHODS.join('|');
-	const lltimersMethodPattern = LLTIMERS_METHODS.join('|');
-	const re = new RegExp(
-		`\\b(LLEvents)\\s*\\.\\s*(${lleventsMethodPattern})\\b|\\b(LLTimers)\\s*\\.\\s*(${lltimersMethodPattern})\\b`,
-		'g'
-	);
-
-	const diags: CoreDiagnostic[] = [];
-	const lineStarts = buildLineStarts(text);
-
-	let match: RegExpExecArray | null;
-	while ((match = re.exec(text))) {
-		const receiver = match[1] ?? match[3];
-		const method = match[2] ?? match[4];
-		const full = match[0]!;
-		if (!receiver || !method) continue;
-
-		const dotIndexInFull = full.indexOf('.') >= 0 ? full.indexOf('.') : receiver.length;
-		const startOffset = match.index + dotIndexInFull;
-		const endOffset = match.index + full.length;
-
-		diags.push({
-			code: 'use-colon-call',
-			severity: 'error',
-			message: `Use ':' when calling ${receiver}:${method}(...); dot-call loses 'self'.`,
-			range: {
-				start: positionFromOffset(lineStarts, startOffset),
-				end: positionFromOffset(lineStarts, endOffset)
-			}
-		});
-	}
-
-	return diags;
+	return [];
 }

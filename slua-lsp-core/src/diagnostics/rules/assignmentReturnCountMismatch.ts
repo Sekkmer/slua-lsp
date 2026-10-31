@@ -1,3 +1,4 @@
+import { conditionalBinding } from '../../typing/conditionalBindings.js';
 import type { CoreDiagnostic, Range } from '../types.js';
 
 import type { SluaRegistry } from '../../slua/registry.js';
@@ -138,7 +139,14 @@ function rangeFromNode(node: AstNode): Range {
 	};
 }
 
-type ReturnCount = number | null;
+type CountRange = { min: number; max: number };
+type ReturnCount = number | CountRange | null;
+function bounds(count: number | CountRange): CountRange {
+	return typeof count === 'number' ? { min: count, max: count } : count;
+}
+function addCount(prefix: number, count: number | CountRange): number | CountRange {
+	return typeof count === 'number' ? prefix + count : { min: prefix + count.min, max: prefix + count.max };
+}
 
 class ReturnCountEnv {
 	private readonly scopes: Array<Map<string, ReturnCount>> = [new Map()];
@@ -165,6 +173,8 @@ class ReturnCountEnv {
 		return null;
 	}
 
+	has(name: string): boolean { return this.scopes.some((scope) => scope.has(name)); }
+
 	set(name: string, count: ReturnCount): void {
 		this.scopes[this.scopes.length - 1]!.set(name, count);
 	}
@@ -173,7 +183,7 @@ class ReturnCountEnv {
 function signatureReturnCount(sig: SluaType | undefined | null): ReturnCount {
 	if (!sig || sig.kind !== 'function') return null;
 	const r = sig.returns;
-	if (r.kind === 'tuple') return r.items.length;
+	if (r.kind === 'tuple') return r.variadic ? null : r.minimum !== undefined && r.minimum < r.items.length ? { min: r.minimum, max: r.items.length } : r.items.length;
 	return 1;
 }
 
@@ -181,8 +191,7 @@ function callReturnCount(call: CallExpressionNode, env: ReturnCountEnv, registry
 	const callee = call.callee;
 
 	if (isIdentifier(callee)) {
-		const localCount = env.get(callee.name);
-		if (localCount !== null) return localCount;
+		if (env.has(callee.name)) return env.get(callee.name);
 		const g = registry.getGlobal(callee.name);
 		return signatureReturnCount(g?.signature);
 	}
@@ -221,6 +230,7 @@ function callReturnCount(call: CallExpressionNode, env: ReturnCountEnv, registry
 }
 
 function exprReturnCount(expr: unknown, env: ReturnCountEnv, registry: SluaRegistry): ReturnCount {
+	if (isRecord(expr) && expr.parenthesized) return 1;
 	if (isCallExpression(expr)) return callReturnCount(expr, env, registry);
 	// Any non-call expression produces exactly one value.
 	return 1;
@@ -238,7 +248,7 @@ function returnListCount(exprs: unknown[], env: ReturnCountEnv, registry: SluaRe
 		}
 		const last = exprReturnCount(exprs[i], env, registry);
 		if (last === null) return null;
-		return fixed + last;
+		return addCount(fixed, last);
 	}
 	return fixed + 1;
 }
@@ -260,7 +270,8 @@ function inferLocalFunctionReturnCountFromBody(body: unknown[], outerEnv: Return
 			return;
 		}
 		if (inferred === null) return;
-		if (inferred !== count) inferred = null;
+		const a = bounds(inferred), b = bounds(count);
+		if (a.min !== b.min || a.max !== b.max) inferred = { min: Math.min(a.min, b.min), max: Math.max(a.max, b.max) };
 	}
 
 	function visitStatements(stmts: unknown[]): void {
@@ -313,7 +324,10 @@ function inferLocalFunctionReturnCountFromBody(body: unknown[], outerEnv: Return
 			if (isRecord(stmt)) {
 				const stmtRec = stmt as Record<string, unknown>;
 				if (Array.isArray(stmtRec.body)) visitStatements(stmtRec.body);
-				if (Array.isArray(stmtRec.consequent)) visitStatements(stmtRec.consequent);
+				if (Array.isArray(stmtRec.consequent)) {
+					env.pushScope(); const binding = conditionalBinding(stmt); if (binding) env.set(binding.name, null);
+					visitStatements(stmtRec.consequent); env.popScope();
+				}
 				if (Array.isArray(stmtRec.alternate)) visitStatements(stmtRec.alternate);
 				if (isAstNode(stmtRec.alternate) && stmtRec.alternate.type === 'IfStatement') visitStatements([stmtRec.alternate]);
 			}
@@ -337,12 +351,20 @@ function assignmentProducedCount(init: unknown[] | undefined, env: ReturnCountEn
 		}
 		const last = exprReturnCount(init[i], env, registry);
 		if (last === null) return null;
-		return fixed + last;
+		return addCount(fixed, last);
 	}
 	return fixed;
 }
 
-function warnCountMismatch(diags: CoreDiagnostic[], stmt: AstNode, lhsCount: number, rhsCount: number): void {
+function warnCountMismatch(diags: CoreDiagnostic[], stmt: AstNode, lhsCount: number, rhsCount: number | CountRange): void {
+	if (typeof rhsCount !== 'number') {
+		if (lhsCount >= rhsCount.min && lhsCount <= rhsCount.max) return;
+		const direction = lhsCount > rhsCount.max ? 'filled with nil' : 'discarded';
+		const diff = lhsCount > rhsCount.max ? lhsCount - rhsCount.max : rhsCount.min - lhsCount;
+		diags.push({ code: 'assignment-return-count-mismatch', severity: 'warning', range: rangeFromNode(stmt),
+			message: `Assignment count mismatch: ${lhsCount} target(s) but ${rhsCount.min}-${rhsCount.max} value(s) produced (at least ${diff} will be ${direction}).` });
+		return;
+	}
 	if (lhsCount === rhsCount) return;
 	const direction = rhsCount > lhsCount ? 'discarded' : 'filled with nil';
 	const diff = Math.abs(rhsCount - lhsCount);
@@ -411,7 +433,8 @@ export function ruleAssignmentReturnCountMismatch(ast: unknown, registry: SluaRe
 			}
 
 			if (isIfStatement(stmt)) {
-				visitStatements(stmt.consequent);
+				env.pushScope(); const binding = conditionalBinding(stmt); if (binding) env.set(binding.name, null);
+				visitStatements(stmt.consequent); env.popScope();
 				const alt = stmt.alternate;
 				if (Array.isArray(alt)) visitStatements(alt);
 				else if (isAstNode(alt) && alt.type === 'IfStatement') visitStatements([alt]);
@@ -432,7 +455,10 @@ export function ruleAssignmentReturnCountMismatch(ast: unknown, registry: SluaRe
 			if (isRecord(stmt)) {
 				const stmtRec = stmt as Record<string, unknown>;
 				if (Array.isArray(stmtRec.body)) visitStatements(stmtRec.body);
-				if (Array.isArray(stmtRec.consequent)) visitStatements(stmtRec.consequent);
+				if (Array.isArray(stmtRec.consequent)) {
+					env.pushScope(); const binding = conditionalBinding(stmt); if (binding) env.set(binding.name, null);
+					visitStatements(stmtRec.consequent); env.popScope();
+				}
 				if (Array.isArray(stmtRec.alternate)) visitStatements(stmtRec.alternate);
 				if (isAstNode(stmtRec.alternate) && stmtRec.alternate.type === 'IfStatement') visitStatements([stmtRec.alternate]);
 			}

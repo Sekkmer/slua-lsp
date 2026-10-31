@@ -2,13 +2,22 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, main ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   ci:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,11 +34,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check repository and history hygiene
+        run: node scripts/check-repository.mjs --history
+
+      - name: Check shared release identity and support metadata
+        run: node scripts/release-metadata.mjs
 
       - name: Lint
         run: pnpm -r lint
@@ -39,3 +54,201 @@ jobs:
 
       - name: Test
         run: pnpm -r test
+
+      - name: Test native preparation contracts without external downloads
+        run: python3 -m unittest discover -s scripts/tests -v
+
+      - name: Test artifact staging, retention, locking and failure rollback
+        run: node --test scripts/tests/artifact-publication.test.mjs
+
+      - name: Test cache publication and server recovery in separate processes
+        run: |
+          node scripts/test-definition-cache.mjs
+          node scripts/test-lsp-recovery.mjs
+          node scripts/test-source-inspection.mjs
+          node scripts/test-source-input.mjs
+          node scripts/test-source-alias-unicode.mjs
+          node scripts/test-source-modules.mjs
+          node scripts/test-source-project-memory.mjs
+          node scripts/test-cli-refresh.mjs
+          node scripts/test-code-actions.mjs
+          node scripts/test-workspace-memory.mjs
+          node scripts/test-bundled-definitions.mjs
+
+      - name: Package CLI and VSIX
+        run: |
+          pnpm exec node scripts/package-cli.mjs
+          pnpm exec node scripts/package-vsix.mjs
+          python3 scripts/unpack-vsix.py
+          node scripts/verify-candidate.mjs
+          SLUA_MODULES_CLI="$PWD/.local/artifacts/cli/slua-lsp.mjs" SLUA_MODULES_SERVER="$PWD/.local/artifacts/vsix-unpacked/extension/server/out/index.js" node scripts/test-source-modules.mjs
+          SLUA_INPUT_CLI="$PWD/.local/artifacts/cli/slua-lsp.mjs" SLUA_INPUT_SERVER="$PWD/.local/artifacts/vsix-unpacked/extension/server/out/index.js" SLUA_INPUT_EVIDENCE="$PWD/.local/logs/source-input-packaged.json" node scripts/test-source-input.mjs
+          SLUA_ALIAS_CLI="$PWD/.local/artifacts/cli/slua-lsp.mjs" SLUA_ALIAS_EVIDENCE="$PWD/.local/logs/source-alias-unicode-packaged.json" node scripts/test-source-alias-unicode.mjs
+          SLUA_PROJECT_MEMORY_SERVER="$PWD/.local/artifacts/vsix-unpacked/extension/server/out/index.js" node scripts/test-source-project-memory.mjs
+
+      - name: Preserve evidence and candidates
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-node-${{ matrix.node }}
+          path: |
+            .local/logs/
+            .local/artifacts/cli/
+            .local/artifacts/*.vsix
+          include-hidden-files: true
+
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.27.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - name: Install local C++ oracle toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++
+      - name: Prepare verified pinned public inputs
+        run: |
+          python3 scripts/prepare-oracle.py --download
+          python3 scripts/prepare-oracle.py --documentation --download
+          python3 scripts/prepare-oracle.py --preprocessor --download
+      - name: Build and qualify actual native tools without in-tree regeneration
+        run: python3 scripts/qualify-oracle.py
+      - name: Compare source configuration resolution with the pinned native loader
+        run: node scripts/test-source-config.mjs
+
+      - name: Compare string values and escapes with actual native execution
+        run: node scripts/test-string-literals.mjs
+      - name: Qualify nested interpolation, string result types and CLI/LSP parity
+        run: node scripts/test-interpolation.mjs
+      - name: Qualify experimental classes with explicit native flag and CLI/LSP recovery
+        run: node scripts/test-classes.mjs
+      - name: Qualify class method bodies against native strict analysis and CLI/LSP recovery
+        run: node scripts/test-class-methods.mjs
+      - name: Qualify class constructor contracts against native strict analysis and local runtime
+        run: node scripts/test-class-constructors.mjs
+      - name: Qualify constructor initialization and self escape with native strict analysis and CLI/LSP recovery
+        run: node scripts/test-class-initialization.mjs
+      - name: Qualify class constructor/instance members, readonly writes and source lookup with native CLI/LSP parity
+        run: node scripts/test-class-members.mjs
+      - name: Qualify immutable class bindings and type namespace diagnostics with native CLI/LSP parity
+        run: node scripts/test-class-bindings.mjs
+      - name: Verify class type/value rename and native strict preservation
+        run: node scripts/test-class-navigation.mjs
+      - name: Verify native class inspection, aliases and CLI/LSP recovery
+        run: node scripts/test-class-library.mjs
+      - name: Native value-export bindings and agent/editor parity
+        run: node scripts/test-value-exports.mjs
+      - name: Open class inheritance, native distinctions and agent/editor parity
+        run: node scripts/test-class-inheritance.mjs
+      - name: Qualify ordinary function attribute syntax and preserved bindings
+        run: node scripts/test-function-attribute-syntax.mjs
+      - name: Qualify source deprecation and attribute presentation
+        run: node scripts/test-function-metadata.mjs
+      - name: Qualify conditional bindings with native flags and CLI/LSP scope recovery
+        run: node scripts/test-conditional-bindings.mjs
+      - name: Qualify exact integer literals with native types and CLI/LSP recovery
+        run: node scripts/test-integer-literals.mjs
+      - name: Qualify native vector and rotation operators with CLI/LSP recovery
+        run: node scripts/test-vector-rotation-operators.mjs
+      - name: Qualify source member definitions and imported-buffer recovery
+        run: node scripts/test-member-definitions.mjs
+      - name: Qualify native method call grammar and editor recovery
+        run: node scripts/test-method-call-grammar.mjs
+      - name: Qualify native JSON argument presence and return packs
+        run: node scripts/test-json-options.mjs
+      - name: Qualify native conversion inputs and nullable results
+        run: node scripts/test-conversion-contracts.mjs
+      - name: Qualify native variable string and stdlib return packs and recovery
+        run: node scripts/test-open-return-packs.mjs
+      - name: Verify Luau gotcha advice against valid native runtime and CLI/LSP suppression
+        run: node scripts/test-gotchas.mjs
+      - name: Bound truthiness advice traversal on real logical conditions
+        run: node scripts/test-gotcha-scaling.mjs
+      - name: Qualify actual upstream preprocessing and record known defects
+        run: node scripts/test-preprocessor.mjs
+      - name: Compile and execute standalone generated SLua and verify CLI/LSP mappings
+        run: node scripts/test-generation.mjs
+      - name: Qualify explicit source context in ordinary checks and generated code
+        run: node scripts/test-source-context.mjs
+      - name: Check generated-project lifetime and explicit output bounds
+        run: node scripts/test-generation-budget.mjs
+      - name: Verify navigation edits and pure local native runtime equivalence
+        run: node scripts/test-navigation.mjs
+      - name: Preserve native provenance and qualification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-qualification
+          path: |
+            .local/logs/cpp-oracle/
+            .local/logs/oracle-qualification/
+            .local/native-qualification/results.json
+            .local/oracle-corpus/results.json
+            .local/build/slua-oracle/oracle-build.json
+            .local/logs/navigation.json
+            .local/logs/source-config.json
+            .local/logs/string-literals.json
+            .local/logs/interpolation.json
+            .local/logs/preprocessor.json
+            .local/logs/generation.json
+            .local/logs/generation-budget.json
+            .local/fixtures/preprocessor-*/
+            .local/fixtures/string-literals-*/
+            .local/fixtures/interpolation-*/
+            .local/fixtures/generation-*/
+            .local/fixtures/generation-budget-*/
+            .local/upstream/sl-vscode-plugin-*.tar.gz
+          include-hidden-files: true
+
+  vscode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        vscode: ['1.90.0', 'stable']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.27.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - name: Package the candidate actually under test
+        run: |
+          pnpm exec node scripts/package-vsix.mjs
+          python3 scripts/unpack-vsix.py
+      - name: Install isolated editor session prerequisites
+        run: sudo apt-get update && sudo apt-get install -y xvfb dbus
+      - name: Run packaged extension in a real VS Code host
+        env:
+          SLUA_VSCODE_VERSION: ${{ matrix.vscode }}
+          SLUA_EXTENSION_CANDIDATE: ${{ github.workspace }}/.local/artifacts/vsix-unpacked/extension
+        run: |
+          xvfb-run -a node slua-lsp-client/scripts/run-vscode-tests.cjs
+          xvfb-run -a node slua-lsp-client/scripts/run-vscode-cache-faults.cjs
+      - name: Preserve editor results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-${{ matrix.vscode }}
+          path: |
+            .local/vscode-tests/results.json
+            .local/vscode-tests/cache-fault-results.json
+            .local/vscode-tests/history/*.json
+          include-hidden-files: true

@@ -1,0 +1,263 @@
+[
+  {
+    "name": "ascii",
+    "literal": "\"abs\"",
+    "valid": true,
+    "value": "abs"
+  },
+  {
+    "name": "hex-name",
+    "literal": "\"\\x61bs\"",
+    "valid": true,
+    "value": "abs"
+  },
+  {
+    "name": "decimal-name",
+    "literal": "\"\\097bs\"",
+    "valid": true,
+    "value": "abs"
+  },
+  {
+    "name": "unicode-name",
+    "literal": "\"\\u{61}bs\"",
+    "valid": true,
+    "value": "abs"
+  },
+  {
+    "name": "all-short-escapes",
+    "literal": "\"\\a\\b\\f\\n\\r\\t\\v\\\\\\\"\\q\"",
+    "valid": true,
+    "value": "\u0007\b\f\n\r\t\u000b\\\"q"
+  },
+  {
+    "name": "decimal-maximum",
+    "literal": "\"\\255\"",
+    "valid": true,
+    "value": "\udcff"
+  },
+  {
+    "name": "hex-non-utf8",
+    "literal": "\"\\xff\"",
+    "valid": true,
+    "value": "\udcff"
+  },
+  {
+    "name": "utf8-byte-pair",
+    "literal": "\"\\xc3\\xbf\"",
+    "valid": true,
+    "value": "\u00ff"
+  },
+  {
+    "name": "raw-unicode",
+    "literal": "\"\u00ff\ud83d\ude00\"",
+    "valid": true,
+    "value": "\u00ff\ud83d\ude00"
+  },
+  {
+    "name": "unicode-pair",
+    "literal": "\"\\u{ff}\\u{1f600}\"",
+    "valid": true,
+    "value": "\u00ff\ud83d\ude00"
+  },
+  {
+    "name": "nul-decimal",
+    "literal": "\"a\\000b\"",
+    "valid": true,
+    "value": "a\u0000b"
+  },
+  {
+    "name": "decimal-three-digits",
+    "literal": "\"\\0652\"",
+    "valid": true,
+    "value": "A2"
+  },
+  {
+    "name": "spaces-z",
+    "literal": "\"a\\z \t\r\n\u000bb\"",
+    "valid": true,
+    "value": "ab"
+  },
+  {
+    "name": "escaped-lf",
+    "literal": "\"a\\\nb\"",
+    "valid": true,
+    "value": "a\nb"
+  },
+  {
+    "name": "long-leading-lf",
+    "literal": "[=[\na\r\nb\rc]=]",
+    "valid": true,
+    "value": "a\nb\rc"
+  },
+  {
+    "name": "escaped-cr",
+    "literal": "\"a\\\rb\"",
+    "valid": true,
+    "value": "a\nb"
+  },
+  {
+    "name": "long-leading-cr",
+    "literal": "[=[\ra\r\nb\rc]=]",
+    "valid": true,
+    "value": "\ra\nb\rc"
+  },
+  {
+    "name": "escaped-crlf",
+    "literal": "\"a\\\r\nb\"",
+    "valid": true,
+    "value": "a\nb"
+  },
+  {
+    "name": "long-leading-crlf",
+    "literal": "[=[\r\na\r\nb\rc]=]",
+    "valid": true,
+    "value": "a\nb\rc"
+  },
+  {
+    "name": "long-no-escapes",
+    "literal": "[[\\x61\\z]]",
+    "valid": true,
+    "value": "\\x61\\z"
+  },
+  {
+    "name": "unicode-surrogate",
+    "literal": "\"\\u{d800}\"",
+    "valid": true,
+    "value": "\udced\udca0\udc80"
+  },
+  {
+    "name": "unicode-u32-wrap",
+    "literal": "\"\\u{0000000100000041}\"",
+    "valid": true,
+    "value": "A"
+  },
+  {
+    "name": "escaped-unicode",
+    "literal": "\"\\\u00e9\"",
+    "valid": true,
+    "value": "\u00e9"
+  },
+  {
+    "name": "template-unicode",
+    "literal": "`\\u{1f600}`",
+    "valid": true,
+    "value": "\ud83d\ude00"
+  },
+  {
+    "name": "template-escaped-brace",
+    "literal": "`a\\{b\\}c`",
+    "valid": true,
+    "value": "a{b}c"
+  },
+  {
+    "name": "hex-short",
+    "literal": "\"\\x1\"",
+    "valid": false
+  },
+  {
+    "name": "hex-invalid",
+    "literal": "\"\\xgg\"",
+    "valid": false
+  },
+  {
+    "name": "decimal-too-large",
+    "literal": "\"\\256\"",
+    "valid": false
+  },
+  {
+    "name": "unicode-empty",
+    "literal": "\"\\u{}\"",
+    "valid": false
+  },
+  {
+    "name": "unicode-no-braces",
+    "literal": "\"\\u1234\"",
+    "valid": false
+  },
+  {
+    "name": "unicode-too-large",
+    "literal": "\"\\u{110000}\"",
+    "valid": false
+  },
+  {
+    "name": "unicode-too-long",
+    "literal": "\"\\u{00000000000000041}\"",
+    "valid": false
+  },
+  {
+    "name": "template-newline",
+    "literal": "`a\nb`",
+    "valid": false
+  },
+  {
+    "name": "template-cr",
+    "literal": "`a\rb`",
+    "valid": false
+  },
+  {
+    "name": "overlong-bytes",
+    "literal": "\"\\xc0\\xaf\"",
+    "value": "\udcc0\udcaf",
+    "valid": true
+  },
+  {
+    "name": "truncated-bytes",
+    "literal": "\"\\xf0\\x9f\\x98\"",
+    "value": "\udcf0\udc9f\udc98",
+    "valid": true
+  },
+  {
+    "name": "lone-continuation",
+    "literal": "\"a\\x80b\"",
+    "value": "a\udc80b",
+    "valid": true
+  },
+  {
+    "name": "mixed-byte-text",
+    "literal": "\"\\xc3\\xbfa\\xff\\xf0\\x9f\\x98\\x80\"",
+    "value": "\u00ffa\udcff\ud83d\ude00",
+    "valid": true
+  },
+  {
+    "name": "unicode-maximum",
+    "literal": "\"\\u{10ffff}\"",
+    "value": "\udbff\udfff",
+    "valid": true
+  },
+  {
+    "name": "unicode-BOM",
+    "literal": "\"\\u{feff}\"",
+    "value": "\ufeff",
+    "valid": true
+  },
+  {
+    "name": "template-backtick",
+    "literal": "`a\\`b`",
+    "value": "a`b",
+    "valid": true
+  },
+  {
+    "name": "template-z",
+    "literal": "`a\\z \r\nb`",
+    "value": "ab",
+    "valid": true
+  },
+  {
+    "name": "template-escaped-crlf",
+    "literal": "`a\\\r\nb`",
+    "value": "a\nb",
+    "valid": true
+  },
+  {
+    "name": "quoted-empty",
+    "literal": "\"\"",
+    "value": "",
+    "valid": true
+  },
+  {
+    "name": "long-empty",
+    "literal": "[[\n]]",
+    "value": "",
+    "valid": true
+  }
+]

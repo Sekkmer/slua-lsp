@@ -9,9 +9,11 @@ import {
 } from '../parser/ast.js';
 
 import { buildSluaRegistryFromLslDefinitions } from '../slua/registry.js';
+import { collectNavigationBindings } from '../typing/navigationBindings.js';
 import type { SluaEventSignature } from '../slua/events.js';
 
 import type { SluaSemanticTokenModifier, SluaSemanticTokenType } from './legend.js';
+import { SourceTextIndex } from '../parser/sourceTextIndex.js';
 
 export type ClassifiedSemanticToken = {
 	line: number; // 0-based
@@ -89,6 +91,7 @@ function overlaps(occupied: Array<[number, number]>, start: number, end: number)
 export function classifySemanticTokens(text: string, ctx: ClassifySemanticTokensContext = {}): ClassifiedSemanticToken[] {
 	const lexer = new Lexer(text);
 	const lexTokens = lexer.tokenize(text);
+	const index = new SourceTextIndex(text);
 
 	const occupiedByLine = new Map<number, Array<[number, number]>>();
 	function mark(line: number, start: number, end: number): void {
@@ -103,26 +106,37 @@ export function classifySemanticTokens(text: string, ctx: ClassifySemanticTokens
 	}
 
 	const out: ClassifiedSemanticToken[] = [];
+	const bindings = text.includes('const') || text.includes('class') || text.includes('export') ? collectNavigationBindings(ctx.ast) : undefined;
+	const bindingPositions = new Set(bindings?.occurrences.flatMap(({ identifier }) => {
+		const range = rangeFromNode(identifier); return range ? [`${range.line}:${range.character}`] : [];
+	}));
+	const typeIdentifiers = new Set(bindings?.types.map((use) => use.identifier));
+	const deferredKeywords = new Set<string>();
+	const contextual = new Set([TokenType.CONTINUE, TokenType.EXPORT, TokenType.TYPE, TokenType.TYPEOF, TokenType.AS]);
 
 	// 1) Lexer-based tokens: comments/strings/numbers/keywords. These define occupied ranges.
 	for (const tok of lexTokens) {
 		if (tok.type === TokenType.EOF) continue;
 		if (tok.type === TokenType.WHITESPACE || tok.type === TokenType.NEWLINE) continue;
-		const line = Math.max(0, tok.line - 1);
-		const ch = Math.max(0, tok.column - 1);
-		const len = Math.max(0, tok.value.length);
-		if (len === 0) continue;
-
 		let tokenType: SluaSemanticTokenType | null = null;
 		if (tok.type === TokenType.COMMENT || tok.type === TokenType.MULTILINE_COMMENT) tokenType = 'comment';
-		else if (tok.type === TokenType.STRING) tokenType = 'string';
+		else if ([TokenType.STRING, TokenType.TEMPLATE_START, TokenType.TEMPLATE_END].includes(tok.type)) tokenType = 'string';
 		else if (tok.type === TokenType.NUMBER) tokenType = 'number';
-		else if (KEYWORD_TOKEN_TYPES.has(tok.type)) tokenType = 'keyword';
+		else if (KEYWORD_TOKEN_TYPES.has(tok.type)) {
+			const position = index.positionAt(tok.start), key = `${position.line}:${position.character}`;
+			if (contextual.has(tok.type) && bindingPositions.has(key)) { deferredKeywords.add(key); continue; }
+			tokenType = 'keyword';
+		}
 
 		if (!tokenType) continue;
-		if (!canPlace(line, ch, ch + len)) continue;
-		out.push({ line, character: ch, length: len, tokenType, modifiers: [] });
-		mark(line, ch, ch + len);
+		const start = index.positionAt(tok.start), end = index.positionAt(tok.end);
+		for (let line = start.line; line <= end.line; line++) {
+			const ch = line === start.line ? start.character : 0;
+			const stop = line === end.line ? end.character : index.lineEnd(line) - index.starts[line]!;
+			if (stop <= ch || !canPlace(line, ch, stop)) continue;
+			out.push({ line, character: ch, length: stop - ch, tokenType, modifiers: [] });
+			mark(line, ch, stop);
+		}
 	}
 
 	// 2) AST overlays for identifiers/methods/types (best-effort; skip on overlap).
@@ -130,6 +144,25 @@ export function classifySemanticTokens(text: string, ctx: ClassifySemanticTokens
 	void ctx.eventSignatures;
 
 	visitAst(ctx.ast, (node) => {
+		const record = node as Record<string, unknown>;
+		if (node.type === 'FunctionAttribute' && typeof record.name === 'string' && node.location) {
+			const point = node.location.start, range = { line: point.line - 1, character: point.column - 1, length: record.name.length };
+			if (canPlace(range.line, range.character, range.character + range.length)) { out.push({ ...range, tokenType: 'keyword', modifiers: [] }); mark(range.line, range.character, range.character + range.length); }
+		}
+		if (node.type === 'ClassDeclaration') for (const key of ['openKeywordLocation', 'classKeywordLocation', 'extendsKeywordLocation']) {
+			if (!record[key]) continue;
+			const keyword = rangeFromNode({ type: 'ClassKeyword', location: record[key] } as AstNode);
+			if (keyword && canPlace(keyword.line, keyword.character, keyword.character + keyword.length)) {
+				out.push({ ...keyword, tokenType: 'keyword', modifiers: [] }); mark(keyword.line, keyword.character, keyword.character + keyword.length);
+			}
+		}
+		if ((record.isConst || record.conditionIsConst) && record.constKeywordLocation) {
+			const keyword = rangeFromNode({ type: 'ConstKeyword', location: record.constKeywordLocation } as AstNode);
+			if (keyword && canPlace(keyword.line, keyword.character, keyword.character + keyword.length)) {
+				out.push({ ...keyword, tokenType: 'keyword', modifiers: [] }); mark(keyword.line, keyword.character, keyword.character + keyword.length);
+			}
+		}
+
 		// Highlight function declarations: function foo() ...
 		if (isFunctionDeclarationNode(node)) {
 			const id = node.identifier;
@@ -200,6 +233,34 @@ export function classifySemanticTokens(text: string, ctx: ClassifySemanticTokens
 			return;
 		}
 	});
+
+	// A contextual spelling that is a proven binding is a value/type token;
+	// actual continue statements and export modifiers retain their keyword role.
+	for (const occurrence of bindings?.occurrences ?? []) {
+		const range = rangeFromNode(occurrence.identifier); if (!range) continue;
+		if (deferredKeywords.has(`${range.line}:${range.character}`) && canPlace(range.line, range.character, range.character + range.length)) {
+			out.push({ ...range, tokenType: typeIdentifiers.has(occurrence.identifier) ? 'class' : 'variable', modifiers: occurrence.kind === 'definition' ? ['declaration'] : [] });
+			mark(range.line, range.character, range.character + range.length);
+		}
+	}
+
+	// Preserve existing function/call categories while marking the resolved
+	// immutable binding. Fields and mutable same-named shadows stay independent.
+	const tokensByPosition = new Map(out.map((token) => [`${token.line}:${token.character}`, token]));
+	for (const occurrence of bindings?.occurrences ?? []) {
+		if (!occurrence.definition?.isConst) continue;
+		const range = rangeFromNode(occurrence.identifier); if (!range) continue;
+		const existing = tokensByPosition.get(`${range.line}:${range.character}`);
+		const modifiers: SluaSemanticTokenModifier[] = [...(occurrence.kind === 'definition' ? ['declaration' as const] : []), 'readonly'];
+		if (existing) {
+			if (typeIdentifiers.has(occurrence.identifier)) existing.tokenType = 'class';
+			existing.modifiers = [...new Set([...existing.modifiers, ...modifiers])];
+		}
+		else if (canPlace(range.line, range.character, range.character + range.length)) {
+			const token: ClassifiedSemanticToken = { ...range, tokenType: typeIdentifiers.has(occurrence.identifier) ? 'class' : occurrence.definition.kind === 'function' ? 'function' : 'variable', modifiers };
+			out.push(token); tokensByPosition.set(`${range.line}:${range.character}`, token); mark(range.line, range.character, range.character + range.length);
+		}
+	}
 
 	// Sort tokens for stable server encoding.
 	out.sort((a, b) => (a.line - b.line) || (a.character - b.character) || (a.length - b.length));

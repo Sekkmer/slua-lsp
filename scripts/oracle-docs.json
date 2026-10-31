@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "repository": "https://github.com/secondlife/create",
+  "commit": "b87dd794787d8f327e5a07c0dbe9a553d092c6cf",
+  "commit_date": "2026-10-23T02:24:53Z",
+  "archive_url": "https://codeload.github.com/secondlife/create/tar.gz/b87dd794787d8f327e5a07c0dbe9a553d092c6cf",
+  "archive_sha256": "0e33b32a00c542bc26f09a72f1bf85795aba6658775c0b33cc3d1fe5ad5070b9",
+  "files": 3194,
+  "maximum_archive_bytes": 67108864,
+  "maximum_unpacked_bytes": 268435456
+}

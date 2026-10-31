@@ -2,7 +2,7 @@ export type AstPosition = { line: number; column: number };
 export type SourceLocation = { start: AstPosition; end: AstPosition };
 
 export type AstNode = { type: string; location?: SourceLocation };
-export type IdentifierNode = AstNode & { type: 'Identifier'; name: string; typeAnnotation?: string };
+export type IdentifierNode = AstNode & { type: 'Identifier'; name: string; typeAnnotation?: string; isConst?: boolean; exported?: boolean };
 export type MemberExpressionNode = AstNode & {
 	type: 'MemberExpression';
 	object: unknown;
@@ -31,6 +31,15 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function isAstNode(value: unknown): value is AstNode {
 	return isRecord(value) && typeof value.type === 'string';
+}
+
+/** Native unary minus is folded only when its immediate, ungrouped operand is a literal. */
+export function isIntegerLiteralExpression(value: unknown): boolean {
+	if (!isAstNode(value)) return false;
+	if (value.type === 'Integer') return true;
+	const node = value as Record<string, unknown>;
+	return value.type === 'UnaryExpression' && node.operator === '-' && isRecord(node.argument) &&
+		node.argument.type === 'Integer' && !node.argument.parenthesized;
 }
 
 export function isIdentifier(value: unknown): value is IdentifierNode {
@@ -100,9 +109,9 @@ export function visitAst(root: unknown, fn: (node: AstNode) => void): void {
 		if (seen.has(value)) return;
 		seen.add(value);
 		fn(value);
-		for (const child of Object.values(value)) {
-			if (child === value.location) continue;
-			visit(child);
+		for (const key in value) {
+			if (key === 'location') continue;
+			visit((value as unknown as Record<string, unknown>)[key]);
 		}
 	}
 

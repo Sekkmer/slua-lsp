@@ -1,0 +1,116 @@
+[
+  {
+    "name": "json-line-comments",
+    "entry": "main.luau",
+    "files": {
+      "library/item.luau": "return 101",
+      ".luaurc": "{\n// config\n\"aliases\":{\"pkg\":\"./library\",},\n}"
+    },
+    "specifier": "@pkg/item",
+    "nativeValid": true,
+    "inspectionValid": true,
+    "nativeStdout": "101\n"
+  },
+  {
+    "name": "json-block-comments",
+    "entry": "main.luau",
+    "files": {
+      "library/item.luau": "return 102",
+      ".luaurc": "{/* config */\"aliases\":{\"pkg\":\"./library\"}}"
+    },
+    "specifier": "@pkg/item",
+    "nativeValid": false,
+    "inspectionValid": true,
+    "nativeStdout": "",
+    "difference": "Standalone JSONC accepts block comments; pinned native .luaurc parser rejects them."
+  },
+  {
+    "name": "same-config-chain",
+    "entry": "main.luau",
+    "files": {
+      "library/sub/item.luau": "return 103",
+      ".luaurc": "{\"aliases\":{\"root\":\"./library\",\"pkg\":\"@root/sub\"}}"
+    },
+    "specifier": "@pkg/item",
+    "nativeValid": true,
+    "inspectionValid": true,
+    "nativeStdout": "103\n"
+  },
+  {
+    "name": "upper-chain-value",
+    "entry": "main.luau",
+    "files": {
+      "library/sub/item.luau": "return 104",
+      ".luaurc": "{\"aliases\":{\"ROOT\":\"./library\",\"pkg\":\"@ROOT/sub\"}}"
+    },
+    "specifier": "@pkg/item",
+    "nativeValid": false,
+    "inspectionValid": true,
+    "nativeStdout": "",
+    "difference": "Standalone follows RFC case-insensitive names at every link; pinned native chained target lookup is case-sensitive."
+  },
+  {
+    "name": "declaring-parent-scope",
+    "entry": "child/main.luau",
+    "files": {
+      "library/item.luau": "return 105",
+      "child/wrong/item.luau": "return 999",
+      ".luaurc": "{\"aliases\":{\"root\":\"./library\",\"pkg\":\"@root\"}}",
+      "child/.luaurc": "{\"aliases\":{\"root\":\"./wrong\"}}"
+    },
+    "specifier": "@pkg/item",
+    "nativeValid": true,
+    "inspectionValid": true,
+    "nativeStdout": "105\n"
+  },
+  {
+    "name": "child-chain-parent",
+    "entry": "child/main.luau",
+    "files": {
+      "library/sub/item.luau": "return 106",
+      ".luaurc": "{\"aliases\":{\"root\":\"./library\"}}",
+      "child/.luaurc": "{\"aliases\":{\"pkg\":\"@root/sub\"}}"
+    },
+    "specifier": "@pkg/item",
+    "nativeValid": true,
+    "inspectionValid": true,
+    "nativeStdout": "106\n"
+  },
+  {
+    "name": "alias-cycle",
+    "entry": "main.luau",
+    "files": {
+      ".luaurc": "{\"aliases\":{\"pkg\":\"@other\",\"other\":\"@pkg\"}}"
+    },
+    "specifier": "@pkg/item",
+    "nativeValid": false,
+    "inspectionValid": false,
+    "nativeStdout": ""
+  },
+  {
+    "name": "config-luau",
+    "entry": "main.luau",
+    "files": {
+      "library/item.luau": "return 108",
+      ".config.luau": "return {luau = {aliases = {pkg = \"./library\"}}}"
+    },
+    "specifier": "@pkg/item",
+    "nativeValid": true,
+    "inspectionValid": false,
+    "nativeStdout": "108\n",
+    "difference": "Native executes this owned literal Luau config; standalone refuses executable config instead of guessing."
+  },
+  {
+    "name": "config-conflict",
+    "entry": "main.luau",
+    "files": {
+      "library/item.luau": "return 109",
+      ".config.luau": "return {luau = {aliases = {pkg = \"./library\"}}}",
+      ".luaurc": "{\"aliases\":{\"pkg\":\"./library\"}}"
+    },
+    "specifier": "@pkg/item",
+    "nativeValid": false,
+    "inspectionValid": false,
+    "nativeStdout": ""
+  }
+]

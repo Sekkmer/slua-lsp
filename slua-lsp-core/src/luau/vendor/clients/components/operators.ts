@@ -17,6 +17,7 @@ export const OPERATORS: Map<string, OperatorConfig> = new Map([
 ]);
 
 export const SINGLE_CHAR_TOKENS: Map<string, TokenType> = new Map([
+	['@', TokenType.AT],
 	['+', TokenType.PLUS],
 	['-', TokenType.MINUS],
 	['*', TokenType.MULTIPLY],
@@ -63,5 +64,4 @@ export const KEYWORDS: Map<string, TokenType> = new Map([
 	// NOTE: We intentionally do NOT treat `type`/`typeof` as keywords.
 	// In SLua/Lua code, these are commonly used as runtime functions.
 	['export', TokenType.EXPORT],
-	['as', TokenType.AS],
 ]);

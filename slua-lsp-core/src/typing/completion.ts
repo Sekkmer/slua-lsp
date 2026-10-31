@@ -1,13 +1,23 @@
+import { sourceFunctionInfo, sourceFunctionMarkdown } from '../slua/sourceFunction.js';
+import { functionAttributeCompletions, FUNCTION_ATTRIBUTE_DOCS } from '../parser/functionAttributePresentation.js';
+import { conditionalBinding, conditionalBindingType, conditionalGuard } from './conditionalBindings.js';
+import { identityTableUpdate, tableWrite, tableAssignments } from './tableWrites.js';
+import { inferFunctionSignature, inferAssignmentTypes, inferClassDeclaration, type ClassInfo } from './inferLocals.js';
+import { classType, classMember, classMemberSignature, classAnnotationType } from './classMembers.js';
+import { conditionRefinements, assertionCondition, joinFlowTypes, blockReturns } from './refinements.js';
+import { callbackContext, eventDeclarationContext, arrayIterationContext } from '../slua/callbackContext.js';
 import type { SluaRegistry } from '../slua/registry.js';
+import { builtinPathExpression, resolveBuiltinExpression } from '../slua/resolveBuiltin.js';
+import { visitAst } from '../parser/ast.js';
 import type { SluaType } from '../slua/types.js';
-import { slua, sluaTypeEquals, sluaTypeFromLuauAnnotationText, sluaTypeIsAssignable } from '../slua/types.js';
+import { slua, sluaTypeEquals, sluaTypeFromLuauAnnotationText, sluaTypeIsAssignable, sluaTypeToString } from '../slua/types.js';
 import { defaultMetatableRegistry, type MetamethodName } from '../slua/metatables.js';
 
 type Loc = { start: { line: number; column: number }; end: { line: number; column: number } };
 
 type AstNode = { type: string; location?: Loc };
 
-type IdentifierNode = AstNode & { type: 'Identifier'; name: string; typeAnnotation?: string };
+type IdentifierNode = AstNode & { type: 'Identifier'; name: string; typeAnnotation?: string; isConst?: boolean };
 
 type ProgramNode = AstNode & { type: 'Program'; body: unknown[] };
 
@@ -54,7 +64,8 @@ type BooleanNode = AstNode & { type: 'Boolean'; value: boolean };
 
 type NilNode = AstNode & { type: 'Nil' };
 
-type IfStatementNode = AstNode & { type: 'IfStatement'; test: unknown; consequent: unknown[]; alternate?: unknown[] | unknown };
+type IfStatementNode = AstNode & { type: 'IfStatement'; test: unknown; consequent: unknown[]; alternate?: unknown[] | unknown;
+	thenKeywordLocation?: Loc; alternateKeywordLocation?: Loc };
 
 type ForStatementNode = AstNode & {
 	type: 'ForStatement';
@@ -76,8 +87,10 @@ type ScopedBodyStatementNode = AstNode & {
 	type: 'DoStatement' | 'RepeatStatement';
 	body: unknown[];
 };
+type ClassDeclarationNode = AstNode & { type: 'ClassDeclaration'; name: unknown; fields: unknown[]; methods: unknown[] };
 
 export type CompletionItemKind =
+	| 'keyword'
 	| 'variable'
 	| 'function'
 	| 'parameter'
@@ -160,9 +173,6 @@ function safeLuaIdentifier(name: string, fallback: string): string {
 }
 
 function isValidSluaEventName(eventName: string, registry: SluaRegistry): boolean {
-	// Mirror diagnostics rule: runtime differs from LSL for some legacy events.
-	if (eventName === 'state_entry') return false;
-	if (eventName === 'timer') return false;
 	return Boolean(registry.eventSignatures[eventName]);
 }
 
@@ -304,7 +314,7 @@ function getLLEventsArgumentCompletions(
 }
 
 function getLineText(sourceText: string, line: number): string {
-	const lines = sourceText.split(/\r?\n/);
+	const lines = sourceText.split(/\r\n|\r|\n/);
 	return lines[line] ?? '';
 }
 
@@ -421,14 +431,8 @@ function extractIdentifierBeforeTrigger(
 	}
 	if (i < 0) return null;
 
-	// Read identifier characters.
-	const end = i;
-	while (i >= 0 && /[A-Za-z0-9_]/.test(lineText[i]!)) i--;
-	const start = i + 1;
-	const name = lineText.slice(start, end + 1);
-	if (!name) return null;
-	if (!/^[A-Za-z_]/.test(name)) return null;
-	return name;
+	const match = /([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)*)\s*$/.exec(lineText.slice(0, i + 1));
+	return match?.[1]?.replace(/\s/g, '') ?? null;
 }
 
 function isTypeAnnotationTrigger(sourceText: string, pos: { line: number; character: number }): boolean {
@@ -475,13 +479,16 @@ function identifierPrefixAt(sourceText: string, pos: { line: number; character: 
 type SymbolDefinition = {
 	name: string;
 	identifier: IdentifierNode;
-	kind: 'local' | 'parameter' | 'function';
+	kind: 'local' | 'parameter' | 'function' | 'class';
 	type: SluaType;
 	scopeId: number;
+	writes: number;
+	initializer?: unknown;
 };
 
 class ScopeEnv {
-	private readonly scopes: Array<Map<string, SymbolDefinition>> = [new Map()];
+	private scopes: Array<Map<string, SymbolDefinition>> = [new Map()];
+	private readonly classes = new Map<string, ClassInfo>();
 	private scopeCounter = 0;
 
 	pushScope(): number {
@@ -494,10 +501,67 @@ class ScopeEnv {
 		if (this.scopes.length > 1) this.scopes.pop();
 	}
 
-	define(name: string, identifier: IdentifierNode, kind: 'local' | 'parameter' | 'function', type: SluaType): void {
+	define(name: string, identifier: IdentifierNode, kind: 'local' | 'parameter' | 'function' | 'class', type: SluaType, initializer?: unknown): void {
 		const scopeId = this.scopeCounter;
-		this.scopes[this.scopes.length - 1]!.set(name, { name, identifier, kind, type, scopeId });
+		this.scopes[this.scopes.length - 1]!.set(name, { name, identifier, kind, type, scopeId, initializer, writes: 0 });
 	}
+
+	refine(expression: unknown, truth: boolean): void {
+		for (const [name, type] of conditionRefinements(expression, truth, (name) => this.find(name)?.type)) {
+			for (let i = this.scopes.length - 1; i >= 0; i--) {
+				const definition = this.scopes[i]!.get(name);
+				if (definition) { this.scopes[i]!.set(name, { ...definition, type }); break; }
+			}
+		}
+	}
+
+	assign(name: string, type: SluaType): void {
+		for (let i = this.scopes.length - 1; i >= 0; i--) {
+			const definition = this.scopes[i]!.get(name);
+			if (definition) { this.scopes[i]!.set(name, { ...definition, type, writes: definition.writes + 1 }); return; }
+		}
+	}
+
+	writeTable(target: unknown, value: SluaType, registry: SluaRegistry): void {
+		this.rewriteTables(tableWrite(target, value, registry, (name) => this.find(name)?.type));
+	}
+
+	rewriteTables(update: (type: SluaType) => SluaType): void {
+		if (update === identityTableUpdate) return;
+		for (const scope of this.scopes) for (const [name, binding] of scope) {
+			const type = update(binding.type);
+			if (type !== binding.type) scope.set(name, { ...binding, type, writes: binding.writes + 1 });
+		}
+	}
+
+	checkpoint(): ScopeEnv['scopes'] {
+		return this.scopes.map((scope) => new Map([...scope].map(([name, def]) => [name, { ...def }])));
+	}
+
+	restore(other: ScopeEnv['scopes']): void {
+		this.scopes = other.map((scope) => new Map([...scope].map(([name, def]) => [name, { ...def }])));
+	}
+
+	join(base: ScopeEnv['scopes'], a: ScopeEnv['scopes'], b: ScopeEnv['scopes']): void {
+		this.restore(base);
+		for (const [i, scope] of base.entries()) for (const [name, binding] of scope) {
+			const left = a[i]?.get(name) ?? binding;
+			const right = b[i]?.get(name) ?? binding;
+			if (left.writes === binding.writes && right.writes === binding.writes) continue;
+			this.scopes[i]!.set(name, { ...binding, type: joinFlowTypes(left.type, right.type), writes: Math.max(left.writes, right.writes) });
+		}
+	}
+
+	defineClass(info: ClassInfo, identifier: IdentifierNode): void {
+		this.classes.set(info.name, info);
+		this.define(info.name, identifier, 'class', info.constructorType);
+	}
+
+	getClass(name: string): ClassInfo | undefined {
+		return this.classes.get(name);
+	}
+
+	getClasses(): Iterable<ClassInfo> { return this.classes.values(); }
 
 	find(name: string): SymbolDefinition | undefined {
 		for (let i = this.scopes.length - 1; i >= 0; i--) {
@@ -618,6 +682,10 @@ function isScopedBodyStatement(value: unknown): value is ScopedBodyStatementNode
 	return isAstNode(value) && (value.type === 'DoStatement' || value.type === 'RepeatStatement') && Array.isArray((value as Record<string, unknown>).body);
 }
 
+function isClassDeclaration(value: unknown): value is ClassDeclarationNode {
+	return isAstNode(value) && value.type === 'ClassDeclaration' && Array.isArray((value as Record<string, unknown>).fields) && Array.isArray((value as Record<string, unknown>).methods);
+}
+
 /**
  * Check if a position is within a location range.
  */
@@ -687,12 +755,38 @@ function calculatePriority(item: Omit<CompletionItem, 'priority'>, expectedType?
 	return priority;
 }
 
+function defineConditional(node: unknown, env: ScopeEnv, registry: SluaRegistry): IdentifierNode | undefined {
+	const binding = conditionalBinding(node);
+	if (!binding) return undefined;
+	const test = (node as Record<string, unknown>).test;
+	const inferred = inferAssignmentTypes([test], 1, registry, new Map(env.getAllInScope().map((def) => [def.name, def.type])), env.getClasses())[0] ?? slua.unknown();
+	env.define(binding.name, binding, 'local', conditionalBindingType(binding, inferred), test);
+	return binding;
+}
+
 /**
  * Infer the expected type at a given position based on context.
  */
 function inferExpressionType(expr: unknown, env: ScopeEnv, registry: SluaRegistry): SluaType | undefined {
+	const known = resolveBuiltinExpression(expr, registry, (name) => env.find(name)?.type ?? (env.find(name) ? slua.unknown() : undefined));
+	if (known) return known.type;
 	if (!isAstNode(expr)) return undefined;
 
+	if (expr.type === 'IfExpression') {
+		const conditional = expr as AstNode & { test: unknown; consequent: unknown; alternate: unknown };
+		const before = env.checkpoint();
+		env.refine(conditionalGuard(conditional), true);
+		env.pushScope();
+		defineConditional(conditional, env, registry);
+		const a = inferExpressionType(conditional.consequent, env, registry) ?? slua.unknown();
+		env.restore(before);
+		env.refine(conditionalGuard(conditional), false);
+		const b = inferExpressionType(conditional.alternate, env, registry) ?? slua.unknown();
+		env.restore(before);
+		return joinFlowTypes(a, b);
+	}
+
+	if (isFunctionNode(expr)) return inferFunctionSignature(expr, registry, new Map(env.getAllInScope().map((def) => [def.name, def.type])), env.getClasses());
 	if (isStringNode(expr)) return slua.string();
 	if (isNumberNode(expr)) return slua.number();
 	if (isBooleanNode(expr)) return slua.boolean();
@@ -705,12 +799,14 @@ function inferExpressionType(expr: unknown, env: ScopeEnv, registry: SluaRegistr
 
 		const global = registry.getGlobal(expr.name);
 		if (global) return global.signature;
+		const constant = registry.getGlobalValue(expr.name);
+		if (constant) return constant.type;
 
 		const module = registry.getModule(expr.name);
 		if (module) return slua.table();
 
 		const objType = registry.getObjectType(expr.name);
-		if (objType) return slua.table();
+		if (objType && !objType.instanceOnly) return slua.table();
 	}
 
 	if (isMemberExpression(expr)) {
@@ -736,6 +832,7 @@ function inferExpressionType(expr: unknown, env: ScopeEnv, registry: SluaRegistr
 			const prop = objType.properties[memberName];
 			if (prop) return prop.type;
 		}
+
 	}
 
 	if (isCallExpression(expr)) {
@@ -927,15 +1024,38 @@ function getMemberCompletionsByName(
 	receiverName: string,
 	isColonCall: boolean,
 	env: ScopeEnv,
-	registry: SluaRegistry
+	registry: SluaRegistry,
+	inferredReceiver?: SluaType
 ): CompletionItem[] {
 	const items: CompletionItem[] = [];
 
 	// Check if it's a module
-	const mod = registry.getModule(receiverName);
+	const bound = inferredReceiver ?? resolveBuiltinExpression(builtinPathExpression(receiverName), registry, (name) => env.find(name)?.type ?? (env.find(name) ? slua.unknown() : undefined))?.type;
+	const sourceClass = bound && classType(bound);
+	if (bound && sourceClass) {
+		const names = sourceClass.kind === 'constructor' ? [...sourceClass.info.staticMethods] : [...sourceClass.info.fields.keys(), ...sourceClass.info.methods.keys()];
+		for (const name of names) {
+			const member = classMember(bound, name)!;
+			if (isColonCall && member.type?.kind !== 'function') continue;
+			const type = classMemberSignature(member, isColonCall);
+			const item: Omit<CompletionItem, 'priority'> = { label: name, kind: type.kind === 'function' ? isColonCall ? 'method' : 'function' : 'property',
+				detail: formatTypeString(type), type, ...(isColonCall ? { requiresColonCall: true } : {}) };
+			items.push({ ...item, priority: calculatePriority(item) + 20 });
+		}
+		return items;
+	}
+	const mod = bound?.kind === 'table' && bound.module ? registry.getModule(bound.module) : undefined;
+	if (bound?.kind === 'table' && bound.fields) {
+		return Object.entries(bound.fields).map(([name, type]) => {
+			const item: Omit<CompletionItem, 'priority'> = { label: name, kind: type.kind === 'function' ? 'function' : 'property',
+				detail: formatTypeString(type), type, deprecated: !!sourceFunctionInfo(type)?.deprecated, documentation: sourceFunctionMarkdown(type).trim() || undefined };
+			return { ...item, priority: calculatePriority(item) };
+		});
+	}
 	if (mod) {
 		// Add module functions
 		for (const [name, fn] of Object.entries(mod.functions)) {
+			if (fn.private) continue;
 			const item: Omit<CompletionItem, 'priority'> = {
 				label: name,
 				kind: 'function',
@@ -949,6 +1069,7 @@ function getMemberCompletionsByName(
 
 		// Add module values (constants)
 		for (const [name, val] of Object.entries(mod.values)) {
+			if (val.private) continue;
 			const item: Omit<CompletionItem, 'priority'> = {
 				label: name,
 				kind: 'constant',
@@ -964,7 +1085,7 @@ function getMemberCompletionsByName(
 	}
 
 	// Check if it's an object type
-	const objType = registry.getObjectType(receiverName);
+	const objType = bound?.kind === 'table' && bound.metatable ? registry.getObjectType(bound.metatable) : bound?.kind === 'custom' ? registry.getObjectType(bound.name) : undefined;
 	if (objType) {
 		// Add methods
 		for (const [name, method] of Object.entries(objType.methods)) {
@@ -1003,12 +1124,25 @@ function getMemberCompletionsByName(
 
 	// Check for local variable with known type
 	const localDef = env.find(receiverName);
-	if (localDef && localDef.type) {
-		const t = localDef.type;
+	const localType = inferredReceiver ?? localDef?.type;
+	if (localType) {
+		if (!isColonCall && isTableNode(localDef?.initializer)) {
+			for (const field of localDef.initializer.fields ?? []) {
+				if (!isTableFieldNode(field)) continue;
+				const name = isIdentifier(field.key) ? field.key.name : isStringNode(field.key) ? field.key.value : undefined;
+				if (!name || !/^[A-Za-z_]\w*$/.test(name)) continue;
+				const type = inferExpressionType(field.value, env, registry) ?? slua.unknown();
+				const item: Omit<CompletionItem, 'priority'> = { label: name, kind: 'property', detail: formatTypeString(type), type, deprecated: !!sourceFunctionInfo(type)?.deprecated, documentation: sourceFunctionMarkdown(type).trim() || undefined };
+				items.push({ ...item, priority: calculatePriority(item) + 20 });
+			}
+			return items;
+		}
+
+		const t = localType;
 
 		// Provide metatable-driven member completion for known SLua custom/primitive types.
-		if (t.kind === 'custom' || t.kind === 'primitive') {
-			const def = defaultMetatableRegistry.get(t.name);
+		if (t.kind === 'custom' || t.kind === 'primitive' || (t.kind === 'table' && t.metatable)) {
+			const def = defaultMetatableRegistry.get(t.kind === 'table' ? t.metatable! : t.name);
 			const members = def?.members;
 			if (members) {
 				for (const m of Object.values(members)) {
@@ -1046,6 +1180,7 @@ function getMemberCompletionsByName(
 				return items;
 			}
 		}
+
 	}
 
 	return items;
@@ -1229,9 +1364,9 @@ function getScopeCompletions(env: ScopeEnv, expectedType?: SluaType): Completion
 	for (const { def, distance } of allDefs) {
 		const item: Omit<CompletionItem, 'priority'> = {
 			label: def.name,
-			kind: def.kind === 'function' ? 'function' : def.kind === 'parameter' ? 'parameter' : 'variable',
-			detail: formatTypeString(def.type),
-			type: def.type
+			kind: def.kind === 'function' || def.kind === 'class' ? 'function' : def.kind === 'parameter' ? 'parameter' : def.identifier.isConst ? 'constant' : 'variable',
+			detail: (def.identifier.isConst || def.kind === 'class' ? 'const ' : '') + formatTypeString(def.type),
+			type: def.type, deprecated: !!sourceFunctionInfo(def.type)?.deprecated, documentation: sourceFunctionMarkdown(def.type).trim() || undefined
 		};
 
 		// Strongly prefer locals/parameters/functions in scope over globals.
@@ -1253,6 +1388,7 @@ function getGlobalCompletions(registry: SluaRegistry, expectedType?: SluaType): 
 
 	// Global functions
 	for (const [name, fn] of registry.globals.entries()) {
+		if (fn.private) continue;
 		const item: Omit<CompletionItem, 'priority'> = {
 			label: name,
 			kind: 'function',
@@ -1264,8 +1400,17 @@ function getGlobalCompletions(registry: SluaRegistry, expectedType?: SluaType): 
 		items.push({ ...item, priority: calculatePriority(item, expectedType) });
 	}
 
+	// Official YAML constants are global values as well as module entries.
+	for (const [name, value] of registry.globalValues) {
+		if (value.private) continue;
+		const item: Omit<CompletionItem, 'priority'> = { label: name, kind: 'constant',
+			detail: formatTypeString(value.type), documentation: value.docs, type: value.type };
+		items.push({ ...item, priority: calculatePriority(item, expectedType) });
+	}
+
 	// Modules
 	for (const name of registry.modules.keys()) {
+		if (name.includes('.')) continue;
 		const item: Omit<CompletionItem, 'priority'> = {
 			label: name,
 			kind: 'module',
@@ -1276,7 +1421,8 @@ function getGlobalCompletions(registry: SluaRegistry, expectedType?: SluaType): 
 	}
 
 	// Object types
-	for (const name of registry.objectTypes.keys()) {
+	for (const [name, object] of registry.objectTypes) {
+		if (object.instanceOnly) continue;
 		const item: Omit<CompletionItem, 'priority'> = {
 			label: name,
 			kind: 'module',
@@ -1308,7 +1454,9 @@ function getGlobalCompletions(registry: SluaRegistry, expectedType?: SluaType): 
 function formatFunctionSignature(type: SluaType): string {
 	if (type.kind !== 'function') return formatTypeString(type);
 	
-	const params = type.params.map((p, i) => `arg${i + 1}: ${formatTypeString(p)}`).join(', ');
+	const parameters = type.params.map((p, i) => `arg${i + 1}: ${formatTypeString(p)}`);
+	if (type.variadic) parameters.push(`...: ${formatTypeString(type.variadic)}`);
+	const params = parameters.join(', ');
 	const returns = formatTypeString(type.returns);
 	return `(${params}) -> ${returns}`;
 }
@@ -1323,7 +1471,9 @@ function formatTypeString(type: SluaType): string {
 		case 'custom':
 			return type.name;
 		case 'table':
-			return 'table';
+			return sluaTypeToString(type);
+		case 'literal':
+			return JSON.stringify(type.value);
 		case 'array':
 			return `${formatTypeString(type.element)}[]`;
 		case 'tuple':
@@ -1355,50 +1505,105 @@ function buildScopeAtPosition(
 		return false;
 	}
 
+	function localType(name: string): SluaType | undefined { return env.find(name)?.type; }
+	function visitExpressionAtPosition(value: unknown, context: SluaType[] = []): boolean {
+		if (Array.isArray(value)) {
+			for (const child of value) if (visitExpressionAtPosition(child)) return true;
+			return false;
+		}
+		if (!isAstNode(value) || (value.location && !posInLoc(pos, value.location))) return false;
+		if (isFunctionNode(value)) {
+			env.pushScope();
+			for (const [index, parameter] of value.parameters.entries()) if (isIdentifier(parameter)) {
+				const type = parameter.typeAnnotation ? classAnnotationType(parameter.typeAnnotation, (name) => env.getClass(name), (name) => env.find(name)?.type) : context[index] ?? slua.unknown();
+				env.define(parameter.name, parameter, 'parameter', type);
+			}
+			visitStmts(value.body);
+			return true;
+		}
+		if (value.type === 'IfExpression') {
+			const conditional = value as AstNode & { test: unknown; consequent: unknown; alternate: unknown };
+			if (visitExpressionAtPosition(conditional.test)) return true;
+			const before = env.checkpoint();
+			env.refine(conditionalGuard(conditional), true);
+			env.pushScope();
+			const binding = defineConditional(conditional, env, registry);
+			if (binding?.location && posInLoc(pos, binding.location)) return true;
+			if (visitExpressionAtPosition(conditional.consequent)) return true;
+			env.restore(before);
+			env.refine(conditionalGuard(conditional), false);
+			if (visitExpressionAtPosition(conditional.alternate)) return true;
+			env.restore(before);
+			return false;
+		}
+		if (value.type === 'BinaryExpression') {
+			const binary = value as AstNode & { operator?: string; left: unknown; right: unknown };
+			if (binary.operator === 'and' || binary.operator === 'or') {
+				if (visitExpressionAtPosition(binary.left)) return true;
+				env.pushScope();
+				env.refine(binary.left, binary.operator === 'and');
+				if (visitExpressionAtPosition(binary.right)) return true;
+				env.popScope();
+				return false;
+			}
+		}
+		if (isCallExpression(value)) {
+			const contexts = callbackContext(value, registry, localType);
+			for (const argument of value.arguments) if (visitExpressionAtPosition(argument, contexts.get(argument))) return true;
+			return visitExpressionAtPosition(value.callee);
+		}
+		for (const key of Object.keys(value)) if (key !== 'location' && visitExpressionAtPosition((value as unknown as Record<string, unknown>)[key])) return true;
+		return !!value.location && posInLoc(pos, value.location);
+	}
+
 	function visitStmt(stmt: unknown): boolean {
 		if (!isAstNode(stmt)) return false;
 
 		// Check if cursor is beyond this statement
-		if (stmt.location && stmt.location.start.line > pos.line + 1) {
+		if (stmt.location && (stmt.location.start.line > pos.line + 1 || (stmt.location.start.line === pos.line + 1 && stmt.location.start.column > pos.character + 1))) {
 			return false;
 		}
 
 		if (isLocalStatement(stmt)) {
+			if (visitExpressionAtPosition(stmt.init)) return true;
 			const vars = stmt.variables.filter(isIdentifier);
-			for (let i = 0; i < vars.length; i++) {
-				const v = vars[i]!;
-				let type = v.typeAnnotation ? sluaTypeFromLuauAnnotationText(v.typeAnnotation) : slua.unknown();
-				// If unannotated, try to infer from initializer (helps infer custom metatable-backed types).
-				if (type.kind === 'primitive' && type.name === 'unknown') {
-					const init = (stmt.init ?? [])[i];
-					const inferred = inferExpressionType(init, env, registry);
-					if (inferred && !(inferred.kind === 'primitive' && inferred.name === 'unknown')) type = inferred;
-				}
-				env.define(v.name, v, 'local', type);
+			const values = inferAssignmentTypes(stmt.init ?? [], vars.length, registry, new Map(env.getAllInScope().map((def) => [def.name, def.type])), env.getClasses());
+			for (const [i, v] of vars.entries()) {
+				const type = v.typeAnnotation ? classAnnotationType(v.typeAnnotation, (name) => env.getClass(name), (name) => env.find(name)?.type) : values[i] ?? slua.unknown();
+				env.define(v.name, v, 'local', type, (stmt.init ?? [])[i]);
 			}
 			
 			// Check if cursor is in this statement
 			if (stmt.location && posInLoc(pos, stmt.location)) return true;
 		}
 
+		if (isAssignmentStatement(stmt)) {
+			if (visitExpressionAtPosition(stmt.init)) return true;
+			const values = inferAssignmentTypes(stmt.init, stmt.variables.length, registry, new Map(env.getAllInScope().map((def) => [def.name, def.type])), env.getClasses());
+			const writes = tableAssignments(stmt.variables, values, registry, localType);
+			env.rewriteTables(writes.update);
+			for (const [index, variable] of stmt.variables.entries()) if (isIdentifier(variable)) env.assign(variable.name, writes.values[index] ?? slua.nil());
+			if (stmt.location && posInLoc(pos, stmt.location)) return true;
+		}
+
 		if (isFunctionDeclaration(stmt)) {
 			if (stmt.identifier && isIdentifier(stmt.identifier)) {
-				const returnType = stmt.returnTypeAnnotation
-					? sluaTypeFromLuauAnnotationText(stmt.returnTypeAnnotation)
-					: slua.unknown();
-				const paramTypes = stmt.parameters
-					.filter(isIdentifier)
-					.map((p) => (p.typeAnnotation ? sluaTypeFromLuauAnnotationText(p.typeAnnotation) : slua.unknown()));
-				const fnType = slua.fn(paramTypes, returnType);
-				env.define(stmt.identifier.name, stmt.identifier, 'function', fnType);
+				const fnType = inferFunctionSignature(stmt, registry, new Map(env.getAllInScope().map((def) => [def.name, def.type])), env.getClasses());
+				if (!stmt.isLocal && env.find(stmt.identifier.name)) env.assign(stmt.identifier.name, fnType);
+				else env.define(stmt.identifier.name, stmt.identifier, 'function', fnType);
+			} else {
+				const type = inferFunctionSignature(stmt, registry, new Map(env.getAllInScope().map((def) => [def.name, def.type])), env.getClasses());
+				env.writeTable(stmt.identifier, type, registry);
 			}
 
 			// Check if cursor is inside function body
 			if (stmt.location && posInLoc(pos, stmt.location)) {
 				env.pushScope();
+				const self = isMemberExpression(stmt.identifier) && stmt.identifier.indexer === ':' ? resolveBuiltinExpression(stmt.identifier.object, registry, localType)?.type : undefined;
 				const params = stmt.parameters.filter(isIdentifier);
-				for (const p of params) {
-					const type = p.typeAnnotation ? sluaTypeFromLuauAnnotationText(p.typeAnnotation) : slua.unknown();
+				const context = eventDeclarationContext(stmt.identifier, registry, localType);
+				for (const [index, p] of params.entries()) {
+					const type = p.typeAnnotation ? classAnnotationType(p.typeAnnotation, (name) => env.getClass(name), (name) => env.find(name)?.type) : index === 0 && self ? self : context[index] ?? slua.unknown();
 					env.define(p.name, p, 'parameter', type);
 				}
 				visitStmts(stmt.body);
@@ -1406,61 +1611,84 @@ function buildScopeAtPosition(
 			}
 		}
 
-		if (isIfStatement(stmt)) {
-			if (stmt.location && posInLoc(pos, stmt.location)) {
-				env.pushScope();
-				const found = visitStmts(stmt.consequent);
-				if (found) return true;
-				env.popScope();
-
-				if (stmt.alternate) {
-					if (Array.isArray(stmt.alternate)) {
-						env.pushScope();
-						const foundAlt = visitStmts(stmt.alternate);
-						if (foundAlt) return true;
-						env.popScope();
-					} else {
-						if (visitStmt(stmt.alternate)) return true;
+		if (isClassDeclaration(stmt)) {
+			const info = inferClassDeclaration(stmt, registry, new Map(env.getAllInScope().map((def) => [def.name, def.type])), env.getClasses());
+			if (info && isIdentifier(stmt.name)) {
+				env.defineClass(info, stmt.name);
+				for (const method of stmt.methods) {
+					if (!isFunctionDeclaration(method) || !method.location || !posInLoc(pos, method.location)) continue;
+					env.pushScope();
+					for (const [index, parameter] of method.parameters.entries()) {
+						if (!isIdentifier(parameter)) continue;
+						const type = index === 0 && parameter.name === 'self' ? info.instanceType : classAnnotationType(parameter.typeAnnotation, (name) => env.getClass(name));
+						env.define(parameter.name, parameter, 'parameter', type);
 					}
+					visitStmts(method.body);
+					return true;
 				}
-				return true;
 			}
+			if (stmt.location && posInLoc(pos, stmt.location)) return true;
 		}
 
-		if (isForStatement(stmt)) {
-			if (stmt.location && posInLoc(pos, stmt.location)) {
-				for (const expr of [stmt.start, stmt.end, stmt.step]) {
-					if (isAstNode(expr) && expr.location && posInLoc(pos, expr.location)) return true;
-				}
-				env.pushScope();
-				if (isIdentifier(stmt.variable)) env.define(stmt.variable.name, stmt.variable, 'local', slua.number());
-				visitStmts(stmt.body);
-				return true;
-			}
+		if (isIfStatement(stmt)) {
+			if (visitExpressionAtPosition(stmt.test)) return true;
+			const before = env.checkpoint();
+			env.refine(conditionalGuard(stmt), true);
+			env.pushScope();
+			const binding = defineConditional(stmt, env, registry);
+			if (binding?.location && posInLoc(pos, binding.location)) return true;
+			if (visitStmts(stmt.consequent)) return true;
+			// Empty lines have no expression/statement AST. Keep the branch scope
+			// until its actual else/elseif keyword, including an empty then body.
+			if (stmt.thenKeywordLocation && stmt.alternateKeywordLocation &&
+				posInLoc(pos, { start: stmt.thenKeywordLocation.end, end: stmt.alternateKeywordLocation.start }) &&
+				!(pos.line + 1 === stmt.alternateKeywordLocation.start.line && pos.character + 1 === stmt.alternateKeywordLocation.start.column)) return true;
+			if (!stmt.alternate && stmt.location && posInLoc(pos, stmt.location)) return true;
+			env.popScope();
+			const consequent = env.checkpoint();
+			env.restore(before);
+			env.refine(conditionalGuard(stmt), false);
+			env.pushScope();
+			if (Array.isArray(stmt.alternate)) {
+				if (visitStmts(stmt.alternate)) return true;
+				if (stmt.alternateKeywordLocation && stmt.location && posInLoc(pos, { start: stmt.alternateKeywordLocation.end, end: stmt.location.end })) return true;
+			} else if (visitStmt(stmt.alternate)) return true;
+			env.popScope();
+			if (blockReturns(stmt.consequent) && !blockReturns(stmt.alternate)) { /* Keep the false continuation. */ }
+			else if (blockReturns(stmt.alternate) && !blockReturns(stmt.consequent)) env.restore(consequent);
+			else env.join(before, consequent, env.checkpoint());
+			if (stmt.location && posInLoc(pos, stmt.location)) return true;
 		}
 
-		if (isGenericForStatement(stmt)) {
-			if (stmt.location && posInLoc(pos, stmt.location)) {
-				for (const iterator of stmt.iterators) {
-					if (isAstNode(iterator) && iterator.location && posInLoc(pos, iterator.location)) return true;
-				}
-				env.pushScope();
-				for (const variable of stmt.variables) {
-					if (isIdentifier(variable)) env.define(variable.name, variable, 'local', slua.unknown());
-				}
-				visitStmts(stmt.body);
-				return true;
+		if (isForStatement(stmt) || isGenericForStatement(stmt) || isScopedBodyStatement(stmt) ||
+			(stmt.type === 'WhileStatement' && Array.isArray((stmt as unknown as { body?: unknown }).body))) {
+			const before = env.checkpoint();
+			const record = stmt as AstNode & { type: string; test?: unknown; body: unknown[] };
+			if (isForStatement(stmt)) {
+				for (const expr of [stmt.start, stmt.end, stmt.step]) if (visitExpressionAtPosition(expr)) return true;
+			} else if (isGenericForStatement(stmt)) {
+				for (const iterator of stmt.iterators) if (visitExpressionAtPosition(iterator)) return true;
+			} else if (record.type === 'WhileStatement' && visitExpressionAtPosition(record.test)) return true;
+			if (record.type === 'WhileStatement') env.refine(record.test, true);
+			env.pushScope();
+			if (isForStatement(stmt) && isIdentifier(stmt.variable)) env.define(stmt.variable.name, stmt.variable, 'local', slua.number());
+			if (isGenericForStatement(stmt)) {
+				const context = arrayIterationContext(stmt.iterators, registry, localType);
+				for (const [index, variable] of stmt.variables.entries()) if (isIdentifier(variable)) env.define(variable.name, variable, 'local', context[index] ?? slua.unknown());
 			}
+			if (visitStmts(record.body)) return true;
+			if (record.type === 'RepeatStatement' && visitExpressionAtPosition(record.test)) return true;
+			// A blank line in the body has no expression node, but still owns
+			// the loop/block scope up to its closing keyword.
+			if (stmt.location && posInLoc(pos, stmt.location)) return true;
+			env.popScope();
+			if (record.type !== 'DoStatement' && record.type !== 'RepeatStatement') env.join(before, env.checkpoint(), before);
+			if (stmt.location && posInLoc(pos, stmt.location)) return true;
 		}
 
-		if (isScopedBodyStatement(stmt)) {
-			if (stmt.location && posInLoc(pos, stmt.location)) {
-				env.pushScope();
-				visitStmts(stmt.body);
-				return true;
-			}
-		}
-
+		if (visitExpressionAtPosition(stmt)) return true;
+		const expression = (stmt as AstNode & { expression?: unknown }).expression ?? stmt;
+		env.refine(assertionCondition(expression, localType), true);
 		return false;
 	}
 
@@ -1471,6 +1699,11 @@ function buildScopeAtPosition(
 /**
  * Main entry point for getting completions at a given position.
  */
+export function getVisibleLocalTypes(ast: unknown, pos: { line: number; character: number }, registry: SluaRegistry): Map<string, SluaType> {
+	const env = buildScopeAtPosition(ast, pos, registry);
+	return new Map(env.getAllInScope().map((binding) => [binding.name, binding.type ?? slua.unknown()]));
+}
+
 export function getCompletions(
 	ast: unknown,
 	pos: { line: number; character: number },
@@ -1480,10 +1713,20 @@ export function getCompletions(
 	if (!isProgram(ast)) return [];
 
 	const sourceText = trigger?.sourceText;
+	const attributes = sourceText ? functionAttributeCompletions(sourceText, pos) : undefined;
+	if (attributes) return attributes.map((label) => ({ label, kind: 'keyword', priority: 200, insertText: label, detail: '@'+label, documentation: FUNCTION_ATTRIBUTE_DOCS[label] }));
 	const invoked = trigger?.invoked ?? false;
 
 	// Build scope environment up to cursor position (for locals + receiver typing).
 	const env = buildScopeAtPosition(ast, pos, registry);
+	function expressionReceiver(): SluaType | undefined {
+		let found: SluaType | undefined;
+		visitAst(ast, (node) => {
+			if (!isMemberExpression(node) || !isIdentifier(node.property) || !isCallExpression(node.object)) return;
+			if (node.property.location && posInLoc(pos, node.property.location)) found = inferExpressionType(node.object, env, registry);
+		});
+		return found;
+	}
 
 	// Best-effort expected-type inference for ranking.
 	const expectedType = inferExpectedTypeAtPosition(ast, pos, env, registry);
@@ -1548,10 +1791,28 @@ export function getCompletions(
 	// Member access: ONLY when after '.' or ':' (non-type context).
 	if (sourceText && (triggerChar === '.' || triggerChar === ':')) {
 		const receiverName = extractIdentifierBeforeTrigger(sourceText, pos, triggerChar);
-		if (!receiverName) return [];
-		const members = getMemberCompletionsByName(receiverName, triggerChar === ':', env, registry);
+		const receiverType = receiverName ? undefined : expressionReceiver();
+		if (!receiverName && !receiverType) return [];
+		const members = getMemberCompletionsByName(receiverName ?? '', triggerChar === ':', env, registry, receiverType);
 		members.sort((a, b) => b.priority - a.priority);
 		return members;
+	}
+
+	// Explicit completion after a partially typed member must keep the receiver.
+	// The editor can request again after the initial '.' list has been dismissed.
+	if (sourceText) {
+		const prefix = identifierPrefixAt(sourceText, pos);
+		const beforePrefix = { line: pos.line, character: Math.max(0, pos.character - prefix.length) };
+		const separator = prevNonWhitespaceChar(sourceText, beforePrefix);
+		if (prefix && (separator === '.' || separator === ':')) {
+			const receiver = extractIdentifierBeforeTrigger(sourceText, beforePrefix, separator);
+			const receiverType = receiver ? undefined : expressionReceiver();
+			if (receiver || receiverType) {
+				const members = getMemberCompletionsByName(receiver ?? '', separator === ':', env, registry, receiverType);
+				members.sort((a, b) => b.priority - a.priority);
+				return members;
+			}
+		}
 	}
 
 	// Non-member completion:

@@ -15,7 +15,7 @@ const baseline=destination+'.observations-'+crypto.randomUUID()+'.json';
 function run(args,input,env=process.env,timeout=30000){const p=spawnSync(process.execPath,args,{cwd:root,input,env,encoding:'utf8',timeout,maxBuffer:16*1024*1024});assert.ifError(p.error);assert.equal(p.signal,null);return{exit:p.status,stdout:p.stdout,stderr:p.stderr};}
 let report={passed:false,syntaxProfilePassed:false,implementationAcceptance:false,releaseAcceptance:false},lsp;
 try{
- const child=run(['scripts/research-function-attributes.mjs'],undefined,{...process.env,SLUA_ATTRIBUTES_EVIDENCE:baseline},500000);report.observationRun=child;assert.equal(child.exit,0,child.stderr);
+ const child=run(['scripts/native-function-attributes.mjs'],undefined,{...process.env,SLUA_ATTRIBUTES_EVIDENCE:baseline},500000);report.observationRun=child;assert.equal(child.exit,0,child.stderr);
  const bytes=await fs.readFile(baseline),data=JSON.parse(bytes);assert.equal(data.passed,true);
  report={...data,passed:false,syntaxProfilePassed:false,baseline:{path:baseline,sha256:hash(bytes)},qualificationHarnessSha256:await fileHash(fileURLToPath(import.meta.url)),inspection:[]};
  for(const row of report.cases){

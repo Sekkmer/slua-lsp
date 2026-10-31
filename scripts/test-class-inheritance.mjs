@@ -20,7 +20,7 @@ function run(exe, args, input, env = process.env, timeout = 30000) {
 }
 let report = { passed: false, implementationAcceptance: false, releaseAcceptance: false, profileChecksPassed: false, additional: [], protocol: [] }, lsp;
 try {
- const child = run(process.execPath, [path.join(root, 'scripts/research-class-inheritance.mjs')], undefined, { ...process.env, SLUA_INHERITANCE_EVIDENCE: baseline }, 500000);
+ const child = run(process.execPath, [path.join(root, 'scripts/native-class-inheritance.mjs')], undefined, { ...process.env, SLUA_INHERITANCE_EVIDENCE: baseline }, 500000);
  report.baselineRun = child; assert.equal(child.exit, 0, child.stderr);
  const bytes = await fs.readFile(baseline), data = JSON.parse(bytes); assert.equal(data.passed, true);
  report = { ...data, passed: false, baseline: { path: baseline, sha256: hash(bytes) }, qualificationHarnessSha256: await fileHash(fileURLToPath(import.meta.url)), expectationsSha256: await fileHash(fixture), profileChecksPassed: false, additional: [], inspection: [] };

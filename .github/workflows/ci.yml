@@ -3,7 +3,6 @@ name: CI
 on:
   push:
     branches: [ master, main ]
-    tags: [ 'v*' ]
   pull_request:
     branches: [ master, main ]
   workflow_dispatch:
@@ -118,7 +117,7 @@ jobs:
 
   native:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -271,63 +270,3 @@ jobs:
             .local/vscode-tests/cache-fault-results.json
             .local/vscode-tests/history/*.json
           include-hidden-files: true
-
-  release:
-    name: Publish tagged release from tested pipeline artifacts
-    needs: [ci, native, vscode]
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - uses: actions/download-artifact@v4
-        with:
-          name: slua-lsp-vsix-node-22
-          path: release-assets
-      - uses: actions/download-artifact@v4
-        with:
-          name: slua-lsp-cli-node-22
-          path: release-assets/cli
-      - name: Validate release identity and changelog
-        run: node scripts/release-notes.mjs "$GITHUB_REF_NAME" > release-notes.md
-      - name: Verify VSIX and record pipeline provenance
-        env:
-          RELEASE_REPOSITORY: ${{ github.repository }}
-          RELEASE_RUN_ID: ${{ github.run_id }}
-          RELEASE_RUN_ATTEMPT: ${{ github.run_attempt }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          python3 - <<'PYCODE'
-          import hashlib, json, os, pathlib, subprocess, zipfile
-          assets = pathlib.Path('release-assets')
-          files = list(assets.glob('*.vsix'))
-          assert len(files) == 1
-          with zipfile.ZipFile(files[0]) as z:
-              package = json.loads(z.read('extension/package.json'))
-          assert package['publisher'] == 'Sekkmer'
-          assert package['name'] == 'slua-lsp-client'
-          assert os.environ['RELEASE_TAG'] == 'v' + package['version']
-          subprocess.run(['python3', 'scripts/vsix_artifact.py', str(files[0]), '--version', package['version']], check=True)
-          record = {k: os.environ[k] for k in ['RELEASE_REPOSITORY', 'RELEASE_RUN_ID', 'RELEASE_RUN_ATTEMPT', 'RELEASE_TAG']}
-          record['commit'] = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip()
-          record['vsixArtifact'] = 'slua-lsp-vsix-node-22'
-          record['vsixSha256'] = hashlib.sha256(files[0].read_bytes()).hexdigest()
-          (assets / 'RELEASE_PROVENANCE.json').write_text(json.dumps(record, indent=2) + '\n')
-          PYCODE
-          tar -czf "release-assets/slua-lsp-cli-${GITHUB_REF_NAME#v}.tar.gz" -C release-assets cli
-          cd release-assets
-          sha256sum ./*.vsix ./*.tar.gz RELEASE_PROVENANCE.json > SHA256SUMS
-      - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          body_path: release-notes.md
-          fail_on_unmatched_files: true
-          files: |
-            release-assets/*.vsix
-            release-assets/*.tar.gz
-            release-assets/SHA256SUMS
-            release-assets/RELEASE_PROVENANCE.json

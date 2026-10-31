@@ -30,8 +30,9 @@ node scripts/verify-candidate.mjs
 Artifacts are written to `.local/artifacts/`. Packaging validates payloads,
 versions, licenses, and hashes; atomic staging preserves the prior artifact
 on failure. The VSIX uses the stable channel. Packaging does not publish.
-Tags must match all package versions and the changelog. GitHub release jobs use
-the Node 22 pipeline artifacts after all CI, native, and editor jobs pass.
+Tags must match all package versions and the changelog. Tag only after the exact
+master commit passes CI. The release workflow downloads that successful run’s
+Node 22 artifacts after all CI, native, and editor jobs pass; it does not rebuild.
 
 The standalone CLI needs its neighboring YAML, builtin, and notice files.
 Candidate verification checks offline relocation and packaged CLI/LSP behavior.

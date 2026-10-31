@@ -1,0 +1,96 @@
+name: Publish qualified SLua release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Publish tagged release from tested pipeline artifacts
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Select successful CI for this exact release commit
+        id: qualification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT: ${{ github.sha }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, subprocess
+          repository = os.environ['RELEASE_REPOSITORY']
+          commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip()
+          endpoint = f"repos/{repository}/actions/workflows/ci.yml/runs?head_sha={commit}&event=push&status=success&per_page=20"
+          runs = json.loads(subprocess.check_output(['gh', 'api', endpoint]))['workflow_runs']
+          qualified = [r for r in runs if r['head_sha'] == commit and r['head_branch'] == 'master' and r['conclusion'] == 'success']
+          assert qualified, 'The exact release commit must pass the complete master CI before tagging'
+          selected = qualified[0]
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f"run_id={selected['id']}\nrun_attempt={selected['run_attempt']}\n")
+          print(f"Qualified commit {commit} from {selected['html_url']}")
+          PYCODE
+      - uses: actions/download-artifact@v4
+        with:
+          name: slua-lsp-vsix-node-22
+          run-id: ${{ steps.qualification.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: release-assets
+      - uses: actions/download-artifact@v4
+        with:
+          name: slua-lsp-cli-node-22
+          run-id: ${{ steps.qualification.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: release-assets/cli
+      - name: Validate release identity and changelog
+        run: node scripts/release-notes.mjs "$GITHUB_REF_NAME" > release-notes.md
+      - name: Verify VSIX and record pipeline provenance
+        env:
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          RELEASE_RUN_ID: ${{ steps.qualification.outputs.run_id }}
+          RELEASE_PUBLISH_RUN_ID: ${{ github.run_id }}
+          RELEASE_RUN_ATTEMPT: ${{ steps.qualification.outputs.run_attempt }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PYCODE'
+          import hashlib, json, os, pathlib, subprocess, zipfile
+          assets = pathlib.Path('release-assets')
+          files = list(assets.glob('*.vsix'))
+          assert len(files) == 1
+          with zipfile.ZipFile(files[0]) as z:
+              package = json.loads(z.read('extension/package.json'))
+          assert package['publisher'] == 'Sekkmer'
+          assert package['name'] == 'slua-lsp-client'
+          assert os.environ['RELEASE_TAG'] == 'v' + package['version']
+          subprocess.run(['python3', 'scripts/vsix_artifact.py', str(files[0]), '--version', package['version']], check=True)
+          record = {k: os.environ[k] for k in ['RELEASE_REPOSITORY', 'RELEASE_RUN_ID', 'RELEASE_PUBLISH_RUN_ID', 'RELEASE_RUN_ATTEMPT', 'RELEASE_TAG']}
+          record['commit'] = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip()
+          record['vsixArtifact'] = 'slua-lsp-vsix-node-22'
+          record['vsixSha256'] = hashlib.sha256(files[0].read_bytes()).hexdigest()
+          (assets / 'RELEASE_PROVENANCE.json').write_text(json.dumps(record, indent=2) + '\n')
+          PYCODE
+          tar -czf "release-assets/slua-lsp-cli-${GITHUB_REF_NAME#v}.tar.gz" -C release-assets cli
+          cd release-assets
+          sha256sum ./*.vsix ./*.tar.gz RELEASE_PROVENANCE.json > SHA256SUMS
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          fail_on_unmatched_files: true
+          files: |
+            release-assets/*.vsix
+            release-assets/*.tar.gz
+            release-assets/SHA256SUMS
+            release-assets/RELEASE_PROVENANCE.json

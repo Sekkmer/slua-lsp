@@ -3,7 +3,7 @@
 	"displayName": "SLua LSP",
 	"icon": "media/icon.png",
 	"description": "Luau support powered by slua-lsp (typechecking, navigation, diagnostics).",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"private": true,
 	"engines": {
 		"vscode": "^1.90.0"

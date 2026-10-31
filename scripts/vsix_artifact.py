@@ -27,6 +27,7 @@ FILES = frozenset({
 MAX_ARCHIVE = 32 * 1024 * 1024
 MAX_FILE = 8 * 1024 * 1024
 MAX_TOTAL = 32 * 1024 * 1024
+MAX_ICON = 1024 * 1024
 
 def inspect_vsix(archive, expected_version=None):
     archive = Path(archive)
@@ -73,6 +74,10 @@ def inspect_vsix(archive, expected_version=None):
         if set(files) != FILES:
             raise ValueError(f'Missing VSIX files: {sorted(FILES - set(files))}')
     package = json.loads(files['extension/package.json'])
+    if package.get('icon') != 'media/icon.png':
+        raise ValueError('VSIX icon must reference the packaged PNG')
+    if len(files['extension/media/icon.png']) > MAX_ICON:
+        raise ValueError('VSIX icon exceeds Marketplace size limit of 1024 KB')
     version = package.get('version')
     if not isinstance(version, str) or not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', version):
         raise ValueError('Invalid packaged extension version')

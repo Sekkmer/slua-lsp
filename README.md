@@ -11,7 +11,7 @@ See the [VS Code guide](slua-lsp-client/README.md) for editor use and the
 ## VS Code extension
 
 Install [SLua LSP from the Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=Sekkmer.slua-lsp-client),
-or download `slua-lsp-client-0.1.1.vsix` from the [GitHub release](https://github.com/Sekkmer/slua-lsp/releases/latest)
+or download `slua-lsp-client-0.1.2.vsix` from the [GitHub release](https://github.com/Sekkmer/slua-lsp/releases/latest)
 and use **Extensions: Install from VSIX…**. Then open a `.lua`, `.luau`, or `.slua` file in VS Code 1.90 or later.
 The extension includes its server and offline definitions.
 
@@ -61,7 +61,7 @@ pnpm exec node scripts/package-cli.mjs
 pnpm exec node scripts/package-vsix.mjs
 ```
 
-The VSIX is written to `.local/artifacts/`. Version 0.1.1 uses the stable VS Code channel. Building does not publish to a
+The VSIX is written to `.local/artifacts/`. Version 0.1.2 uses the stable VS Code channel. Building does not publish to a
 marketplace. Tagged GitHub releases attach the pipeline-built VSIX and CLI bundle.
 
 | Directory | Purpose |

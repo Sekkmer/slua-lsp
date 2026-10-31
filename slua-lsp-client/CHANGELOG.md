@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Optimized the extension icon to 256×256 pixels to meet the Marketplace upload limit.
+- Added a packaged icon size check and automated Marketplace publishing from verified GitHub Actions artifacts.
+
 ## 0.1.1
 
 - Added the SLua extension icon for the Marketplace and VS Code extension list.

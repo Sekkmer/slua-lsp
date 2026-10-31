@@ -24,7 +24,7 @@ class VsixArtifact(unittest.TestCase):
         self.metadata = self.root / 'contents.json'
         self.files = {name: ('fixture:' + name).encode() for name in artifact.FILES}
         self.files['extension/out/extension.js'] = b'FIXTURE_BODY_EXTENSION'
-        self.files['extension/package.json'] = json.dumps({'name': 'slua-lsp-client', 'publisher': 'Sekkmer', 'version': '0.1.0'}).encode()
+        self.files['extension/package.json'] = json.dumps({'name': 'slua-lsp-client', 'publisher': 'Sekkmer', 'version': '0.1.0', 'icon': 'media/icon.png'}).encode()
         self.files['extension.vsixmanifest'] = b'<PackageManifest><Metadata><Identity Id="slua-lsp-client" Publisher="Sekkmer" Version="0.1.0"/><Properties><Property Id="Microsoft.VisualStudio.Code.PreRelease" Value="true"/></Properties></Metadata></PackageManifest>'
 
     def write(self, changes=None, extra=(), remove=()):
@@ -71,6 +71,18 @@ class VsixArtifact(unittest.TestCase):
                 self.write(extra=[(name, b'unexpected')])
                 with self.assertRaisesRegex(ValueError, message):
                     artifact.inspect_vsix(self.archive)
+
+    def test_marketplace_icon_size_limit_and_manifest_reference(self):
+        self.write(changes={'extension/media/icon.png': b'x' * (1024 * 1024)})
+        artifact.inspect_vsix(self.archive)
+        self.write(changes={'extension/media/icon.png': b'x' * (1024 * 1024 + 1)})
+        with self.assertRaisesRegex(ValueError, 'icon exceeds Marketplace size limit'):
+            artifact.inspect_vsix(self.archive)
+        package = json.loads(self.files['extension/package.json'])
+        package['icon'] = 'media/missing.png'
+        self.write(changes={'extension/package.json': json.dumps(package).encode()})
+        with self.assertRaisesRegex(ValueError, 'icon must reference the packaged PNG'):
+            artifact.inspect_vsix(self.archive)
 
     def test_symlink_and_special_file_entries_are_refused(self):
         for mode in [stat.S_IFLNK, stat.S_IFIFO]:

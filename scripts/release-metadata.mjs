@@ -17,6 +17,6 @@ export async function readReleaseMetadata(directory = root) {
 	const node = '^22.0.0 || ^24.0.0';
 	for (const name of ['workspace', 'slua-lsp-cli', 'slua-lsp-server']) assert.equal(packages[name].engines?.node, node, `${name} must match the qualified standalone Node matrix`);
 	assert.equal(packages['slua-lsp-client'].engines.vscode, '^1.90.0');
-	return { version, node, vscode: packages['slua-lsp-client'].engines.vscode, publisher: packages['slua-lsp-client'].publisher, name: packages['slua-lsp-client'].name, channel: 'local-candidate' };
+	return { version, node, vscode: packages['slua-lsp-client'].engines.vscode, publisher: packages['slua-lsp-client'].publisher, name: packages['slua-lsp-client'].name, channel: 'release' };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) console.log(JSON.stringify(await readReleaseMetadata()));

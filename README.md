@@ -60,8 +60,8 @@ pnpm exec node scripts/package-cli.mjs
 pnpm exec node scripts/package-vsix.mjs
 ```
 
-The VSIX is written to `.local/artifacts/`. Version 0.1.0 is packaged for the
-VS Code pre-release channel. Building does not publish to a marketplace.
+The VSIX is written to `.local/artifacts/`. Version 0.1.0 uses the stable VS Code channel. Building does not publish to a
+marketplace. Tagged GitHub releases attach the pipeline-built VSIX and CLI bundle.
 
 | Directory | Purpose |
 | --- | --- |

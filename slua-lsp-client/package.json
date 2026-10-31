@@ -31,13 +31,25 @@
 			"title": "SLua",
 			"properties": {
 				"slua.preprocessor.context": {
-					"type": ["object", "null"],
+					"type": [
+						"object",
+						"null"
+					],
 					"default": null,
 					"additionalProperties": false,
 					"properties": {
-						"agentId": { "type": "string", "description": "Explicit agent UUID used by source macros." },
-						"agentName": { "type": "string", "maxLength": 1024 },
-						"timestamp": { "type": "string", "description": "Explicit UTC ISO timestamp; never inferred from the current time." }
+						"agentId": {
+							"type": "string",
+							"description": "Explicit agent UUID used by source macros."
+						},
+						"agentName": {
+							"type": "string",
+							"maxLength": 1024
+						},
+						"timestamp": {
+							"type": "string",
+							"description": "Explicit UTC ISO timestamp; never inferred from the current time."
+						}
 					},
 					"description": "Optional source macro context shared by diagnostics and generated previews. Null disables macros; {} enables file/line macros. Identity/time macros require explicit values."
 				},
@@ -171,5 +183,22 @@
 		"typescript": "^6.0.3"
 	},
 	"publisher": "Sekkmer",
-	"license": "MIT"
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Sekkmer/slua-lsp.git"
+	},
+	"homepage": "https://github.com/Sekkmer/slua-lsp#readme",
+	"bugs": {
+		"url": "https://github.com/Sekkmer/slua-lsp/issues"
+	},
+	"categories": [
+		"Programming Languages"
+	],
+	"keywords": [
+		"slua",
+		"luau",
+		"secondlife",
+		"lsp"
+	]
 }
